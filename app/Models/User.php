@@ -19,9 +19,13 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'role_id',
         'name',
         'email',
+        'phone',
+        'seller_code',
         'password',
+        'is_active',
     ];
 
     /**
@@ -44,6 +48,21 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
+    }
+    public function isAdmin(): bool
+    {
+        return optional($this->role)->slug === 'administrador';
+    }
+
+    public function isSeller(): bool
+    {
+        return optional($this->role)->slug === 'vendedor';
     }
 }

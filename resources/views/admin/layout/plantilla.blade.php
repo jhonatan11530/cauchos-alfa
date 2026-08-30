@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>CV Software</title>
+    <title>Panel Administrativo</title>
     <meta content='width=device-width, initial-scale=1.0, shrink-to-fit=no' name='viewport' />
     <link rel="icon" href="{{ asset('/img/icon.ico') }}" type="image/x-icon" />
 
@@ -55,7 +55,13 @@
 
             <!-- Navbar Header -->
             <nav class="navbar navbar-header navbar-expand-lg" data-background-color="blue2">
-                <div class="container-fluid">
+                <div class="container-fluid justify-content-end">
+                    @auth
+                        <form action="{{ route('logout') }}" method="POST" class="mb-0">
+                            @csrf
+                            <button class="btn btn-sm btn-light">Cerrar sesion</button>
+                        </form>
+                    @endauth
                 </div>
             </nav>
             <!-- End Navbar -->
@@ -72,16 +78,16 @@
                         <div class="info">
                             <a href="#">
                                 <span>
-                                    Hizrian
-                                    <span class="user-level">Administrator</span>
+                                    {{ auth()->user()->name ?? 'Usuario' }}
+                                    <span class="user-level">{{ auth()->user()->role->name ?? 'Administrador' }}</span>
                                 </span>
                             </a>
                             <div class="clearfix"></div>
                         </div>
                     </div>
                     <ul class="nav nav-primary">
-                        <li class="nav-item active">
-                            <a href="{{ url('dashboard') }}">
+                        <li class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                            <a href="{{ route('dashboard') }}">
                                 <i class="fas fa-home"></i>
                                 <p>Dashboard</p>
                             </a>
@@ -89,37 +95,57 @@
                         <li class="nav-section">
                             <h4 class="text-section">Supervisar Pedidos</h4>
                         </li>
-                        <li class="nav-item">
-                            <a data-toggle="collapse" href="#">
-                                <i class="fas fa-layer-group"></i>
-                                <p>Pedidos Realizados</p>
+                        <li class="nav-item {{ request()->routeIs('pedidos.*') ? 'active' : '' }}">
+                            <a href="{{ route('pedidos.index') }}">
+                                <i class="fas fa-clipboard-list"></i>
+                                <p>Pedidos</p>
                             </a>
                         </li>
                         <li class="nav-section">
                             <h4 class="text-section">Opciones</h4>
                         </li>
-                        <li class="nav-item">
-                            <a data-toggle="collapse" href="#">
-                                <i class="fas fa-layer-group"></i>
-                                <p>Categorias</p>
+                        @if(auth()->user() && auth()->user()->isAdmin())
+                        <li class="nav-item {{ request()->routeIs('vendedores.*') ? 'active' : '' }}">
+                            <a href="{{ route('vendedores.index') }}">
+                                <i class="fas fa-user-tag"></i>
+                                <p>Vendedores</p>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a data-toggle="collapse" href="#">
-                                <i class="fas fa-layer-group"></i>
-                                <p>Productos</p>
+                        <li class="nav-item {{ request()->routeIs('usuarios.*') ? 'active' : '' }}">
+                            <a href="{{ route('usuarios.index') }}">
+                                <i class="fas fa-users-cog"></i>
+                                <p>Usuarios</p>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a data-toggle="collapse" href="#">
-                                <i class="fas fa-layer-group"></i>
+                        <li class="nav-item {{ request()->routeIs('estados-pedido.*') ? 'active' : '' }}">
+                            <a href="{{ route('estados-pedido.index') }}">
+                                <i class="fas fa-route"></i>
+                                <p>Estados</p>
+                            </a>
+                        </li>
+                        @endif
+                        <li class="nav-item {{ request()->routeIs('clientes.*') ? 'active' : '' }}">
+                            <a href="{{ route('clientes.index') }}">
+                                <i class="fas fa-address-book"></i>
                                 <p>Clientes</p>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a data-toggle="collapse" href="#">
-                                <i class="fas fa-layer-group"></i>
-                                <p>Vendedores</p>
+                        <li class="nav-item {{ request()->routeIs('categoria.*') ? 'active' : '' }}">
+                            <a href="{{ route('categoria.index') }}">
+                                <i class="fas fa-tags"></i>
+                                <p>Categorías</p>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ request()->routeIs('productos.*') ? 'active' : '' }}">
+                            <a href="{{ route('productos.index') }}">
+                                <i class="fas fa-boxes"></i>
+                                <p>Productos</p>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ request()->routeIs('catalogos.*') ? 'active' : '' }}">
+                            <a href="{{ route('catalogos.index') }}">
+                                <i class="fas fa-book"></i>
+                                <p>Catálogos</p>
                             </a>
                         </li>
                     </ul>
@@ -135,13 +161,22 @@
                         @yield('banner')
                     </div>
                 </div>
+                @if (session('success'))
+                    <div class="page-inner pt-3 pb-0">
+                        <div class="alert alert-success">{{ session('success') }}</div>
+                    </div>
+                @endif
+                @if ($errors->any())
+                    <div class="page-inner pt-3 pb-0">
+                        <div class="alert alert-danger">Revisa los campos marcados antes de continuar.</div>
+                    </div>
+                @endif
                 @yield('contenido')
             </div>
             <footer class="footer">
                 <div class="container-fluid">
                     <div class="copyright ml-auto">
-                        2018, made with <i class="fa fa-heart heart text-danger"></i> by <a
-                            href="https://www.themekita.com">ThemeKita</a>
+                        Panel administrativo de trazabilidad de pedidos
                     </div>
                 </div>
             </footer>

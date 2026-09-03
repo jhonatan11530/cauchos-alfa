@@ -9,12 +9,12 @@
     <div class="page-inner mt--5"><div class="card"><div class="card-body">
         <p>{{ $catalog->description }}</p>
         <table class="table">
-            <thead><tr><th>Producto</th><th>Referencia</th><th>Categoría</th><th>Precio</th></tr></thead>
+            <thead><tr><th>Producto</th><th>Referencia</th><th>Categoría</th></tr></thead>
             <tbody>
                 @forelse ($catalog->products as $product)
-                    <tr><td>{{ $product->name }}</td><td>{{ $product->reference }}</td><td>{{ $product->category->name ?? '' }}</td><td>{{ $product->price !== null ? '$'.number_format($product->price, 2) : '' }}</td></tr>
+                    <tr><td>{{ $product->name }}</td><td>{{ $product->reference }}</td><td>{{ $product->category->name ?? '' }}</td></tr>
                 @empty
-                    <tr><td colspan="4" class="text-center">Este catálogo no tiene productos.</td></tr>
+                    <tr><td colspan="3" class="text-center">Este catálogo no tiene productos.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -40,7 +40,7 @@
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>
-                                    <tr><th>Código</th><th>Cliente</th><th>Estado</th><th>Total</th><th></th></tr>
+                                    <tr><th>Código</th><th>Cliente</th><th>Estado</th><th></th></tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($recentOrders as $order)
@@ -48,11 +48,10 @@
                                             <td>{{ $order->code }}</td>
                                             <td>{{ $order->client->name }}</td>
                                             <td><span class="badge" style="background: {{ $order->status->color }}; color: #fff">{{ $order->status->name }}</span></td>
-                                            <td>${{ number_format($order->total, 2) }}</td>
                                             <td><a href="{{ route('pedidos.show', $order) }}" class="btn btn-sm btn-primary">Ver</a></td>
                                         </tr>
                                     @empty
-                                        <tr><td colspan="5" class="text-center">No hay pedidos registrados.</td></tr>
+                                        <tr><td colspan="4" class="text-center">No hay pedidos registrados.</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>

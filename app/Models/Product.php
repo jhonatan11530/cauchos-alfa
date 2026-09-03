@@ -16,7 +16,6 @@ class Product extends Model
         'image_path',
         'description',
         'features',
-        'price',
         'availability',
         'is_active',
     ];
@@ -24,7 +23,6 @@ class Product extends Model
     protected function casts(): array
     {
         return [
-            'price' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }
@@ -42,5 +40,24 @@ class Product extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order');
+    }
+
+    /**
+     * URLs de todas las imágenes del producto (galería nueva + imagen antigua).
+     */
+    public function imageUrls(): array
+    {
+        $urls = $this->images->map(fn (ProductImage $img) => asset('storage/' . $img->path))->all();
+
+        if ($this->image_path) {
+            $urls[] = asset('storage/' . $this->image_path);
+        }
+
+        return $urls;
     }
 }

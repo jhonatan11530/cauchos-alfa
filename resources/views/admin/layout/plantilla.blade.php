@@ -7,29 +7,10 @@
     <meta content='width=device-width, initial-scale=1.0, shrink-to-fit=no' name='viewport' />
     <link rel="icon" href="{{ asset('/img/icon.ico') }}" type="image/x-icon" />
 
-    <!-- Fonts and icons -->
-    <script src="{{ asset('/js/plugin/webfont/webfont.min.js') }}"></script>
-    <script>
-        WebFont.load({
-            google: {
-                "families": ["Lato:300,400,700,900"]
-            },
-            custom: {
-                "families": ["Flaticon", "Font Awesome 5 Solid", "Font Awesome 5 Regular", "Font Awesome 5 Brands",
-                    "simple-line-icons"
-                ],
-                urls: ['{{ asset('/css/fonts.min.css') }}']
-            },
-            active: function() {
-                sessionStorage.fonts = true;
-            }
-        });
-    </script>
     <!-- CSS Files -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <link rel="stylesheet" href="{{ asset('/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('/css/atlantis.min.css') }}">
-
-    <!-- CSS Just for demo purpose, don't include it in your project -->
     <link rel="stylesheet" href="{{ asset('/css/select2.min.css') }}">
 </head>
 
@@ -104,25 +85,25 @@
                         <li class="nav-section">
                             <h4 class="text-section">Opciones</h4>
                         </li>
-                        @if(auth()->user() && auth()->user()->isAdmin())
-                        <li class="nav-item {{ request()->routeIs('vendedores.*') ? 'active' : '' }}">
-                            <a href="{{ route('vendedores.index') }}">
-                                <i class="fas fa-user-tag"></i>
-                                <p>Vendedores</p>
-                            </a>
-                        </li>
-                        <li class="nav-item {{ request()->routeIs('usuarios.*') ? 'active' : '' }}">
-                            <a href="{{ route('usuarios.index') }}">
-                                <i class="fas fa-users-cog"></i>
-                                <p>Usuarios</p>
-                            </a>
-                        </li>
-                        <li class="nav-item {{ request()->routeIs('estados-pedido.*') ? 'active' : '' }}">
-                            <a href="{{ route('estados-pedido.index') }}">
-                                <i class="fas fa-route"></i>
-                                <p>Estados</p>
-                            </a>
-                        </li>
+                        @if (auth()->user() && auth()->user()->isAdmin())
+                            <li class="nav-item {{ request()->routeIs('vendedores.*') ? 'active' : '' }}">
+                                <a href="{{ route('vendedores.index') }}">
+                                    <i class="fas fa-user-tag"></i>
+                                    <p>Vendedores</p>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ request()->routeIs('usuarios.*') ? 'active' : '' }}">
+                                <a href="{{ route('usuarios.index') }}">
+                                    <i class="fas fa-users-cog"></i>
+                                    <p>Usuarios</p>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ request()->routeIs('estados-pedido.*') ? 'active' : '' }}">
+                                <a href="{{ route('estados-pedido.index') }}">
+                                    <i class="fas fa-route"></i>
+                                    <p>Estados</p>
+                                </a>
+                            </li>
                         @endif
                         <li class="nav-item {{ request()->routeIs('clientes.*') ? 'active' : '' }}">
                             <a href="{{ route('clientes.index') }}">
@@ -161,16 +142,6 @@
                         @yield('banner')
                     </div>
                 </div>
-                @if (session('success'))
-                    <div class="page-inner pt-3 pb-0">
-                        <div class="alert alert-success">{{ session('success') }}</div>
-                    </div>
-                @endif
-                @if ($errors->any())
-                    <div class="page-inner pt-3 pb-0">
-                        <div class="alert alert-danger">Revisa los campos marcados antes de continuar.</div>
-                    </div>
-                @endif
                 @yield('contenido')
             </div>
             <footer class="footer">
@@ -183,6 +154,24 @@
         </div>
     </div>
 
+    <!-- Fonts and icons -->
+    <script src="{{ asset('/js/plugin/webfont/webfont.min.js') }}"></script>
+    <script>
+        WebFont.load({
+            google: {
+                "families": ["Lato:300,400,700,900"]
+            },
+            custom: {
+                "families": ["Flaticon", "Font Awesome 5 Solid", "Font Awesome 5 Regular", "Font Awesome 5 Brands",
+                    "simple-line-icons"
+                ],
+                urls: ['{{ asset('/css/fonts.min.css') }}']
+            },
+            active: function() {
+                sessionStorage.fonts = true;
+            }
+        });
+    </script>
     <!--   Core JS Files   -->
     <script src="{{ asset('/js/core/jquery.3.2.1.min.js') }}"></script>
     <script src="{{ asset('/js/core/popper.min.js') }}"></script>
@@ -209,10 +198,38 @@
 
     <!-- Sweet Alert -->
     <script src="{{ asset('/js/plugin/sweetalert/sweetalert.min.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
 
     <!-- Atlantis JS -->
     <script src="{{ asset('/js/atlantis.min.js') }}"></script>
     <script src="{{ asset('/js/select2.min.js') }}"></script>
+
+    <script>
+        toastr.options = {
+            "closeButton": true,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "timeOut": "5000"
+        };
+        @if (session('success'))
+            toastr.success(@json(session('success')));
+        @endif
+        @if (session('error'))
+            toastr.error(@json(session('error')));
+        @endif
+        @if (session('warning'))
+            toastr.warning(@json(session('warning')));
+        @endif
+        @if (session('info'))
+            toastr.info(@json(session('info')));
+        @endif
+        @if ($errors->any())
+            @foreach ($errors->all() as $error)
+                toastr.error(@json($error));
+            @endforeach
+        @endif
+    </script>
     @stack('scripts')
 </body>
 

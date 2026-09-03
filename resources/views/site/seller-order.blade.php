@@ -11,10 +11,6 @@
     </section>
 
     <section class="container py-5">
-        @if ($errors->any())
-            <div class="alert alert-danger">Revisa los campos marcados: {{ $errors->first() }}</div>
-        @endif
-
         <div class="row g-4">
             <div class="col-lg-7">
                 <div class="card shadow-sm">
@@ -64,10 +60,11 @@
                     <div class="card-body">
                         <form method="POST" action="{{ route('pedidos.store') }}">
                             @csrf
+                            <input type="hidden" name="from_seller_site" value="1">
                             <div class="mb-3">
                                 <label class="form-label">Cliente *</label>
-                                <select name="client_id" class="form-select @error('client_id') is-invalid @enderror"
-                                    required>
+                                <select name="client_id"
+                                    class="form-select select2 @error('client_id') is-invalid @enderror" required>
                                     <option value="">Seleccionar cliente</option>
                                     @foreach ($clients as $client)
                                         <option value="{{ $client->id }}" @selected(old('client_id') == $client->id)>
@@ -91,8 +88,6 @@
                                     value="{{ $product->id }}">
                                 <input type="hidden" name="items[{{ $loop->index }}][quantity]"
                                     value="{{ $oldItems[$loop->index]['quantity'] ?? $product->cart_quantity }}">
-                                <input type="hidden" name="items[{{ $loop->index }}][unit_price]"
-                                    value="{{ $oldItems[$loop->index]['unit_price'] ?? ($product->price ?? 0) }}">
                             @endforeach
 
                             <button type="submit" class="btn btn-brand w-100"><i class="bi bi-check-circle"></i> Confirmar

@@ -11,13 +11,12 @@
                     <p><strong>Estado actual:</strong> <span class="badge" style="background: {{ $order->status->color }}; color: #fff">{{ $order->status->name }}</span></p>
                     <p><strong>Observaciones:</strong> {{ $order->notes }}</p>
                     <table class="table">
-                        <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
+                        <thead><tr><th>Producto</th><th>Cantidad</th></tr></thead>
                         <tbody>
                             @foreach ($order->items as $item)
-                                <tr><td>{{ $item->product->name }}</td><td>{{ $item->quantity }}</td><td>${{ number_format($item->unit_price, 2) }}</td><td>${{ number_format($item->subtotal, 2) }}</td></tr>
+                                <tr><td>{{ $item->product->name }}</td><td>{{ $item->quantity }}</td></tr>
                             @endforeach
                         </tbody>
-                        <tfoot><tr><th colspan="3">Total</th><th>${{ number_format($order->total, 2) }}</th></tr></tfoot>
                     </table>
                 </div></div>
             </div>

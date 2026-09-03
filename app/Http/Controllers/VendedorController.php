@@ -7,11 +7,18 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class VendedorController extends Controller
 {
+    /**
+     * Dominio usado para generar el correo automatico del vendedor
+     * a partir de su nombre.
+     */
+    private const EMAIL_DOMAIN = 'cauchosalfa.com';
+
     public function index(): View
     {
         $role = Role::where('slug', 'vendedor')->first();
@@ -41,12 +48,15 @@ class VendedorController extends Controller
     {
         $data = $this->validatedData($request);
         $data['role_id'] = Role::where('slug', 'vendedor')->value('id');
-        $data['password'] = Hash::make($data['password']);
         $data['seller_code'] = strtoupper(trim($data['seller_code']));
+        $data['email'] = $this->generateEmail($data['name']);
+        $data['password'] = Hash::make($this->generatePassword($data['seller_code']));
         $data['is_active'] = $request->boolean('is_active', true);
         User::create($data);
 
-        return redirect()->route('vendedores.index')->with('success', 'Vendedor creado correctamente. Su código de acceso es ' . $data['seller_code'] . '.');
+        return redirect()->route('vendedores.index')->with('success',
+            'Vendedor creado correctamente. Código de acceso: '.$data['seller_code'].
+            ' | Correo: '.$data['email']);
     }
 
     public function edit(User $vendedor): View
@@ -85,11 +95,35 @@ class VendedorController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user)],
             'phone' => ['nullable', 'string', 'max:50'],
             'seller_code' => ['required', 'string', 'max:50', Rule::unique('users')->ignore($user)],
-            'password' => [$user ? 'nullable' : 'required', 'string', 'min:8'],
         ]);
+    }
+
+    /**
+     * Correo automatico: nombre normalizado + dominio de la app.
+     * Ej: "Juan Pérez" -> "juan.perez@cauchosalfa.com"
+     */
+    private function generateEmail(string $name): string
+    {
+        $base = Str::slug($name, '.');
+
+        do {
+            $email = $base.'@'.self::EMAIL_DOMAIN;
+            if (! User::where('email', $email)->exists()) {
+                return $email;
+            }
+            $base = $base.'-'.Str::lower(Str::random(4));
+        } while (true);
+    }
+
+    /**
+     * Contraseña automatica: código del vendedor + fecha actual (Ymd).
+     * Ej: V-1234 + 2026-05-30 -> "V-1234-20260530"
+     */
+    private function generatePassword(string $sellerCode): string
+    {
+        return $sellerCode.'-'.now()->format('Ymd');
     }
 
     private function generateCode(): string

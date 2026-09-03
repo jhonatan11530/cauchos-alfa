@@ -13,8 +13,6 @@ return new class extends Migration
             $table->foreignId('order_id')->constrained()->cascadeOnDelete();
             $table->foreignId('product_id')->constrained()->restrictOnDelete();
             $table->unsignedInteger('quantity');
-            $table->decimal('unit_price', 12, 2)->default(0);
-            $table->decimal('subtotal', 12, 2)->default(0);
             $table->timestamps();
         });
     }

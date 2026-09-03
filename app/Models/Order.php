@@ -15,14 +15,12 @@ class Order extends Model
         'order_status_id',
         'ordered_at',
         'notes',
-        'total',
     ];
 
     protected function casts(): array
     {
         return [
             'ordered_at' => 'date',
-            'total' => 'decimal:2',
         ];
     }
 

@@ -7,9 +7,9 @@ use App\Models\Order;
 use App\Models\OrderStatus;
 use App\Models\OrderStatusHistory;
 use App\Models\Product;
+use App\Support\SellerCart;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -41,22 +41,21 @@ class OrderController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validatedData($request);
-        $fromSellerSite = $request->boolean('from_seller_site');
+        $user = Auth::user();
+        $fromSellerSite = $request->boolean('from_seller_site') || ($user && $user->isSeller());
 
         $order = DB::transaction(function () use ($data, $request) {
             $status = OrderStatus::where('slug', 'pedido-creado')->first() ?? OrderStatus::orderBy('sort_order')->firstOrFail();
             $order = Order::create([
-                'code' => 'PED-'.now()->format('YmdHis'),
+                'code' => $this->generateCode(),
                 'client_id' => $data['client_id'],
                 'created_by' => Auth::id(),
                 'order_status_id' => $status->id,
                 'ordered_at' => now(),
                 'notes' => $data['notes'] ?? null,
-                'total' => 0,
             ]);
 
             $this->syncItems($order, $request->input('items', []));
-            $order->update(['total' => $order->items()->sum('subtotal')]);
             $this->recordHistory($order, null, $status->id, 'Pedido creado.');
 
             return $order;
@@ -64,9 +63,9 @@ class OrderController extends Controller
 
 
         if ($fromSellerSite) {
-            $request->session()->forget('seller_cart');
+            app(SellerCart::class)->clear();
 
-            return redirect()->route('site.seller.order')->with('success', 'Pedido '.$order->code.' confirmado correctamente.');
+            return redirect()->route('site.catalog')->with('success', 'Pedido '.$order->code.' confirmado correctamente.');
         }
 
         return redirect()->route('pedidos.index')->with('success', 'Pedido creado correctamente.');
@@ -98,7 +97,6 @@ class OrderController extends Controller
             ]);
 
             $this->syncItems($pedido, $request->input('items', []));
-            $pedido->update(['total' => $pedido->items()->sum('subtotal')]);
         });
 
         return redirect()->route('pedidos.index')->with('success', 'Pedido actualizado correctamente.');
@@ -150,8 +148,19 @@ class OrderController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
-            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ]);
+    }
+
+    /**
+     * Código de pedido único: sufijo aleatorio evita colisiones en
+     * creaciones simultaneas dentro del mismo segundo.
+     */
+    private function generateCode(): string
+    {
+        do {
+            $code = 'PED-'.now()->format('YmdHis').'-'.strtoupper(bin2hex(random_bytes(2)));        } while (Order::where('code', $code)->exists());
+
+        return $code;
     }
 
     private function syncItems(Order $order, array $items): void
@@ -159,13 +168,9 @@ class OrderController extends Controller
         $order->items()->delete();
 
         foreach ($items as $item) {
-            $quantity = (int) $item['quantity'];
-            $unitPrice = (float) $item['unit_price'];
             $order->items()->create([
                 'product_id' => $item['product_id'],
-                'quantity' => $quantity,
-                'unit_price' => $unitPrice,
-                'subtotal' => $quantity * $unitPrice,
+                'quantity' => (int) $item['quantity'],
             ]);
         }
     }

@@ -48,6 +48,11 @@ class CatalogController extends Controller
         $data['is_active'] = $request->boolean('is_active');
 
         if ($path = $this->storeLogo($request)) {
+            // El logo anterior se elimina del disco para no acumular
+            // archivos huerfanos en el storage publico.
+            if ($catalogo->logo_path) {
+                Storage::disk('public')->delete($catalogo->logo_path);
+            }
             $data['logo_path'] = $path;
         }
 

@@ -9,6 +9,9 @@
     <title>@yield('title', 'Cauchos Alfa')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <link rel="stylesheet" href="{{ asset('/css/select2.min.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
     <style>
         :root {
             --brand: #d81e05;
@@ -96,12 +99,6 @@
     </nav>
 
     <main class="flex-grow-1">
-        @if (session('success'))
-            <div class="container mt-3">
-                <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button
-                        type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-            </div>
-        @endif
         @yield('contenido')
     </main>
 
@@ -132,7 +129,44 @@
         </div>
     </footer>
 
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="{{ asset('/js/select2.min.js') }}"></script>
+    <script>
+        toastr.options = {
+            "closeButton": true,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "timeOut": "5000"
+        };
+        @if (session('success'))
+            toastr.success(@json(session('success')));
+        @endif
+        @if (session('error'))
+            toastr.error(@json(session('error')));
+        @endif
+        @if (session('warning'))
+            toastr.warning(@json(session('warning')));
+        @endif
+        @if (session('info'))
+            toastr.info(@json(session('info')));
+        @endif
+        @if ($errors->any())
+            @foreach ($errors->all() as $error)
+                toastr.error(@json($error));
+            @endforeach
+        @endif
+
+        if ($.fn.select2) {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Seleccionar una opción'
+            });
+        }
+    </script>
+    @stack('scripts')
 </body>
 
 </html>

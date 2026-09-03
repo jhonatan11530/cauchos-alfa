@@ -6,9 +6,11 @@ use App\Models\Catalog;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
+use App\Support\SellerCart;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -17,7 +19,7 @@ class SiteController extends Controller
     public function home(): View
     {
         return view('site.home', [
-            'featured' => Product::where('is_active', true)->with('category')->latest()->take(6)->get(),
+            'featured' => Product::where('is_active', true)->with(['category', 'images'])->latest()->take(6)->get(),
         ]);
     }
 
@@ -29,7 +31,7 @@ class SiteController extends Controller
             ->get();
 
         $products = Product::where('is_active', true)
-            ->with('category')
+            ->with(['category', 'images'])
             ->when($request->filled('categoria'), fn ($q) => $q->where('category_id', $request->input('categoria')))
             ->orderBy('name')
             ->paginate(12)
@@ -54,15 +56,31 @@ class SiteController extends Controller
 
     public function sellerLogin(Request $request): RedirectResponse
     {
-        $data = $request->validate(['code' => ['required', 'string']]);
+        $data = $request->validate([
+            'code' => ['required', 'string'],
+        ]);
+
+        $throttleKey = 'seller-login:'.strtolower($request->input('code')).'|'.$request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            return back()->withErrors([
+                'code' => 'Demasiados intentos. Inténtalo de nuevo en '.$seconds.' segundos.',
+            ]);
+        }
 
         $user = User::where('seller_code', strtoupper(trim($data['code'])))
             ->where('is_active', true)
             ->first();
 
         if (! $user || ! $user->isSeller()) {
+            RateLimiter::hit($throttleKey, 120);
+
             return back()->withErrors(['code' => 'El código ingresado no corresponde a un vendedor activo.']);
         }
+
+        RateLimiter::clear($throttleKey);
 
         Auth::login($user);
         $request->session()->regenerate();
@@ -89,9 +107,7 @@ class SiteController extends Controller
         ]);
 
         $product = Product::where('is_active', true)->findOrFail($data['product_id']);
-        $cart = session('seller_cart', []);
-        $cart[$product->id] = ($cart[$product->id] ?? 0) + (int) $data['quantity'];
-        session(['seller_cart' => $cart]);
+        app(SellerCart::class)->add($product->id, (int) $data['quantity']);
 
         return back()->with('success', "Se agregaron {$data['quantity']} unidad(es) de {$product->name} al pedido.");
     }
@@ -99,23 +115,23 @@ class SiteController extends Controller
     public function removeCartItem(Request $request): RedirectResponse
     {
         $data = $request->validate(['product_id' => ['required', 'exists:products,id']]);
-        $cart = session('seller_cart', []);
-        unset($cart[$data['product_id']]);
-        session(['seller_cart' => $cart]);
+        app(SellerCart::class)->remove((int) $data['product_id']);
 
         return back()->with('success', 'Producto retirado del pedido.');
     }
 
     public function showSellerOrder(): View|RedirectResponse
     {
-        $cart = session('seller_cart', []);
+        $cart = app(SellerCart::class)->get();
 
         if (empty($cart)) {
             return redirect()->route('site.catalog')
-                ->with('success', 'Tu pedido esta vacio. Agrega productos desde el catalogo.');
+                ->with('warning', 'Tu pedido está vacío. Agrega productos desde el catálogo.');
         }
 
-        $cartProducts = Product::whereIn('id', array_keys($cart))->with('category')->get()
+        $cartProducts = Product::whereIn('id', array_keys($cart))
+            ->where('is_active', true)
+            ->with('category')->get()
             ->map(function ($product) use ($cart) {
                 $product->cart_quantity = $cart[$product->id];
 

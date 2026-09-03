@@ -17,9 +17,6 @@
                     <div class="card-body p-4">
                         <h4 class="fw-bold text-center mb-4"><i class="bi bi-person-badge text-danger"></i> Código de
                             vendedor</h4>
-                        @if ($errors->any())
-                            <div class="alert alert-danger">{{ $errors->first() }}</div>
-                        @endif
                         <form method="POST" action="{{ route('site.seller.auth') }}">
                             @csrf
                             <div class="mb-3">

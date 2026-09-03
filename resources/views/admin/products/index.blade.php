@@ -9,12 +9,12 @@
     @include('admin.partials.search')
     <div class="page-inner mt--5"><div class="card"><div class="card-body table-responsive">
         <table class="table table-head-bg-primary">
-            <thead><tr><th>Nombre</th><th>Referencia</th><th>Categoría</th><th>Precio</th><th>Disponibilidad</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Referencia</th><th>Categoría</th><th>Disponibilidad</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
                 @forelse ($products as $product)
                     <tr>
                         <td>{{ $product->name }}</td><td>{{ $product->reference }}</td><td>{{ $product->category->name ?? 'Sin categoría' }}</td>
-                        <td>{{ $product->price !== null ? '$'.number_format($product->price, 2) : '' }}</td><td>{{ $product->availability }}</td><td>{{ $product->is_active ? 'Activo' : 'Inactivo' }}</td>
+                        <td>{{ $product->availability }}</td><td>{{ $product->is_active ? 'Activo' : 'Inactivo' }}</td>
                         <td>@include('admin.partials.actions', ['edit' => route('productos.edit', $product), 'destroy' => route('productos.destroy', $product), 'active' => $product->is_active])</td>
                     </tr>
                 @empty

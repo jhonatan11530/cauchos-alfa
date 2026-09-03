@@ -42,6 +42,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('clientes', ClientController::class);
         Route::resource('categoria', CategoryController::class);
         Route::resource('productos', ProductController::class)->except('show');
+        Route::delete('productos/{producto}/imagenes/{imagen}', [ProductController::class, 'destroyImage'])
+            ->name('productos.images.destroy');
         Route::get('catalogos/{catalogo}/pdf', [CatalogController::class, 'pdf'])->name('catalogos.pdf');
         Route::resource('catalogos', CatalogController::class);
         Route::get('pedidos', [OrderController::class, 'index'])->name('pedidos.index');
@@ -53,7 +55,9 @@ Route::middleware('auth')->group(function () {
         Route::middleware(EnsureUserIsAdmin::class)->group(function () {
             Route::resource('usuarios', UserController::class)->except('show');
             Route::resource('estados-pedido', OrderStatusController::class)->except('show');
-            Route::resource('vendedores', VendedorController::class)->except('show');
+            Route::resource('vendedores', VendedorController::class)
+                ->except('show')
+                ->parameters(['vendedores' => 'vendedor']);
         });
     });
 

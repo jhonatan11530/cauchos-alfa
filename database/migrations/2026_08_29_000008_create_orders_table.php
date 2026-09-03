@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('order_status_id')->constrained()->restrictOnDelete();
             $table->date('ordered_at')->nullable();
             $table->text('notes')->nullable();
-            $table->decimal('total', 12, 2)->default(0);
             $table->timestamps();
         });
     }

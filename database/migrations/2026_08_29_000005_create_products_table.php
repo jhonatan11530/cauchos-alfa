@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('image_path')->nullable();
             $table->text('description')->nullable();
             $table->text('features')->nullable();
-            $table->decimal('price', 12, 2)->nullable();
             $table->string('availability')->default('disponible');
             $table->boolean('is_active')->default(true);
             $table->timestamps();

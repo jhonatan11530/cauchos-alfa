@@ -18,7 +18,7 @@
     <h2>{{ $catalog->name }}</h2>
     <p>{{ $catalog->description }}</p>
     <table>
-        <thead><tr><th>Producto</th><th>Referencia</th><th>Categoría</th><th>Descripción</th><th>Precio</th></tr></thead>
+        <thead><tr><th>Producto</th><th>Referencia</th><th>Categoría</th><th>Descripción</th></tr></thead>
         <tbody>
             @foreach ($catalog->products as $product)
                 <tr>
@@ -26,7 +26,6 @@
                     <td>{{ $product->reference }}</td>
                     <td>{{ $product->category->name ?? '' }}</td>
                     <td>{{ $product->description }}</td>
-                    <td>{{ $product->price !== null ? '$'.number_format($product->price, 2) : '' }}</td>
                 </tr>
             @endforeach
         </tbody>

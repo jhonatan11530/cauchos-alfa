@@ -51,11 +51,7 @@
             @forelse ($products as $product)
                 <div class="col-12 col-sm-6 col-lg-3">
                     <div class="card card-product h-100 shadow-sm">
-                        @if ($product->image_path)
-                            <img src="{{ asset('storage/'.$product->image_path) }}" class="card-img-top" alt="{{ $product->name }}">
-                        @else
-                            <img src="https://via.placeholder.com/300x200?text=Producto" class="card-img-top" alt="{{ $product->name }}">
-                        @endif
+                        @include('site.partials.product-gallery')
                         <div class="card-body">
                             <h5 class="card-title">{{ $product->name }}</h5>
                             <p class="card-text text-muted small">{{ \Illuminate\Support\Str::limit($product->description, 80) }}</p>

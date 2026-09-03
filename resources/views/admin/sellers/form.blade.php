@@ -18,8 +18,6 @@
                     <div class="row">
                         <div class="form-group col-md-6"><label>Nombre</label><input name="name" class="form-control"
                                 value="{{ old('name', $seller->name) }}" required></div>
-                        <div class="form-group col-md-6"><label>Correo</label><input type="email" name="email"
-                                class="form-control" value="{{ old('email', $seller->email) }}" required></div>
                         <div class="form-group col-md-6"><label>Teléfono</label><input name="phone" class="form-control"
                                 value="{{ old('phone', $seller->phone) }}"></div>
                         <div class="form-group col-md-6">
@@ -30,9 +28,13 @@
                                 <div class="text-danger small">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="form-group col-md-6"><label>Contraseña
-                                {{ $seller->exists ? '(dejar vacío para no cambiar)' : '' }}</label><input type="password"
-                                name="password" class="form-control" {{ $seller->exists ? '' : 'required' }}></div>
+                        @if (! $seller->exists)
+                            <div class="col-md-12 text-muted small">
+                                <i class="bi bi-info-circle"></i> El correo se genera automáticamente con el nombre y el
+                                dominio de la empresa. La contraseña se genera automáticamente con el código más la
+                                fecha actual.
+                            </div>
+                        @endif
                     </div>
                     <div class="form-group"><label><input type="checkbox" name="is_active" value="1"
                                 {{ old('is_active', $seller->is_active ?? true) ? 'checked' : '' }}> Activo</label></div>

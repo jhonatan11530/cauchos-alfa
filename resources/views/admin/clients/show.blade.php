@@ -10,12 +10,12 @@
             <p><strong>Dirección:</strong> {{ $client->address }} {{ $client->city }}</p>
             <h4 class="mt-4">Pedidos</h4>
             <table class="table">
-                <thead><tr><th>Código</th><th>Estado</th><th>Total</th><th></th></tr></thead>
+                <thead><tr><th>Código</th><th>Estado</th><th></th></tr></thead>
                 <tbody>
                     @forelse ($client->orders as $order)
-                        <tr><td>{{ $order->code }}</td><td>{{ $order->status->name }}</td><td>${{ number_format($order->total, 2) }}</td><td><a href="{{ route('pedidos.show', $order) }}" class="btn btn-sm btn-primary">Ver</a></td></tr>
+                        <tr><td>{{ $order->code }}</td><td>{{ $order->status->name }}</td><td><a href="{{ route('pedidos.show', $order) }}" class="btn btn-sm btn-primary">Ver</a></td></tr>
                     @empty
-                        <tr><td colspan="4" class="text-center">Este cliente no tiene pedidos.</td></tr>
+                        <tr><td colspan="3" class="text-center">Este cliente no tiene pedidos.</td></tr>
                     @endforelse
                 </tbody>
             </table>

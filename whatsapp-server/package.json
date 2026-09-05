@@ -1,0 +1,18 @@
+{
+    "name": "cauchos-alfa-whatsapp-server",
+    "version": "1.0.0",
+    "description": "Microservicio open source (OpenWA / @open-wa/wa-automate) para enviar mensajes y archivos por WhatsApp",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "postinstall": "patch-package"
+    },
+    "dependencies": {
+        "@open-wa/wa-automate": "^4.72.4",
+        "express": "^4.19.2",
+        "multer": "^1.4.5-lts.1"
+    },
+    "devDependencies": {
+        "patch-package": "^8.0.1"
+    }
+}

@@ -11,6 +11,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VendedorController;
+use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\EnsureUserIsAdmin;
 
@@ -46,6 +47,12 @@ Route::middleware('auth')->group(function () {
             ->name('productos.images.destroy');
         Route::get('catalogos/{catalogo}/pdf', [CatalogController::class, 'pdf'])->name('catalogos.pdf');
         Route::resource('catalogos', CatalogController::class);
+        Route::get('whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');
+        Route::get('whatsapp/status', [WhatsAppController::class, 'status'])->name('whatsapp.status');
+        Route::post('whatsapp/enviar', [WhatsAppController::class, 'send'])->name('whatsapp.send');
+        Route::post('whatsapp/enviar-catalogo', [WhatsAppController::class, 'sendCatalog'])->name('whatsapp.catalog');
+        Route::post('whatsapp/salir', [WhatsAppController::class, 'logout'])->name('whatsapp.logout');
+        Route::post('whatsapp/reiniciar', [WhatsAppController::class, 'restart'])->name('whatsapp.restart');
         Route::get('pedidos', [OrderController::class, 'index'])->name('pedidos.index');
         Route::get('pedidos/{pedido}', [OrderController::class, 'show'])->name('pedidos.show');
         Route::get('pedidos/{pedido}/edit', [OrderController::class, 'edit'])->name('pedidos.edit');

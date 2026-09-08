@@ -18,5 +18,5 @@ return [
     'token' => env('WHATSAPP_SERVER_TOKEN', ''),
 
     // Prefijo por defecto para numeros locales sin codigo de pais.
-    'default_country_code' => env('WHATSAPP_COUNTRY_CODE', '58'),
+    'default_country_code' => env('WHATSAPP_COUNTRY_CODE', '57'),
 ];

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\WhatsAppService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
 
@@ -37,6 +38,7 @@ class WhatsAppController extends Controller
     public function restart(): RedirectResponse
     {
         try {
+            //Artisan::call('node:start');
             Http::timeout(15)->post(rtrim(config('whatsapp.base_url'), '/').'/restart');
             return back()->with('success', 'Reiniciando sesion; el QR aparecera en unos segundos.');
         } catch (\Throwable $e) {

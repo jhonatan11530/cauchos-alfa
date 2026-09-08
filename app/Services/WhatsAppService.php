@@ -38,7 +38,7 @@ class WhatsAppService
     public function sendMessage(string $to, string $message): void
     {
         $response = Http::timeout(30)->post($this->baseUrl() . '/send-message', [
-            'to' => $to,
+            'to' => env('WHATSAPP_COUNTRY_CODE') . $to,
             'message' => $message,
         ]);
 
@@ -50,15 +50,28 @@ class WhatsAppService
     /** Envia un archivo arbitrario (UploadedFile) con mensaje opcional. */
     public function sendFile(string $to, UploadedFile $file, string $message = ''): void
     {
+        $mime = $file->getMimeType() ?: 'application/octet-stream';
+
         $response = Http::timeout(120)
-            ->attach('file', $file->getContent(), $file->getClientOriginalName())
+            ->attach(
+                'file',
+                fopen($file->getRealPath(), 'r'),
+                $file->getClientOriginalName(),
+                [
+                    'Content-Type' => $mime,
+                ]
+            )
             ->post($this->baseUrl() . '/send-file', [
-                'to' => $to,
+                'to' => env('WHATSAPP_COUNTRY_CODE') . $to,
                 'message' => $message,
             ]);
 
         if (!$response->successful()) {
-            throw new RuntimeException($this->errorOf($response));
+            throw new RuntimeException(
+                $response->json('error')
+                ?? $response->body()
+                ?? 'Error enviando archivo por WhatsApp.'
+            );
         }
     }
 

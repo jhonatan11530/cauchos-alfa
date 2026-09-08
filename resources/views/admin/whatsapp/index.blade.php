@@ -4,7 +4,7 @@
     <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row">
         <div>
             <h2 class="text-white pb-2 fw-bold">Mensajes de WhatsApp</h2>
-            <h5 class="text-white op-7 mb-2">Envio de mensajes, archivos y catalogos a los vendedores (OpenWA)</h5>
+            <h5 class="text-white op-7 mb-2">Envio de mensajes y enlaces de catalogos a los vendedores (OpenWA)</h5>
         </div>
     </div>
 @endsection
@@ -44,13 +44,13 @@
             </div>
 
             <div class="col-md-8">
-                <!-- Mensaje libre con adjunto -->
+                <!-- Mensaje libre -->
                 <div class="card">
                     <div class="card-header">
-                        <h4 class="card-title mb-0">Enviar mensaje / archivo</h4>
+                        <h4 class="card-title mb-0">Enviar mensaje</h4>
                     </div>
                     <div class="card-body">
-                        <form method="POST" action="{{ route('whatsapp.send') }}" enctype="multipart/form-data">
+                        <form method="POST" action="{{ route('whatsapp.send') }}">
                             @csrf
                             <div class="form-group">
                                 <label>Numeros destinatarios</label>
@@ -63,10 +63,6 @@
                                 <label>Mensaje</label>
                                 <textarea name="message" class="form-control" rows="3"
                                     placeholder="Texto del mensaje">{{ old('message') }}</textarea>
-                            </div>
-                            <div class="form-group">
-                                <label>Adjunto (opcional: imagen o PDF, hasta 50MB)</label>
-                                <input type="file" name="attachment" class="form-control">
                             </div>
                             <button class="btn btn-success"><i class="fab fa-whatsapp"></i> Enviar</button>
                         </form>
@@ -82,7 +78,7 @@
                         <form method="POST" action="{{ route('whatsapp.catalog') }}">
                             @csrf
                             <div class="form-group">
-                                <label>Catalogo (se genera y envia como PDF)</label>
+                                <label>Catalogo (se enviara como enlace publico)</label>
                                 <select name="catalog_id" class="form-control @error('catalog_id') is-invalid @enderror"
                                     required>
                                     <option value="">-- Selecciona un catalogo --</option>
@@ -95,28 +91,14 @@
                                 @error('catalog_id')<span class="text-danger">{{ $message }}</span>@enderror
                             </div>
                             <div class="form-group">
-                                <label>Vendedores</label>
-                                @forelse ($sellers as $seller)
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="sellers[]"
-                                            value="{{ $seller->id }}" id="seller-{{ $seller->id }}"
-                                            @checked(in_array($seller->id, old('sellers', [])))>
-                                        <label class="form-check-label" for="seller-{{ $seller->id }}">
-                                            {{ $seller->name }}
-                                            <small class="text-muted">{{ $seller->phone ?? 'sin telefono' }}</small>
-                                        </label>
-                                    </div>
-                                @empty
-                                    <p class="text-muted mb-0">No hay vendedores activos registrados.</p>
-                                @endforelse
-                                @error('sellers')<span class="text-danger">{{ $message }}</span>@enderror
+                                <p class="text-muted mb-0">Se enviara a todos los vendedores activos con telefono registrado.</p>
                             </div>
                             <div class="form-group">
                                 <label>Mensaje que acompana el catalogo</label>
                                 <textarea name="message" class="form-control" rows="2"
                                     placeholder="Hola, te comparto nuestro catalogo actualizado">{{ old('message') }}</textarea>
                             </div>
-                            <button class="btn btn-success" @if($sellers->isEmpty()) disabled @endif>
+                            <button class="btn btn-success">
                                 <i class="fab fa-whatsapp"></i> Enviar catalogo
                             </button>
                         </form>

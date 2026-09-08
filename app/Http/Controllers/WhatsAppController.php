@@ -20,10 +20,6 @@ class WhatsAppController extends Controller
     {
         return view('admin.whatsapp.index', [
             'status' => $this->whatsapp->status(),
-            'sellers' => User::whereHas('role', fn($q) => $q->where('slug', 'vendedor'))
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(['id', 'name', 'phone']),
             'catalogs' => Catalog::orderBy('name')->get(['id', 'name', 'is_active']),
         ]);
     }
@@ -56,13 +52,12 @@ class WhatsAppController extends Controller
         }
     }
 
-    /** Enviar un mensaje de texto (o con archivo adjunto) a numeros libres. */
+    /** Enviar un mensaje de texto a numeros libres. */
     public function send(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'numbers' => ['required', 'string', 'min:6'],
             'message' => ['nullable', 'string', 'max:4096'],
-            'attachment' => ['nullable', 'file', 'max:51200', 'mimes:png,jpg,jpeg,gif,webp,pdf'],
         ]);
 
         $numbers = $this->parseNumbers($data['numbers']);
@@ -70,11 +65,7 @@ class WhatsAppController extends Controller
 
         foreach ($numbers as $number) {
             try {
-                if ($request->hasFile('attachment')) {
-                    $this->whatsapp->sendFile($number, $request->file('attachment'), $data['message'] ?? '');
-                } else {
-                    $this->whatsapp->sendMessage($number, $data['message'] ?? '');
-                }
+                $this->whatsapp->sendMessage($number, $data['message'] ?? '');
             } catch (\Throwable $e) {
                 $errors[] = $number . ': ' . $e->getMessage();
             }
@@ -83,34 +74,33 @@ class WhatsAppController extends Controller
         return $this->result($numbers, $errors, 'Mensaje(s) enviado(s) correctamente.');
     }
 
-    /** Enviar el PDF del catalogo a los vendedores seleccionados. */
+    /** Enviar el enlace publico del catalogo a todos los vendedores activos. */
     public function sendCatalog(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'catalog_id' => ['required', 'exists:catalogs,id'],
-            'sellers' => ['required', 'array', 'min:1'],
-            'sellers.*' => ['exists:users,id'],
             'message' => ['nullable', 'string', 'max:4096'],
         ]);
 
         $catalog = Catalog::findOrFail($data['catalog_id']);
-        $sellers = User::whereIn('id', $data['sellers'])->where('is_active', true)->get();
+        $sellers = User::whereHas('role', fn($q) => $q->where('slug', 'vendedor'))
+            ->where('is_active', true)
+            ->whereNotNull('phone')
+            ->get(['name', 'phone']);
         $numbers = $sellers->pluck('phone')->filter()->all();
         $errors = [];
+        $catalogUrl = route('catalogos.public-pdf', $catalog);
+        $catalogMessage = trim(($data['message'] ?? '') . "\n" . $catalogUrl);
 
         foreach ($sellers as $seller) {
-            if (!$seller->phone) {
-                $errors[] = $seller->name . ': sin numero de telefono registrado.';
-                continue;
-            }
             try {
-                $this->whatsapp->sendCatalogPdf($seller->phone, $catalog, $data['message'] ?? '');
+                $this->whatsapp->sendMessage($seller->phone, $catalogMessage);
             } catch (\Throwable $e) {
                 $errors[] = $seller->name . ': ' . $e->getMessage();
             }
         }
 
-        return $this->result($numbers, $errors, 'Catalogo enviado correctamente a los vendedores.');
+        return $this->result($numbers, $errors, 'Enlace del catalogo enviado correctamente a los vendedores.');
     }
 
     private function result(array $attempted, array $errors, string $okMessage): RedirectResponse

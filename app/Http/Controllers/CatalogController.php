@@ -78,6 +78,15 @@ class CatalogController extends Controller
         return $pdf->stream('catalogo-'.$catalogo->id.'.pdf');
     }
 
+    public function publicPdf(Catalog $catalogo)
+    {
+        $catalogo->load('products.category');
+
+        return app('dompdf.wrapper')
+            ->loadView('admin.catalogs.pdf', ['catalog' => $catalogo])
+            ->stream('catalogo-'.$catalogo->id.'.pdf');
+    }
+
     private function formData(Catalog $catalog): array
     {
         return [

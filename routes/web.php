@@ -35,6 +35,8 @@ Route::post('/vendedor/salir', [SiteController::class, 'sellerLogout'])->name('s
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('login', [AuthController::class, 'login'])->name('login.store');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('catalogos/{catalogo}/public-pdf', [CatalogController::class, 'publicPdf'])
+    ->name('catalogos.public-pdf');
 
 Route::middleware('auth')->group(function () {
     // Zona administrativa (los vendedores son redirigidos al catalogo)

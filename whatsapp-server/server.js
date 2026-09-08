@@ -4,14 +4,11 @@
  *
  *   GET  /status            -> estado de la sesion + QR (dataURL) si no hay sesion
  *   POST /send-message      -> { to, message }                       texto
- *   POST /send-file         -> multipart: to, message?, file         archivo adjunto
- *   POST /send-catalog      -> multipart/JSON: to, message, file|url PDF del catalogo
  *   POST /logout            -> cierra la sesion
  *
  * Uso:  npm install && npm start   (dentro de whatsapp-server/)
  */
 const express = require('express');
-const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const wa = require('@open-wa/wa-automate');
@@ -31,10 +28,6 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
     console.error('Promesa rechazada no capturada (proceso mantenido vivo):', reason);
 });
-const TMP_DIR = path.join(__dirname, 'tmp');
-if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
-
-const upload = multer({ dest: TMP_DIR, limits: { fileSize: 50 * 1024 * 1024 } });
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -67,35 +60,6 @@ async function sendMessage(to, message) {
     return client.sendText(normalizeNumber(to), message || '');
 }
 
-const MIME_MAP = {
-    '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif', '.webp': 'image/webp',
-};
-
-// Solo se permiten imagenes y PDF.
-function validateAllowedFile(fileName) {
-    const ext = path.extname(fileName || '').toLowerCase();
-    if (!MIME_MAP[ext]) {
-        throw new Error('Tipo de archivo no permitido. Solo se envian imagenes (png, jpg, jpeg, gif, webp) y PDF.');
-    }
-    return MIME_MAP[ext];
-}
-
-async function sendFile(to, message, filePath, fileName) {
-    if (!sessionReady || !client) throw new Error('La sesion de WhatsApp no esta lista. Escanea el QR.');
-    // Solo imagenes y PDF; cualquier otro tipo se rechaza.
-    const mime = validateAllowedFile(fileName) || validateAllowedFile(filePath);
-    // OpenWA sendFile NO acepta rutas absolutas de Windows: requiere un DataURL
-    // (data:...;base64) o una ruta relativa con ./ . Convertimos el archivo a base64.
-    const dataUrl = 'data:' + mime + ';base64,' + fs.readFileSync(filePath).toString('base64');
-    const result = await client.sendFile(normalizeNumber(to), dataUrl, fileName, message || '');
-    // OpenWA puede devolver false sin lanzar excepcion cuando el envio falla.
-    if (result === false) {
-        throw new Error('WhatsApp no acepto el archivo (posible formato o tamano invalido).');
-    }
-    return result;
-}
-
 // ---------------- Endpoints HTTP ----------------
 
 app.get('/status', (req, res) => {
@@ -112,38 +76,6 @@ app.post('/send-message', async (req, res) => {
         const { to, message } = req.body || {};
         if (!to) return res.status(422).json({ ok: false, error: 'El campo "to" es obligatorio.' });
         await sendMessage(to, message);
-        res.json({ ok: true });
-    } catch (e) {
-        res.status(500).json({ ok: false, error: e.message });
-    }
-});
-
-app.post('/send-file', upload.single('file'), async (req, res) => {
-    let filePath = req.file ? req.file.path : null;
-    try {
-        const { to, message } = req.body || {};
-        if (!to) return res.status(422).json({ ok: false, error: 'El campo "to" es obligatorio.' });
-        if (!filePath) return res.status(422).json({ ok: false, error: 'Debes adjuntar un archivo.' });
-        await sendFile(to, message, filePath, req.file.originalname);
-        res.json({ ok: true });
-    } catch (e) {
-        res.status(500).json({ ok: false, error: e.message });
-    } finally {
-        if (filePath) fs.unlink(filePath, () => { });
-    }
-});
-
-// Enviar un archivo ya generado por Laravel (ej. PDF del catalogo) a un numero.
-app.post('/send-catalog', upload.none(), async (req, res) => {
-    try {
-        const { to, message, path: serverPath } = req.body || {};
-        if (!to || !serverPath) {
-            return res.status(422).json({ ok: false, error: 'Campos requeridos: to, path.' });
-        }
-        if (!fs.existsSync(serverPath)) {
-            return res.status(404).json({ ok: false, error: 'El archivo no existe en el servidor.' });
-        }
-        await sendFile(to, message, serverPath, path.basename(serverPath));
         res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });

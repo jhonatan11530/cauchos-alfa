@@ -7,7 +7,7 @@ return [
     | Microservicio de WhatsApp (OpenWA)
     |--------------------------------------------------------------------------
     |
-    | El envio de mensajes y archivos se delega a un microservicio Node open
+    | El envio de mensajes se delega a un microservicio Node open
     | source basado en @open-wa/wa-automate, ubicado en /whatsapp-server.
     |
     */

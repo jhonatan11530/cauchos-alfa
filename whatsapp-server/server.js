@@ -4,14 +4,11 @@
  *
  *   GET  /status            -> estado de la sesion + QR (dataURL) si no hay sesion
  *   POST /send-message      -> { to, message }                       texto
- *   POST /send-file         -> multipart: to, message?, file         archivo adjunto
- *   POST /send-catalog      -> multipart/JSON: to, message, file|url PDF del catalogo
  *   POST /logout            -> cierra la sesion
  *
  * Uso:  npm install && npm start   (dentro de whatsapp-server/)
  */
 const express = require('express');
-const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const wa = require('@open-wa/wa-automate');
@@ -31,10 +28,6 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
     console.error('Promesa rechazada no capturada (proceso mantenido vivo):', reason);
 });
-const TMP_DIR = path.join(__dirname, 'tmp');
-if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
-
-const upload = multer({ dest: TMP_DIR, limits: { fileSize: 50 * 1024 * 1024 } });
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -55,137 +48,16 @@ let sessionError = null;    // ultimo error de inicializacion (para /status)
 let sessionStarting = false; // true mientras OpenWA esta lanzando el navegador
 
 function normalizeNumber(to) {
+    // Acepta 04141234567, +58 414-1234567, 584141234567, etc.
     let digits = String(to || '').replace(/\D/g, '');
-
-    if (digits.startsWith('0')) {
-        digits = '57' + digits.slice(1);
-    } else if (digits.length === 10) {
-        digits = '57' + digits;
-    }
-
-    return digits;
+    if (digits.startsWith('0')) digits = '58' + digits.slice(1);       // Venezuela
+    else if (digits.length === 10) digits = '58' + digits;             // fallback 10 digitos
+    return digits + '@c.us';
 }
 
 async function sendMessage(to, message) {
-    if (!sessionReady || !client) {
-        throw new Error('La sesion de WhatsApp no esta lista.');
-    }
-    const number = normalizeNumber(to);
-    console.log('Enviando mensaje al numero:', number);
-    return client.sendText(
-        number + '@c.us',
-        message || ''
-    );
-}
-
-const MIME_MAP = {
-    '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif', '.webp': 'image/webp',
-};
-
-// Solo se permiten imagenes y PDF.
-function validateAllowedFile(fileName) {
-    const ext = path.extname(fileName || '').toLowerCase();
-    if (!MIME_MAP[ext]) {
-        throw new Error('Tipo de archivo no permitido. Solo se envian imagenes (png, jpg, jpeg, gif, webp) y PDF.');
-    }
-    return MIME_MAP[ext];
-}
-
-async function sendFile(to, message, filePath, fileName) {
-    if (!sessionReady || !client) {
-        throw new Error('La sesion de WhatsApp no esta lista.');
-    }
-
-    if (!fs.existsSync(filePath)) {
-        throw new Error('El archivo temporal no existe.');
-    }
-
-    const mime = validateAllowedFile(fileName);
-    const buffer = fs.readFileSync(filePath);
-
-    if (!buffer.length) {
-        throw new Error('El archivo esta vacio.');
-    }
-
-    const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`;
-
-    // Normalizar teléfono.
-    let phone = String(to || '').replace(/\D/g, '');
-
-    if (phone.startsWith('0')) {
-        phone = '57' + phone.slice(1);
-    } else if (phone.length === 10) {
-        phone = '57' + phone;
-    }
-
-    const phoneNumber = phone + '@c.us';
-
-    console.log('======================================');
-    console.log('SEND FILE');
-    console.log('Telefono:', phone);
-    console.log('Buscando contacto:', phoneNumber);
-
-    let realChatId = null;
-
-    // Buscar el contacto en OpenWA.
-    const contacts = await client.getAllContacts();
-
-    const contact = contacts.find(item => {
-        const value = item?.phoneNumber || item?.id || '';
-        return String(value).replace(/\D/g, '') === phone;
-    });
-
-    if (contact) {
-        console.log('CONTACTO ENCONTRADO:', {
-            id: contact.id,
-            phoneNumber: contact.phoneNumber,
-            lid: contact.lid
-        });
-
-        // IMPORTANTE:
-        // si WhatsApp tiene LID, usamos el LID.
-        realChatId = contact.lid || contact.id;
-    }
-
-    if (!realChatId) {
-        throw new Error(
-            `No se pudo encontrar el contacto ${phone} en OpenWA.`
-        );
-    }
-
-    console.log('CHAT ID FINAL:', realChatId);
-    console.log('MIME:', mime);
-    console.log('FILE NAME:', fileName);
-    console.log('SIZE:', buffer.length);
-    console.log('DATA URL SIZE:', dataUrl.length);
-
-    try {
-        const result = await client.sendFile(
-            realChatId,
-            filePath,
-            fileName,
-            message || ''
-        );
-
-        console.log('OpenWA sendFile result:', result);
-
-        if (result === false) {
-            throw new Error(
-                'OpenWA sendFile devolvio false.'
-            );
-        }
-
-        return result;
-
-    } catch (error) {
-        console.error(
-            'ERROR INTERNO sendFile:',
-            error
-        );
-
-        throw error;
-    }
+    if (!sessionReady || !client) throw new Error('La sesion de WhatsApp no esta lista. Escanea el QR.');
+    return client.sendText(normalizeNumber(to), message || '');
 }
 
 // ---------------- Endpoints HTTP ----------------
@@ -202,7 +74,7 @@ app.get('/status', (req, res) => {
 app.post('/send-message', async (req, res) => {
     try {
         const { to, message } = req.body || {};
-        if (!to) return res.status(422).json({ ok: false, error: 'The recipient"s phone number is required.' });
+        if (!to) return res.status(422).json({ ok: false, error: 'El campo "to" es obligatorio.' });
         await sendMessage(to, message);
         res.json({ ok: true });
     } catch (e) {
@@ -210,70 +82,11 @@ app.post('/send-message', async (req, res) => {
     }
 });
 
-app.post('/send-file', upload.single('file'), async (req, res) => {
-    let filePath = req.file ? req.file.path : null;
-
-    try {
-        const { to, message } = req.body || {};
-
-        if (!to) {
-            return res.status(422).json({
-                ok: false,
-                error: 'El numero del destinatario es obligatorio.'
-            });
-        }
-
-        if (!req.file) {
-            return res.status(422).json({
-                ok: false,
-                error: 'Debes adjuntar un archivo en el campo "file".'
-            });
-        }
-
-        console.log('Archivo recibido por Multer:', {
-            fieldname: req.file.fieldname,
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            path: req.file.path,
-        });
-
-        await sendFile(
-            to,
-            message,
-            req.file.path,
-            req.file.originalname
-        );
-
-        return res.json({
-            ok: true,
-            filename: req.file.originalname
-        });
-
-    } catch (e) {
-        console.error('ERROR /send-file:', e);
-
-        return res.status(500).json({
-            ok: false,
-            error: e.message
-        });
-
-    } finally {
-        if (filePath) {
-            fs.unlink(filePath, (err) => {
-                if (err) {
-                    console.error('No se pudo eliminar temporal:', err.message);
-                }
-            });
-        }
-    }
-});
-
 app.post('/logout', async (req, res) => {
     try {
         if (client) { await client.logout(); await client.kill(); }
     } catch (_) { /* la sesion ya pudo estar cerrada */ }
-    client = null; sessionReady = false; qrDataUrl = null; sessionError = null;
+    client = null; sessionReady = false; qrDataUrl = null;
     res.json({ ok: true });
 });
 
@@ -284,7 +97,7 @@ app.post('/restart', async (req, res) => {
     } catch (_) { /* la sesion ya pudo estar cerrada */ }
     client = null; sessionReady = false; qrDataUrl = null; sessionError = null;
     startSession();
-    res.json({ ok: true, message: 'Reiniciando sesion; el QR aparece en unos segundos.' });
+    res.json({ ok: true, message: 'Reiniciando sesion; el QR aparecera en unos segundos.' });
 });
 
 app.listen(PORT, () => console.log(`Servidor WhatsApp (OpenWA) escuchando en http://localhost:${PORT}`));
@@ -363,24 +176,6 @@ function startSession() {
         qrDataUrl = null;
         sessionError = null;
         console.log('Sesion de WhatsApp lista.');
-
-        // ====== DIAGNOSTICO: mensajes recibidos ======
-        c.onMessage(async (message) => {
-            console.log('========== MENSAJE RECIBIDO ==========');
-
-            console.log(JSON.stringify({
-                id: message.id,
-                from: message.from,
-                to: message.to,
-                author: message.author,
-                body: message.body,
-                type: message.type,
-                isGroupMsg: message.isGroupMsg,
-                chatId: message.chatId
-            }, null, 2));
-            console.log('============================');
-        });
-
     }).catch((e) => {
         sessionStarting = false;
         sessionError = e.message;
@@ -389,7 +184,6 @@ function startSession() {
         // en el dashboard y el usuario no tendria forma de recuperarlo.
         setTimeout(startSession, 10000);
     });
-
 }
 
 startSession();

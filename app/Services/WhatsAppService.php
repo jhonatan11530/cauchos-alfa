@@ -2,9 +2,7 @@
 
 namespace App\Services;
 
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 /**
@@ -38,78 +36,9 @@ class WhatsAppService
     public function sendMessage(string $to, string $message): void
     {
         $response = Http::timeout(30)->post($this->baseUrl() . '/send-message', [
-            'to' => env('WHATSAPP_COUNTRY_CODE') . $to,
+            'to' => $to,
             'message' => $message,
         ]);
-
-        if (!$response->successful()) {
-            throw new RuntimeException($this->errorOf($response));
-        }
-    }
-
-    /** Envia un archivo arbitrario (UploadedFile) con mensaje opcional. */
-    public function sendFile(string $to, UploadedFile $file, string $message = ''): void
-    {
-        $mime = $file->getMimeType() ?: 'application/octet-stream';
-
-        $response = Http::timeout(120)
-            ->attach(
-                'file',
-                fopen($file->getRealPath(), 'r'),
-                $file->getClientOriginalName(),
-                [
-                    'Content-Type' => $mime,
-                ]
-            )
-            ->post($this->baseUrl() . '/send-file', [
-                'to' => env('WHATSAPP_COUNTRY_CODE') . $to,
-                'message' => $message,
-            ]);
-
-        if (!$response->successful()) {
-            throw new RuntimeException(
-                $response->json('error')
-                ?? $response->body()
-                ?? 'Error enviando archivo por WhatsApp.'
-            );
-        }
-    }
-
-    /**
-     * Envia el PDF de un catalogo a un numero. El PDF se genera en memoria
-     * con el mismo layout usado en la vista previa del panel.
-     */
-    public function sendCatalogPdf(string $to, \App\Models\Catalog $catalog, string $message = ''): void
-    {
-        $pdf = app('dompdf.wrapper')
-            ->loadView('admin.catalogs.pdf', ['catalog' => $catalog->load('products.category')])
-            ->output();
-
-        $response = Http::timeout(120)
-            ->attach('file', $pdf, 'catalogo-' . $catalog->id . '.pdf')
-            ->post($this->baseUrl() . '/send-file', [
-                'to' => $to,
-                'message' => $message,
-            ]);
-
-        if (!$response->successful()) {
-            throw new RuntimeException($this->errorOf($response));
-        }
-    }
-
-    /** Envia un archivo del disco publico (ruta relativa a storage/app/public). */
-    public function sendPublicFile(string $to, string $relativePath, string $message = ''): void
-    {
-        if (!Storage::disk('public')->exists($relativePath)) {
-            throw new RuntimeException('El archivo no existe: ' . $relativePath);
-        }
-
-        $response = Http::timeout(120)
-            ->attach('file', Storage::disk('public')->get($relativePath), basename($relativePath))
-            ->post($this->baseUrl() . '/send-file', [
-                'to' => $to,
-                'message' => $message,
-            ]);
 
         if (!$response->successful()) {
             throw new RuntimeException($this->errorOf($response));

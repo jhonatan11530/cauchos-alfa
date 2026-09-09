@@ -23,11 +23,11 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Administrador']
         );
 
-        User::updateOrCreate(['email' => 'admin@cauchosalfa.test'], [
+        User::updateOrCreate(['email' => 'admin@cauchosalfa.com'], [
             'role_id' => $adminRole->id,
             'name' => 'Administrador',
             'phone' => null,
-            'password' => Hash::make('password'),
+            'password' => Hash::make('CauchosAlfa@2025'),
             'is_active' => true,
         ]);
 
@@ -35,15 +35,6 @@ class DatabaseSeeder extends Seeder
             ['slug' => 'vendedor'],
             ['name' => 'Vendedor']
         );
-
-        User::updateOrCreate(['email' => 'vendedor@cauchosalfa.test'], [
-            'role_id' => $vendedorRole->id,
-            'name' => 'Vendedor Demo',
-            'phone' => null,
-            'seller_code' => 'VEND001',
-            'password' => Hash::make('password'),
-            'is_active' => true,
-        ]);
 
         $statuses = [
             ['name' => 'Pedido creado', 'slug' => 'pedido-creado', 'color' => '#1572e8', 'sort_order' => 1],

@@ -15,12 +15,15 @@
                 @csrf
                 <div class="form-group">
                     <label for="email">Correo electrónico</label>
-                    <input id="email" name="email" type="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" required autofocus>
+                    <input id="email" name="email" type="email"
+                        class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" required
+                        autofocus>
                     @error('email') <span class="invalid-feedback">{{ $message }}</span> @enderror
                 </div>
                 <div class="form-group">
                     <label for="password">Contraseña</label>
-                    <input id="password" name="password" type="password" class="form-control @error('password') is-invalid @enderror" required>
+                    <input id="password" name="password" type="password"
+                        class="form-control @error('password') is-invalid @enderror" required>
                     @error('password') <span class="invalid-feedback">{{ $message }}</span> @enderror
                 </div>
                 <div class="form-group form-action-d-flex mb-3">
@@ -30,7 +33,6 @@
                     </div>
                     <button class="btn btn-primary ml-auto">Ingresar</button>
                 </div>
-                <p class="text-muted mb-0">Usuario inicial: admin@cauchosalfa.test / password</p>
             </form>
         </div>
     </div>

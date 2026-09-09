@@ -11,13 +11,6 @@
 
 @section('contenido')
     <div class="page-inner mt--5">
-        @if (session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
-        @if (session('error'))
-            <div class="alert alert-danger">{{ session('error') }}</div>
-        @endif
-
         <div class="row">
             <!-- Estado de la sesion -->
             <div class="col-md-4">
@@ -26,19 +19,25 @@
                         <h4 class="card-title mb-0">Sesion de WhatsApp</h4>
                     </div>
                     <div class="card-body text-center" id="session-box">
-                        <p id="session-text">Consultando estado del microservicio...</p>
-                        <img id="session-qr" src="" alt="QR" class="img-fluid d-none mb-3" style="max-width:240px;">
-                        <button id="btn-refresh" class="btn btn-sm btn-secondary">Actualizar</button>
-                        <form method="POST" action="{{ route('whatsapp.restart') }}" class="mt-2"
-                            onsubmit="return confirm('¿Reiniciar la sesion y generar un nuevo QR?')">
-                            @csrf
-                            <button class="btn btn-sm btn-warning">Reiniciar sesion (nuevo QR)</button>
-                        </form>
-                        <form method="POST" action="{{ route('whatsapp.logout') }}" class="mt-2"
-                            onsubmit="return confirm('¿Cerrar la sesion de WhatsApp?')">
-                            @csrf
-                            <button class="btn btn-sm btn-danger">Cerrar sesion</button>
-                        </form>
+                        <p id="session-text">Consultando estado del gateway OpenWA...</p>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <img id="session-qr" src="" alt="QR" class="img-fluid d-none mb-3" style="max-width:240px;">
+                            </div>
+                            <div class="col-sm-12">
+                                <button id="btn-refresh" class="btn btn-sm btn-primary">Actualizar</button>
+                                <form method="POST" action="{{ route('whatsapp.restart') }}" class="mt-2"
+                                    onsubmit="return confirm('¿Reiniciar la sesion y generar un nuevo QR?')">
+                                    @csrf
+                                    <button class="btn btn-sm btn-warning">Reiniciar sesion (nuevo QR)</button>
+                                </form>
+                                <form method="POST" action="{{ route('whatsapp.logout') }}" class="mt-2"
+                                    onsubmit="return confirm('¿Cerrar la sesion de WhatsApp?')">
+                                    @csrf
+                                    <button class="btn btn-sm btn-danger">Cerrar sesion</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -72,7 +71,10 @@
                 <!-- Envio de catalogo a vendedores -->
                 <div class="card">
                     <div class="card-header">
-                        <h4 class="card-title mb-0">Enviar catalogo a vendedores</h4>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h4 class="card-title mb-0">Enviar catalogo a vendedores</h4>
+                            <a href="{{ route('whatsapp.templates.index') }}" class="btn btn-sm btn-outline-primary">Gestionar plantillas</a>
+                        </div>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="{{ route('whatsapp.catalog') }}">
@@ -91,11 +93,24 @@
                                 @error('catalog_id')<span class="text-danger">{{ $message }}</span>@enderror
                             </div>
                             <div class="form-group">
-                                <p class="text-muted mb-0">Se enviara a todos los vendedores activos con telefono registrado.</p>
+                                <p class="text-muted mb-0">Se enviara a todos los vendedores activos con telefono
+                                    registrado.</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="message-template">Plantilla de mensaje</label>
+                                <select id="message-template" class="form-control">
+                                    <option value="">-- Selecciona una plantilla --</option>
+                                    @foreach ($templates as $template)
+                                        <option value="{{ $template->id }}" data-message="{{ $template->message }}">
+                                            {{ $template->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="form-text text-muted">Puedes editar el mensaje después de cargar la plantilla.</small>
                             </div>
                             <div class="form-group">
                                 <label>Mensaje que acompana el catalogo</label>
-                                <textarea name="message" class="form-control" rows="2"
+                                <textarea id="catalog-message" name="message" class="form-control" rows="2"
                                     placeholder="Hola, te comparto nuestro catalogo actualizado">{{ old('message') }}</textarea>
                             </div>
                             <button class="btn btn-success">
@@ -115,7 +130,7 @@
             const qr = document.getElementById('session-qr');
 
             async function refresh() {
-                text.textContent = 'Consultando estado del microservicio...';
+                text.textContent = 'Consultando estado del gateway OpenWA...';
                 qr.classList.add('d-none');
                 try {
                     const res = await fetch(statusUrl);
@@ -133,14 +148,25 @@
                             '<br><small>Se reintenta automaticamente, o pulsa "Reiniciar sesion".</small>';
                     } else {
                         text.innerHTML = '<span class="text-danger">Sin sesion.</span> ' +
-                            'Inicia el microservicio: cd whatsapp-server && npm start';
+                            'Verifica que el gateway OpenWA este iniciado y que la sesion configurada exista.';
                     }
                 } catch (e) {
-                    text.innerHTML = '<span class="text-danger">Microservicio no disponible en el puerto configurado.</span>';
+                    text.innerHTML = '<span class="text-danger">Gateway OpenWA no disponible en la URL configurada.</span>';
                 }
             }
 
             document.getElementById('btn-refresh').addEventListener('click', refresh);
+
+            document.getElementById('message-template').addEventListener('change', function() {
+                const option = this.options[this.selectedIndex];
+                const message = option.dataset.message || '';
+                const textarea = document.getElementById('catalog-message');
+
+                if (message) {
+                    textarea.value = message;
+                }
+            });
+
             refresh();
             setInterval(refresh, 10000);
         </script>

@@ -6,11 +6,12 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "barryvdh/laravel-dompdf": "^3.1",
         "php": "^8.2",
+        "barryvdh/laravel-dompdf": "^3.1",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
-        "prabowosd/laravel-collective-html": "^1.1"
+        "prabowosd/laravel-collective-html": "^1.1",
+        "rmyndharis/openwa": "^0.5.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

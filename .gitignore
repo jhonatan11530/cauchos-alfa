@@ -23,8 +23,3 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 composer.lock
-whatsapp-server/tmp
-whatsapp-server/patches
-whatsapp-server/node_modules
-whatsapp-server/_IGNORE_cauchos-alfa
-whatsapp-server/chrome-win

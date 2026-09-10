@@ -151,7 +151,7 @@
                                         {{ \Illuminate\Support\Str::limit($product->description, 100) }}</p>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span
-                                            class="h4 font-weight-bold mb-0">{{ $product->reference ?? 'Ref: N/A' }}</span>
+                                            class="h4 font-weight-bold mb-0">Ref #{{ $product->reference ?? 'N/A' }}</span>
                                         <a href="{{ route('site.catalog') }}" class="btn btn-sm btn-red">Ver más</a>
                                     </div>
                                 </div>

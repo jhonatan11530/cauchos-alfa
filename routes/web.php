@@ -24,9 +24,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/vendedor/pedido', [SiteController::class, 'showSellerOrder'])->name('site.seller.order');
 });
 
-Route::get('/contacto', [SiteController::class, 'contact'])->name('site.contact');
-Route::post('/contacto', [SiteController::class, 'sendContact'])->name('site.contact.send');
-
 // Acceso de vendedores desde la web publica
 Route::get('/vendedor', [SiteController::class, 'showSellerLogin'])->name('site.seller.login');
 Route::post('/vendedor', [SiteController::class, 'sellerLogin'])->name('site.seller.auth');

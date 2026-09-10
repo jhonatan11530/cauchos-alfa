@@ -143,23 +143,4 @@ class SiteController extends Controller
             'clients' => \App\Models\Client::where('is_active', true)->orderBy('name')->get(),
         ]);
     }
-
-    public function contact(): View
-    {
-        return view('site.contact');
-    }
-
-    public function sendContact(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'message' => ['required', 'string', 'max:2000'],
-        ]);
-
-        return redirect()
-            ->route('site.contact')
-            ->with('success', 'Gracias por tu mensaje. Nos pondremos en contacto contigo pronto.');
-    }
 }

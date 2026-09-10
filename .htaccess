@@ -1,0 +1,82 @@
+# ============================================================
+# Laravel - .htaccess en la raíz del proyecto
+# ============================================================
+
+<IfModule mod_rewrite.c>
+
+    RewriteEngine On
+
+    # --------------------------------------------------------
+    # 1. BLOQUEAR ARCHIVOS Y DIRECTORIOS SENSIBLES
+    # --------------------------------------------------------
+
+    # Variables de entorno
+    RewriteRule ^\.env(?:\..*)?$ - [F,L,NC]
+
+    # Git
+    RewriteRule ^\.git(?:/|$) - [F,L,NC]
+
+    # Composer
+    RewriteRule ^composer\.(json|lock)$ - [F,L,NC]
+
+    # Laravel Artisan
+    RewriteRule ^artisan$ - [F,L,NC]
+
+    # Configuración de servidores
+    RewriteRule ^\.htaccess$ - [F,L,NC]
+    RewriteRule ^\.user\.ini$ - [F,L,NC]
+
+    # Archivos de configuración / desarrollo
+    RewriteRule ^(phpunit\.xml|\.editorconfig|\.env\.example)$ - [F,L,NC]
+
+    # Directorios que nunca deberían ser públicos
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor)(?:/|$) - [F,L,NC]
+
+    # --------------------------------------------------------
+    # 2. BLOQUEAR ARCHIVOS OCULTOS
+    # --------------------------------------------------------
+
+    RewriteRule (^|/)\. - [F,L,NC]
+
+    # --------------------------------------------------------
+    # 3. NO EXPONER DIRECTORIOS DEL PROYECTO
+    # --------------------------------------------------------
+
+    # Si existe un archivo/directorio dentro de /public,
+    # servirlo directamente desde public/
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -d
+    RewriteRule ^(.+)$ public/$1 [L]
+
+    # --------------------------------------------------------
+    # 4. TODAS LAS DEMÁS PETICIONES VAN A LARAVEL
+    # --------------------------------------------------------
+
+    RewriteRule ^(.*)$ public/index.php [L]
+
+</IfModule>
+
+
+# ============================================================
+# BLOQUEO ADICIONAL DE ARCHIVOS SENSIBLES
+# ============================================================
+
+<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|artisan|phpunit\.xml|\.gitignore|\.gitattributes)$">
+    Require all denied
+</FilesMatch>
+
+
+# ============================================================
+# PROTEGER ARCHIVOS DE CONFIGURACIÓN Y BACKUPS
+# ============================================================
+
+<FilesMatch "\.(bak|config|dist|fla|inc|ini|log|old|orig|sh|sql|swp|tmp|tpl|yml|yaml)$">
+    Require all denied
+</FilesMatch>
+
+
+# ============================================================
+# DESACTIVAR LISTADO DE DIRECTORIOS
+# ============================================================
+
+Options -Indexes

@@ -43,6 +43,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('categoria', CategoryController::class);
         Route::resource('productos', ProductController::class)->except('show');
         Route::delete('productos/{producto}/imagenes/{imagen}', [ProductController::class, 'destroyImage'])
+            ->middleware(EnsureUserIsAdmin::class)
             ->name('productos.images.destroy');
         Route::get('catalogos/{catalogo}/pdf', [CatalogController::class, 'pdf'])->name('catalogos.pdf');
         Route::resource('catalogos', CatalogController::class);

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
+use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
 use Illuminate\View\View;
 
 class SiteController extends Controller
@@ -56,8 +57,19 @@ class SiteController extends Controller
 
     public function sellerLogin(Request $request): RedirectResponse
     {
-        $data = $request->validate([
+        $rules = [
             'code' => ['required', 'string'],
+        ];
+
+        // Regla oficial de la libreria: recaptchav3:accion,scoreMinimo.
+        // La accion DEBE coincidir con la usada en RecaptchaV3::field() de la vista.
+        if (config('recaptchav3.secret') && config('recaptchav3.sitekey')) {
+            $rules['g-recaptcha-response'] = ['required', 'recaptchav3:seller_login,0.5'];
+        }
+
+        $data = $request->validate($rules, [
+            'g-recaptcha-response.required' => 'No se pudo generar la verificación de seguridad. Habilita JavaScript y vuelve a intentarlo.',
+            'g-recaptcha-response.recaptchav3' => 'La verificación anti-robot falló. Vuelve a intentarlo.',
         ]);
 
         $throttleKey = 'seller-login:'.strtolower($request->input('code')).'|'.$request->ip();

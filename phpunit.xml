@@ -30,6 +30,8 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="WHATSAPP_API_KEY" value="testing-api-key"/>
+        <env name="RECAPTCHAV3_SITEKEY" value=""/>
+        <env name="RECAPTCHAV3_SECRET" value=""/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

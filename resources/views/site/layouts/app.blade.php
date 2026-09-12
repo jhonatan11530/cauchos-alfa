@@ -5,9 +5,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Roja Bicis | Ciclismo de alto rendimiento')</title>
-    <meta name="description" content="@yield('description', 'Descubre bicicletas premium de carretera, montaña y ciudad. Diseño, ligereza y rendimiento con estética minimalista.')">
+    <meta name="description"
+        content="@yield('description', 'Descubre bicicletas premium de carretera, montaña y ciudad. Diseño, ligereza y rendimiento con estética minimalista.')">
     <meta property="og:title" content="@yield('title', 'Roja Bicis | Ciclismo de alto rendimiento')">
-    <meta property="og:description" content="@yield('description', 'Bicicletas premium con diseño minimalista y tecnología de punta.')">
+    <meta property="og:description"
+        content="@yield('description', 'Bicicletas premium con diseño minimalista y tecnología de punta.')">
     <meta property="og:type" content="website">
     <meta property="og:image" content="{{ asset('images/hero-bike.png') }}">
     <meta name="twitter:card" content="summary_large_image">
@@ -23,7 +25,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ asset('css/roja.css') }}">
     <link rel="stylesheet" href="{{ asset('/css/select2.min.css') }}">
-
+    @if (config('recaptchav3.sitekey'))
+        {!! RecaptchaV3::initJs() !!}
+    @endif
 </head>
 
 <body>

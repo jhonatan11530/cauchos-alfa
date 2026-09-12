@@ -1,4 +1,4 @@
-"@extends('site.layouts.app')
+@extends('site.layouts.app')
 
 @section('title', 'Acceso Vendedores | Cauchos Alfa')
 
@@ -21,7 +21,8 @@
 
                     @if (session('error'))
                         <div class="alert alert-danger border-0 text-white" style="background: rgba(220, 53, 69, 0.2);">
-                            {{ session('error') }}</div>
+                            {{ session('error') }}
+                        </div>
                     @endif
 
                     @if ($errors->any())
@@ -34,12 +35,14 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('site.seller.login') }}">
+                    <form id="seller-login-form" method="POST" action="{{ route('site.seller.auth') }}">
                         @csrf
+                        @if (config('recaptchav3.sitekey'))
+                            {!! RecaptchaV3::field('seller_login') !!}
+                        @endif
                         <div class="form-group text-left">
                             <label for="code" class="small font-weight-bold text-white-50">CÓDIGO DE VENDEDOR</label>
-                            <input type="text" name="code" id="code"
-                                class="form-control form-control-lg text-center"
+                            <input type="text" name="code" id="code" class="form-control form-control-lg text-center"
                                 style="background: var(--bike-void); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 12px;"
                                 placeholder="Ej: VEN123" required autofocus>
                         </div>
@@ -58,4 +61,28 @@
             </div>
         </div>
     </div>
-@endsection"
+@endsection
+
+@if (config('recaptchav3.sitekey'))
+@push('scripts')
+<script>
+    document.getElementById('seller-login-form')?.addEventListener('submit', function (e) {
+        var form = this;
+        var input = form.querySelector('input[name="g-recaptcha-response"]');
+        if (typeof grecaptcha !== 'undefined' && input && !form.dataset.recaptchaRefreshed) {
+            e.preventDefault();
+            grecaptcha.ready(function () {
+                grecaptcha.execute('{{ config('recaptchav3.sitekey') }}', { action: 'seller_login' }).then(function (token) {
+                    input.value = token;
+                    form.dataset.recaptchaRefreshed = 'true';
+                    form.submit();
+                }).catch(function () {
+                    form.dataset.recaptchaRefreshed = 'true';
+                    form.submit();
+                });
+            });
+        }
+    });
+</script>
+@endpush
+@endif

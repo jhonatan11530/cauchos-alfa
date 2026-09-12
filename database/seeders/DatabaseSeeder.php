@@ -26,7 +26,7 @@ class DatabaseSeeder extends Seeder
         User::updateOrCreate(['email' => 'admin@cauchosalfa.com'], [
             'role_id' => $adminRole->id,
             'name' => 'Administrador',
-            'phone' => null,
+            'phone' => 0,
             'password' => Hash::make('CauchosAlfa@2025'),
             'is_active' => true,
         ]);

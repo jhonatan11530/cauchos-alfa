@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->foreignId('role_id')->nullable()->after('id')->constrained()->nullOnDelete();
-            $table->string('phone')->default(false)->after('email');
+            $table->string('phone')->default(true)->after('email');
             $table->boolean('is_active')->default(true)->after('phone');
         });
     }

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
 use Illuminate\View\View;
 
@@ -27,13 +28,13 @@ class SiteController extends Controller
     public function catalog(Request $request): View
     {
         $categories = Category::where('is_active', true)
-            ->withCount(['products' => fn ($q) => $q->where('is_active', true)])
+            ->withCount(['products' => fn($q) => $q->where('is_active', true)])
             ->orderBy('name')
             ->get();
 
         $products = Product::where('is_active', true)
             ->with(['category', 'images'])
-            ->when($request->filled('categoria'), fn ($q) => $q->where('category_id', $request->input('categoria')))
+            ->when($request->filled('categoria'), fn($q) => $q->where('category_id', $request->input('categoria')))
             ->orderBy('name')
             ->paginate(12)
             ->withQueryString();
@@ -57,49 +58,45 @@ class SiteController extends Controller
 
     public function sellerLogin(Request $request): RedirectResponse
     {
-        $rules = [
-            'code' => ['required', 'string'],
-        ];
-
-        // Regla oficial de la libreria: recaptchav3:accion,scoreMinimo.
-        // La accion DEBE coincidir con la usada en RecaptchaV3::field() de la vista.
-        if (config('recaptchav3.secret') && config('recaptchav3.sitekey')) {
-            $rules['g-recaptcha-response'] = ['required', 'recaptchav3:seller_login,0.5'];
-        }
-
-        $data = $request->validate($rules, [
-            'g-recaptcha-response.required' => 'No se pudo generar la verificación de seguridad. Habilita JavaScript y vuelve a intentarlo.',
-            'g-recaptcha-response.recaptchav3' => 'La verificación anti-robot falló. Vuelve a intentarlo.',
+        Validator::make($request->all(), [
+            'code' => ['required', 'email'],
+            'g-recaptcha-response' => ['required', 'recaptchav3:seller_login,0.5']
         ]);
 
-        $throttleKey = 'seller-login:'.strtolower($request->input('code')).'|'.$request->ip();
+        $score = RecaptchaV3::verify($request->get('g-recaptcha-response'), 'login');
+        if ($score > 0.5) {
 
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $seconds = RateLimiter::availableIn($throttleKey);
+            $throttleKey = 'seller-login:' . strtolower($request->input('code')) . '|' . $request->ip();
 
-            return back()->withErrors([
-                'code' => 'Demasiados intentos. Inténtalo de nuevo en '.$seconds.' segundos.',
-            ]);
+            if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+                $seconds = RateLimiter::availableIn($throttleKey);
+
+                return back()->withErrors([
+                    'code' => 'Demasiados intentos. Inténtalo de nuevo en ' . $seconds . ' segundos.',
+                ]);
+            }
+
+            $user = User::where('seller_code', strtoupper(trim($request->input('code'))))
+                ->where('is_active', true)
+                ->first();
+
+            if (!$user || !$user->isSeller()) {
+                RateLimiter::hit($throttleKey, 120);
+
+                return back()->withErrors(['code' => 'El código ingresado no corresponde a un vendedor activo.']);
+            }
+
+            RateLimiter::clear($throttleKey);
+
+            Auth::login($user);
+            $request->session()->regenerate();
+
+            return redirect()
+                ->route('site.catalog')
+                ->with('success', 'Bienvenido ' . $user->name . '. Ya puedes crear pedidos desde el catálogo.');
+        } else {
+            return abort(403, 'Error de validación de reCAPTCHA. Por favor, inténtelo de nuevo.');
         }
-
-        $user = User::where('seller_code', strtoupper(trim($data['code'])))
-            ->where('is_active', true)
-            ->first();
-
-        if (! $user || ! $user->isSeller()) {
-            RateLimiter::hit($throttleKey, 120);
-
-            return back()->withErrors(['code' => 'El código ingresado no corresponde a un vendedor activo.']);
-        }
-
-        RateLimiter::clear($throttleKey);
-
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        return redirect()
-            ->route('site.catalog')
-            ->with('success', 'Bienvenido ' . $user->name . '. Ya puedes crear pedidos desde el catálogo.');
     }
 
     public function sellerLogout(Request $request): RedirectResponse

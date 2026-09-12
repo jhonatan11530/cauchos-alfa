@@ -158,25 +158,25 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     @if (config('recaptchav3.sitekey'))
-    <script>
-        document.getElementById('admin-login-form')?.addEventListener('submit', function (e) {
-            var form = this;
-            var input = form.querySelector('input[name="g-recaptcha-response"]');
-            if (typeof grecaptcha !== 'undefined' && input && !form.dataset.recaptchaRefreshed) {
-                e.preventDefault();
-                grecaptcha.ready(function () {
-                    grecaptcha.execute('{{ config('recaptchav3.sitekey') }}', { action: 'login' }).then(function (token) {
-                        input.value = token;
-                        form.dataset.recaptchaRefreshed = 'true';
-                        form.submit();
-                    }).catch(function () {
-                        form.dataset.recaptchaRefreshed = 'true';
-                        form.submit();
+        <script>
+            document.getElementById('admin-login-form')?.addEventListener('submit', function (e) {
+                var form = this;
+                var input = form.querySelector('input[name="g-recaptcha-response"]');
+                if (typeof grecaptcha !== 'undefined' && input && !form.dataset.recaptchaRefreshed) {
+                    e.preventDefault();
+                    grecaptcha.ready(function () {
+                        grecaptcha.execute('{{ config('recaptchav3.sitekey') }}', { action: 'login' }).then(function (token) {
+                            input.value = token;
+                            form.dataset.recaptchaRefreshed = 'true';
+                            form.submit();
+                        }).catch(function () {
+                            form.dataset.recaptchaRefreshed = 'true';
+                            form.submit();
+                        });
                     });
-                });
-            }
-        });
-    </script>
+                }
+            });
+        </script>
     @endif
 </body>
 </html>

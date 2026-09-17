@@ -71,19 +71,33 @@ class CatalogController extends Controller
 
     public function pdf(Catalog $catalogo)
     {
-        $catalogo->load('products.category');
+        $catalogo->load(['products.category', 'products.images']);
 
-        $pdf = app('dompdf.wrapper')->loadView('admin.catalogs.pdf', ['catalog' => $catalogo]);
+        $productsByCategory = $catalogo->products->groupBy(function ($product) {
+            return $product->category?->name ?? 'Otros Productos';
+        });
+
+        $pdf = app('dompdf.wrapper')->loadView('admin.catalogs.pdf', [
+            'catalog' => $catalogo,
+            'productsByCategory' => $productsByCategory,
+        ]);
 
         return $pdf->stream('catalogo-'.$catalogo->id.'.pdf');
     }
 
     public function publicPdf(Catalog $catalogo)
     {
-        $catalogo->load('products.category');
+        $catalogo->load(['products.category', 'products.images']);
+
+        $productsByCategory = $catalogo->products->groupBy(function ($product) {
+            return $product->category?->name ?? 'Otros Productos';
+        });
 
         return app('dompdf.wrapper')
-            ->loadView('admin.catalogs.pdf', ['catalog' => $catalogo])
+            ->loadView('admin.catalogs.pdf', [
+                'catalog' => $catalogo,
+                'productsByCategory' => $productsByCategory,
+            ])
             ->stream('catalogo-'.$catalogo->id.'.pdf');
     }
 

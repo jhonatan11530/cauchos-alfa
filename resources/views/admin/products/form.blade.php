@@ -191,22 +191,18 @@
         }
     }
 
-    const IMGLY_PUBLIC_PATH = 'https://unpkg.com/@imgly/background-removal@1.7.3/dist/';
-
     // Pre-carga inmediata del módulo de IA en WebAssembly por URL (CDN) y precalentamiento del modelo
     let removeBgPromise = (async () => {
         try {
-            const module = await import(IMGLY_PUBLIC_PATH + 'index.mjs');
+            const module = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm');
             removeBgModule = module.removeBackground;
-            console.log('✅ @imgly/background-removal cargado exitosamente desde unpkg.');
+            console.log('✅ @imgly/background-removal cargado exitosamente desde jsdelivr.');
 
             // Precalentar modelo ligero en segundo plano mientras el usuario llena el formulario
             if (typeof module.preload === 'function') {
-                module.preload({ publicPath: IMGLY_PUBLIC_PATH, model: 'small', device: 'gpu' }).then(() => {
+                module.preload({ model: 'small' }).then(() => {
                     console.log('🚀 Modelo IA cuantizado (small) precalentado en memoria.');
-                }).catch(() => {
-                    module.preload({ publicPath: IMGLY_PUBLIC_PATH, model: 'small', device: 'cpu' }).catch(() => {});
-                });
+                }).catch(() => {});
             }
             return removeBgModule;
         } catch (e) {
@@ -281,11 +277,8 @@
 
         if (onProgress) onProgress('Aislando producto con IA (GPU/CPU)...');
         const transparentBlob = await removeBg(optimizedFile, {
-            publicPath: IMGLY_PUBLIC_PATH,
             debug: false,
             model: 'small', // Modelo cuantizado en 8 bits (~15MB vs ~40MB), 2.5x más rápido y ligero
-            device: 'gpu',  // Aceleración por WebGPU si está disponible, fallback transparente a CPU
-            proxyToWorker: true, // Procesa en Web Worker separado para mantener la interfaz a 60 FPS
             progress: (key, current, total) => {
                 if (onProgress && total > 0) {
                     const pct = Math.min(100, Math.round((current / total) * 100));

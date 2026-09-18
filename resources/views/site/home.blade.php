@@ -107,7 +107,7 @@
                                             <div class="carousel-inner">
                                                 @foreach ($urls as $i => $url)
                                                     <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
-                                                        <img src="{{ $url }}" class="d-block card-img-top"
+                                                        <img src="{{ asset($url) }}" class="d-block card-img-top"
                                                             alt="{{ $product->name }} - imagen {{ $i + 1 }}"
                                                             style="aspect-ratio: 4 / 3; object-fit: cover;">
                                                     </div>
@@ -135,7 +135,7 @@
                                             </div>
                                         </div>
                                     @elseif (count($urls) === 1)
-                                        <img src="{{ $urls[0] }}" class="card-img-top" alt="{{ $product->name }}"
+                                        <img src="{{ asset($urls[0]) }}" class="card-img-top" alt="{{ $product->name }}"
                                             style="aspect-ratio: 4 / 3; object-fit: cover;">
                                     @else
                                         <img src="https://via.placeholder.com/400x300?text=Producto" class="card-img-top"

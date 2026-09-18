@@ -11,9 +11,9 @@
     <meta property="og:description"
         content="@yield('description', 'Bicicletas premium con diseño minimalista y tecnología de punta.')">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="{{ asset('images/hero-bike.png') }}">
+    <meta property="og:image" content="{{ asset('img/hero-bike.png') }}">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="{{ asset('images/hero-bike.png') }}">
+    <meta name="twitter:image" content="{{ asset('img/hero-bike.png') }}">
     <link rel="canonical" href="{{ url()->current() }}">
 
     {{-- Bootstrap 4.6 --}}

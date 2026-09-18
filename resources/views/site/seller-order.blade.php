@@ -33,10 +33,14 @@
                                     @forelse($cartProducts as $product)
                                         <tr>
                                             <td class="px-4 py-3">
-                                                <div class="d-flex align-items-center">
-                                                    <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->path) : asset('images/placeholder.png') }}"
+                                                 <div class="d-flex align-items-center">
+                                                    @php
+                                                        $firstImg = count($product->imageUrls()) > 0 ? $product->imageUrls()[0] : null;
+                                                    @endphp
+                                                    <img src="{{ $firstImg ?? 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2250%22%20height%3D%2250%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2250%22%20height%3D%2250%22%20fill%3D%22%23333%22%2F%3E%3C%2Fsvg%3E' }}"
                                                         class="img-thumbnail mr-3"
-                                                        style="width: 50px; height: 50px; object-fit: cover;">
+                                                        style="width: 50px; height: 50px; object-fit: cover;"
+                                                        alt="{{ $product->name }}">
                                                     <span class="font-weight-bold">{{ $product->name }}</span>
                                                 </div>
                                             </td>

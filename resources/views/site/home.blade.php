@@ -102,12 +102,12 @@
                                         $urls = $product->imageUrls();
                                     @endphp
                                     @if (count($urls) > 1)
-                                        <div id="gallery-{{ $product->id }}" class="carousel slide carousel-fade"
+                                        <div id="gallery-{{ $product->id }}" class="carousel slide carousel-fade w-100"
                                             data-bs-ride="carousel">
                                             <div class="carousel-inner">
                                                 @foreach ($urls as $i => $url)
                                                     <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
-                                                        <img src="{{ asset($url) }}" class="d-block card-img-top"
+                                                        <img src="{{ $url }}" class="d-block w-100 card-img-top"
                                                             alt="{{ $product->name }} - imagen {{ $i + 1 }}"
                                                             style="aspect-ratio: 4 / 3; object-fit: cover;">
                                                     </div>
@@ -115,15 +115,17 @@
                                             </div>
                                             <button class="carousel-control-prev" type="button"
                                                 data-bs-target="#gallery-{{ $product->id }}" data-bs-slide="prev">
-                                                <span class="carousel-control-prev-icon bg-dark rounded-circle p-2"
-                                                    aria-hidden="true"></span>
-                                                <span class="visually-hidden">Anterior</span>
-                                            </button>
+                                            <span class="bg-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; opacity: 0.8;">
+                                                <span class="carousel-control-prev-icon" style="width: 15px; height: 15px;" aria-hidden="true"></span>
+                                            </span>
+                                            <span class="sr-only">Anterior</span>
+                                        </button>
                                             <button class="carousel-control-next" type="button"
                                                 data-bs-target="#gallery-{{ $product->id }}" data-bs-slide="next">
-                                                <span class="carousel-control-next-icon bg-dark rounded-circle p-2"
-                                                    aria-hidden="true"></span>
-                                                <span class="visually-hidden">Siguiente</span>
+                                                <span class="bg-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; opacity: 0.8;">
+                                                    <span class="carousel-control-next-icon" style="width: 15px; height: 15px;" aria-hidden="true"></span>
+                                                </span>
+                                                <span class="sr-only">Siguiente</span>
                                             </button>
                                             <div class="carousel-indicators">
                                                 @foreach ($urls as $i => $url)
@@ -135,11 +137,13 @@
                                             </div>
                                         </div>
                                     @elseif (count($urls) === 1)
-                                        <img src="{{ asset($urls[0]) }}" class="card-img-top" alt="{{ $product->name }}"
+                                        <img src="{{ $urls[0] }}" class="card-img-top w-100" alt="{{ $product->name }}"
                                             style="aspect-ratio: 4 / 3; object-fit: cover;">
                                     @else
-                                        <img src="https://via.placeholder.com/400x300?text=Producto" class="card-img-top"
-                                            alt="{{ $product->name }}" style="aspect-ratio: 4 / 3; object-fit: cover;">
+                                        <svg class="card-img-top w-100" style="aspect-ratio: 4 / 3; background-color: #2b3035;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+                                            <rect width="100%" height="100%" fill="#2b3035"/>
+                                            <text x="50%" y="50%" fill="#6c757d" font-family="sans-serif" font-size="18" text-anchor="middle" dominant-baseline="middle">Sin Imagen</text>
+                                        </svg>
                                     @endif
                                 </div>
                                 <div class="p-4">

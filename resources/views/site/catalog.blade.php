@@ -73,7 +73,7 @@
                                         <div class="carousel-inner">
                                             @foreach ($urls as $i => $url)
                                                 <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
-                                                    <img src="{{ $url }}" class="d-block w-100 card-img-top"
+                                                    <img src="{{$url }}" class="d-block w-100 card-img-top"
                                                         alt="{{ $product->name }} - imagen {{ $i + 1 }}"
                                                         style="aspect-ratio: 4 / 3; object-fit: cover;max-height: 100%; transition: 0.3s;"
                                                         onmouseover="this.style.transform='scale(1.1)'"

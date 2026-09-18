@@ -55,11 +55,9 @@ class Product extends Model
     public function imageUrls(): array
     {
         $urls = $this->images->map(fn (ProductImage $img) => asset('storage/' . $img->path))->all();
-        $urls = $this->images->map(fn (ProductImage $img) => asset('public/storage/' . $img->path))->all();
 
         if ($this->image_path) {
             $urls[] = asset('storage/' . $this->image_path);
-            $urls[] = asset('public/storage/' . $this->image_path);
         }
 
         return $urls;

@@ -116,14 +116,14 @@
                         <div class="d-flex flex-wrap gap-2">
                             @if ($product->image_path)
                                 <div class="border rounded p-1 text-center">
-                                    <img src="{{ asset('public/storage/' . $product->image_path) }}"
+                                    <img src="{{ asset('storage/' . $product->image_path) }}"
                                         style="height:80px;width:80px;object-fit:cover;" alt="Imagen principal">
                                     <div class="small text-muted">Principal</div>
                                 </div>
                             @endif
                             @foreach ($product->images as $image)
                                 <div class="border rounded p-1 text-center">
-                                    <img src="{{ asset('public/storage/' . $image->path) }}"
+                                    <img src="{{ asset('storage/' . $image->path) }}"
                                         style="height:80px;width:80px;object-fit:cover;" alt="Imagen">
                                     <form action="{{ route('productos.images.destroy', [$product, $image]) }}"
                                         method="POST" onsubmit="return confirm('¿Eliminar esta imagen?')">
@@ -191,33 +191,27 @@
         }
     }
 
+    const IMGLY_PUBLIC_PATH = 'https://unpkg.com/@imgly/background-removal@1.7.3/dist/';
+
     // Pre-carga inmediata del módulo de IA en WebAssembly por URL (CDN) y precalentamiento del modelo
     let removeBgPromise = (async () => {
         try {
-            const module = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal/+esm');
+            const module = await import(IMGLY_PUBLIC_PATH + 'index.mjs');
             removeBgModule = module.removeBackground;
-            console.log('✅ @imgly/background-removal cargado exitosamente desde jsdelivr.');
+            console.log('✅ @imgly/background-removal cargado exitosamente desde unpkg.');
 
             // Precalentar modelo ligero en segundo plano mientras el usuario llena el formulario
             if (typeof module.preload === 'function') {
-                module.preload({ model: 'small', device: 'gpu' }).then(() => {
+                module.preload({ publicPath: IMGLY_PUBLIC_PATH, model: 'small', device: 'gpu' }).then(() => {
                     console.log('🚀 Modelo IA cuantizado (small) precalentado en memoria.');
                 }).catch(() => {
-                    module.preload({ model: 'small', device: 'cpu' }).catch(() => {});
+                    module.preload({ publicPath: IMGLY_PUBLIC_PATH, model: 'small', device: 'cpu' }).catch(() => {});
                 });
             }
             return removeBgModule;
-        } catch (e1) {
-            console.warn('Fallo al cargar desde jsdelivr, intentando fallback unpkg...', e1);
-            try {
-                const module = await import('https://unpkg.com/@imgly/background-removal@1.7.0/dist/index.mjs');
-                removeBgModule = module.removeBackground;
-                console.log('✅ @imgly/background-removal cargado exitosamente desde unpkg.');
-                return removeBgModule;
-            } catch (e2) {
-                console.error('❌ Error crítico al cargar @imgly/background-removal por URL:', e2);
-                throw e2;
-            }
+        } catch (e) {
+            console.error('❌ Error crítico al cargar @imgly/background-removal por URL:', e);
+            throw e;
         }
     })();
 
@@ -287,6 +281,7 @@
 
         if (onProgress) onProgress('Aislando producto con IA (GPU/CPU)...');
         const transparentBlob = await removeBg(optimizedFile, {
+            publicPath: IMGLY_PUBLIC_PATH,
             debug: false,
             model: 'small', // Modelo cuantizado en 8 bits (~15MB vs ~40MB), 2.5x más rápido y ligero
             device: 'gpu',  // Aceleración por WebGPU si está disponible, fallback transparente a CPU

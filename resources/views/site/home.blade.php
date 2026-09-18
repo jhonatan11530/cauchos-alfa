@@ -137,7 +137,7 @@
                                             </div>
                                         </div>
                                     @elseif (count($urls) === 1)
-                                        <img src="{{ $urls[0] }}" class="card-img-top w-100" alt="{{ $product->name }}"
+                                        <img src="{{$urls[0] }}" class="card-img-top w-100" alt="{{ $product->name }}"
                                             style="aspect-ratio: 4 / 3; object-fit: cover;">
                                     @else
                                         <svg class="card-img-top w-100" style="aspect-ratio: 4 / 3; background-color: #2b3035;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">

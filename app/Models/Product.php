@@ -50,14 +50,25 @@ class Product extends Model
     }
 
     /**
+     * Resuelve la URL pública correcta dependiendo del entorno (localhost vs producción).
+     */
+    public static function getStorageUrl(string $path): string
+    {
+        $host = request()->getHost();
+        // En desarrollo local (artisan serve o XAMPP normal) usamos la ruta estandar
+        $prefix = in_array($host, ['localhost', '127.0.0.1', '::1']) ? 'storage/' : 'public/storage/';
+        return asset($prefix . $path);
+    }
+
+    /**
      * URLs de todas las imágenes del producto (galería nueva + imagen antigua).
      */
     public function imageUrls(): array
     {
-        $urls = $this->images->map(fn (ProductImage $img) => asset('storage/' . $img->path))->all();
+        $urls = $this->images->map(fn (ProductImage $img) => self::getStorageUrl($img->path))->all();
 
         if ($this->image_path) {
-            $urls[] = asset('storage/' . $this->image_path);
+            $urls[] = self::getStorageUrl($this->image_path);
         }
 
         return $urls;

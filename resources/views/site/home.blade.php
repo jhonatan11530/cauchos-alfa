@@ -91,7 +91,7 @@
                 </p>
             </div>
             <div class="row">
-                @if (count($featured) > 1)
+                @if (count($featured) > 0)
                     @foreach ($featured as $product)
                         <div class="col-lg-4 col-md-6 mb-4">
                             <div class="product-card h-100">

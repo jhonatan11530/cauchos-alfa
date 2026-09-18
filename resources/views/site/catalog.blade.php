@@ -57,7 +57,7 @@
         </div>
 
         <div class="row">
-            @if (count($products) > 1)
+            @if (count($products) > 0)
                 @foreach ($products as $product)
                     <div class="col-12 col-sm-6 col-lg-3 mb-4">
                         <div class="product-card h-100 shadow-sm">

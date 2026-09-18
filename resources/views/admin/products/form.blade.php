@@ -116,7 +116,6 @@
                         <div class="d-flex flex-wrap gap-2">
                             @if ($product->image_path)
                                 <div class="border rounded p-1 text-center">
-                                    <img src="{{ asset('storage/' . $product->image_path) }}"
                                     <img src="{{ asset('public/storage/' . $product->image_path) }}"
                                         style="height:80px;width:80px;object-fit:cover;" alt="Imagen principal">
                                     <div class="small text-muted">Principal</div>
@@ -124,7 +123,6 @@
                             @endif
                             @foreach ($product->images as $image)
                                 <div class="border rounded p-1 text-center">
-                                    <img src="{{ asset('storage/' . $image->path) }}"
                                     <img src="{{ asset('public/storage/' . $image->path) }}"
                                         style="height:80px;width:80px;object-fit:cover;" alt="Imagen">
                                     <form action="{{ route('productos.images.destroy', [$product, $image]) }}"

@@ -58,45 +58,48 @@ class SiteController extends Controller
 
     public function sellerLogin(Request $request): RedirectResponse
     {
-        Validator::make($request->all(), [
-            'code' => ['required', 'email'],
-            'g-recaptcha-response' => ['required', 'recaptchav3:seller_login,0.5']
+        $rules = [
+            'code' => ['required', 'string'],
+        ];
+
+        if (config('recaptchav3.secret') && config('recaptchav3.sitekey')) {
+            $rules['g-recaptcha-response'] = ['required', 'recaptchav3:seller_login,0.5'];
+        }
+
+        $data = $request->validate($rules, [
+            'g-recaptcha-response.required' => 'No se pudo generar la verificación de seguridad. Habilita JavaScript y vuelve a intentarlo.',
+            'g-recaptcha-response.recaptchav3' => 'La verificación anti-robot falló. Vuelve a intentarlo.',
         ]);
 
-        $score = RecaptchaV3::verify($request->get('g-recaptcha-response'), 'login');
-        if ($score > 0.5) {
+        $code = strtoupper(trim($data['code']));
+        $throttleKey = 'seller-login:' . strtolower($code) . '|' . $request->ip();
 
-            $throttleKey = 'seller-login:' . strtolower($request->input('code')) . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
 
-            if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-                $seconds = RateLimiter::availableIn($throttleKey);
-
-                return back()->withErrors([
-                    'code' => 'Demasiados intentos. Inténtalo de nuevo en ' . $seconds . ' segundos.',
-                ]);
-            }
-
-            $user = User::where('seller_code', strtoupper(trim($request->input('code'))))
-                ->where('is_active', true)
-                ->first();
-
-            if (!$user || !$user->isSeller()) {
-                RateLimiter::hit($throttleKey, 120);
-
-                return back()->withErrors(['code' => 'El código ingresado no corresponde a un vendedor activo.']);
-            }
-
-            RateLimiter::clear($throttleKey);
-
-            Auth::login($user);
-            $request->session()->regenerate();
-
-            return redirect()
-                ->route('site.catalog')
-                ->with('success', 'Bienvenido ' . $user->name . '. Ya puedes crear pedidos desde el catálogo.');
-        } else {
-            return abort(403, 'Error de validación de reCAPTCHA. Por favor, inténtelo de nuevo.');
+            return back()->withErrors([
+                'code' => 'Demasiados intentos. Inténtalo de nuevo en ' . $seconds . ' segundos.',
+            ]);
         }
+
+        $user = User::where('seller_code', $code)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$user || !$user->isSeller()) {
+            RateLimiter::hit($throttleKey, 120);
+
+            return back()->withErrors(['code' => 'El código ingresado no corresponde a un vendedor activo.']);
+        }
+
+        RateLimiter::clear($throttleKey);
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()
+            ->route('site.catalog')
+            ->with('success', 'Bienvenido ' . $user->name . '. Ya puedes crear pedidos desde el catálogo.');
     }
 
     public function sellerLogout(Request $request): RedirectResponse

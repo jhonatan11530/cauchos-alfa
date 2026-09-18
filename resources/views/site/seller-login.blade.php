@@ -62,27 +62,3 @@
         </div>
     </div>
 @endsection
-
-@if (config('recaptchav3.sitekey'))
-@push('scripts')
-<script>
-    document.getElementById('seller-login-form')?.addEventListener('submit', function (e) {
-        var form = this;
-        var input = form.querySelector('input[name="g-recaptcha-response"]');
-        if (typeof grecaptcha !== 'undefined' && input && !form.dataset.recaptchaRefreshed) {
-            e.preventDefault();
-            grecaptcha.ready(function () {
-                grecaptcha.execute('{{ config('recaptchav3.sitekey') }}', { action: 'seller_login' }).then(function (token) {
-                    input.value = token;
-                    form.dataset.recaptchaRefreshed = 'true';
-                    form.submit();
-                }).catch(function () {
-                    form.dataset.recaptchaRefreshed = 'true';
-                    form.submit();
-                });
-            });
-        }
-    });
-</script>
-@endpush
-@endif

@@ -70,6 +70,7 @@ class OrderControllerTest extends TestCase
     {
         return array_merge([
             'client_id' => $this->client->id,
+            'billing_type' => 'remision',
             'ordered_at' => now()->toDateString(),
             'notes' => 'Pedido de prueba',
             'items' => [

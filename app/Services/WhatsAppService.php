@@ -92,6 +92,17 @@ class WhatsAppService
         ]);
     }
 
+    /** Envía un documento (PDF, etc) mediante una URL pública. */
+    public function sendDocument(string $to, string $url, string $filename, string $caption = ''): array
+    {
+        return $this->client->messages->sendDocument($this->session()['id'], [
+            'chatId' => $this->normalizeNumber($to).'@c.us',
+            'url' => $url,
+            'filename' => $filename,
+            'caption' => $caption,
+        ]);
+    }
+
     /** Resolve a configured UUID or session name to OpenWA's server-side ID. */
     private function session(): array
     {

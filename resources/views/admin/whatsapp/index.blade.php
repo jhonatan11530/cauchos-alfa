@@ -40,6 +40,33 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Dashboard OpenWA -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h4 class="card-title mb-0">Panel Administrativo OpenWA</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2 text-muted" style="font-size: 0.9em;">Accede al dashboard avanzado de OpenWA para configuraciones internas.</p>
+                        @if($openWaKey)
+                            <div class="mb-3">
+                                <label class="form-label mb-0 fw-bold">Clave secreta de Login</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control form-control-sm" value="{{ $openWaKey }}" readonly id="openwa-key-input">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('openwa-key-input').value); alert('Clave copiada al portapapeles');">Copiar</button>
+                                </div>
+                                <small class="text-muted">Usa esta clave para iniciar sesi&oacute;n.</small>
+                            </div>
+                            <a href="{{ $openWaUrl }}" target="_blank" class="btn btn-sm btn-info w-100 text-white fw-bold">
+                                <i class="fas fa-external-link-alt"></i> Abrir Dashboard OpenWA
+                            </a>
+                        @else
+                            <div class="alert alert-warning mb-0 p-2">
+                                <small>No se encontr&oacute; la clave secreta. Aseg&uacute;rate de que OpenWA se haya iniciado correctamente.</small>
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
 
             <div class="col-md-8">

@@ -17,10 +17,20 @@ class WhatsAppController extends Controller
 
     public function index(): View
     {
+        $openWaKey = '';
+        $apiKeyPath = base_path('OpenWA/data/.api-key');
+        if (file_exists($apiKeyPath)) {
+            $openWaKey = trim(file_get_contents($apiKeyPath));
+        } elseif (config('whatsapp.api_key')) {
+            $openWaKey = config('whatsapp.api_key');
+        }
+
         return view('admin.whatsapp.index', [
             'status' => $this->whatsapp->status(),
             'catalogs' => Catalog::orderBy('name')->get(['id', 'name', 'is_active']),
             'templates' => WhatsAppMessageTemplate::where('is_active', true)->orderBy('name')->get(),
+            'openWaKey' => $openWaKey,
+            'openWaUrl' => rtrim(config('whatsapp.api_url', 'http://localhost:2785'), '/'),
         ]);
     }
 
@@ -141,17 +151,19 @@ class WhatsAppController extends Controller
             return back()->with('error', 'No hay vendedores activos con un teléfono válido.');
         }
         $catalogUrl = route('catalogos.public-pdf', $catalog);
-        $catalogMessage = trim(($data['message'] ?? '')."\n".$catalogUrl);
+        $catalogMessage = trim(($data['message'] ?? '')."\n\nEnlace alternativo: ".$catalogUrl);
+        $filename = "Catalogo_Cauchos_Alfa_" . date('Y_m_d') . ".pdf";
 
         foreach ($sellers as $seller) {
             try {
-                $this->whatsapp->sendMessage($seller->phone, $catalogMessage);
+                // Primero enviamos el documento PDF
+                $this->whatsapp->sendDocument($seller->phone, $catalogUrl, $filename, $catalogMessage);
             } catch (\Throwable $e) {
                 $errors[] = $seller->name.': '.$e->getMessage();
             }
         }
 
-        return $this->result($numbers, $errors, 'Enlace del catalogo enviado correctamente a los vendedores.');
+        return $this->result($numbers, $errors, 'Catálogo enviado correctamente (Archivo PDF + Enlace) a los vendedores.');
     }
 
     private function result(array $attempted, array $errors, string $okMessage): RedirectResponse

@@ -13,9 +13,15 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(Client::class, function (): Client {
+            $apiKey = (string) config('whatsapp.api_key');
+            $apiKeyPath = base_path('OpenWA/data/.api-key');
+            if (file_exists($apiKeyPath)) {
+                $apiKey = trim(file_get_contents($apiKeyPath));
+            }
+
             return new Client([
                 'baseUrl' => (string) config('whatsapp.api_url'),
-                'apiKey' => (string) config('whatsapp.api_key'),
+                'apiKey' => $apiKey,
                 'timeout' => (float) config('whatsapp.timeout', 30),
             ]);
         });

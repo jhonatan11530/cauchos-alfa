@@ -70,21 +70,36 @@ class StartNodeProject extends Command
 
         /*
          * ============================================================
-         * 3. Instalar dependencias del Dashboard de OpenWA
+         * 3. Instalar y Construir el Dashboard de OpenWA
          * ============================================================
          */
         $dashboardPath = $path . '/dashboard';
         if (!$this->option('no-dashboard') && is_dir($dashboardPath) && file_exists($dashboardPath . '/package.json')) {
-            $this->info('--- Verificando dependencias del Dashboard de OpenWA ---');
+            $this->info('--- Verificando y Construyendo el Dashboard de OpenWA ---');
             $dashboardNodeModules = $dashboardPath . '/node_modules';
 
             if (!is_dir($dashboardNodeModules) || $forceInstall) {
                 $this->info('Instalando dependencias del Dashboard de OpenWA...');
                 if (!$this->runNpmInstall($dashboardPath, 'OpenWA Dashboard')) {
-                    $this->warn('No se pudieron instalar algunas dependencias del dashboard, continuando con el servidor principal.');
+                    $this->warn('No se pudieron instalar algunas dependencias del dashboard, continuando...');
                 }
             } else {
                 $this->info('Dependencias del Dashboard ya están instaladas.');
+            }
+
+            // Construir el dashboard y backend con build:all
+            $this->info('Construyendo el Dashboard (npm run build:all)...');
+            $buildProcess = Process::fromShellCommandline('npm run build:all', $path);
+            $buildProcess->setTimeout(null);
+
+            $buildProcess->run(function ($type, $buffer) {
+                $this->output->write($buffer);
+            });
+
+            if (!$buildProcess->isSuccessful()) {
+                $this->warn('Hubo un problema ejecutando npm run build:all, continuando con el inicio del servidor...');
+            } else {
+                $this->info('Dashboard construido exitosamente.');
             }
         }
 

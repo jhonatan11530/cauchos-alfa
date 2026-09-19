@@ -178,7 +178,7 @@ class StartNodeProject extends Command
     private function isServiceAlreadyRunning(): bool
     {
         // 1. Intentar verificar si el puerto (2785 por defecto) está escuchando
-        $apiUrl = config('whatsapp.api_url', env('WHATSAPP_API_URL', 'http://localhost:2785'));
+        $apiUrl = config('whatsapp.api_url', 'http://localhost:2785');
         $parsedUrl = parse_url($apiUrl);
         $host = $parsedUrl['host'] ?? '127.0.0.1';
         $port = $parsedUrl['port'] ?? 2785;

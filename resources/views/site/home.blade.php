@@ -16,7 +16,7 @@
           "address": {
             "@@type": "PostalAddress",
             "streetAddress": "Calle Principal",
-            "addressLocality": "Bogotá",
+            "addressLocality": "Cali",
             "addressRegion": "DC",
             "postalCode": "11001",
             "addressCountry": "CO"
@@ -39,10 +39,9 @@
             <p class="text-red font-weight-bold mb-3" style="letter-spacing:.15em; font-size:.85rem;">
                 CATÁLAGO ACTUALIZADO 2026
             </p>
-            <h1 class="hero-title">Diseñados para<br>el camino extraordinario.</h1>
+            <h1 class="hero-title">Neumáticos diseñados para<br>el camino extraordinario.</h1>
             <p class="hero-subtitle">
-                La máxima adherencia, seguridad y durabilidad. Pensada para quienes entienden que la calidad
-                en los neumáticos es la base de cada viaje.
+                Venta de cauchos y neumáticos de alto rendimiento en Cali. La máxima adherencia, seguridad y durabilidad para quienes entienden que la calidad es la base de cada viaje.
             </p>
             <div class="d-flex flex-wrap justify-content-center btn-group-hero">
                 <a href="{{ route('site.catalog') }}" class="btn btn-red btn-lg">Ver Catálogo</a>
@@ -69,7 +68,7 @@
                 </div>
                 <div class="col-lg-6">
                     <div class="p-2" style="border: 2px solid var(--bike-red); border-radius: 28px; overflow: hidden;">
-                        <img src="{{ asset('img/bike-mountain.png') }}" class="img-fluid rounded"
+                        <img src="{{ asset('img/bike-mountain.png') }}" alt="Venta de Cauchos y Neumáticos de Alto Rendimiento en Cali" class="img-fluid rounded"
                             style="filter: grayscale(0.5); transition: 0.3s;" onmouseover="this.style.filter='grayscale(0)'"
                             onmouseout="this.style.filter='grayscale(0.5)'">
                     </div>
@@ -113,7 +112,7 @@
     <section id="productos-destacados" class="py-5 bg-charcoal">
         <div class="container py-5">
             <div class="text-center mb-5">
-                <h2 class="section-title">Productos Destacados</h2>
+                <h2 class="section-title">Cauchos y Llantas Destacadas</h2>
                 <p class="section-subtitle">
                     Nuestra selección de los neumáticos más solicitados por rendimiento y durabilidad.
                 </p>

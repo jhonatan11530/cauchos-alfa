@@ -33,7 +33,7 @@
 @section('content')
     <section class="bg-void text-white py-5 text-center" style="margin-top: 70px;">
         <div class="container">
-            <h1 class="section-title">Nuestro Catálogo</h1>
+            <h1 class="section-title">Catálogo de Cauchos y Neumáticos</h1>
             <p class="lead mb-0">Explora los neumáticos de alto rendimiento disponibles.</p>
         </div>
     </section>

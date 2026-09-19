@@ -6,15 +6,15 @@
 @section('schema')
     <script type="application/ld+json">
         {
-          "@context": "https://schema.org",
-          "@type": "AutoPartsStore",
+          "@@context": "https://schema.org",
+          "@@type": "AutoPartsStore",
           "name": "Cauchos Alfa",
           "image": {!! json_encode(asset('img/hero-bike.png')) !!},
-          "@id": {!! json_encode(url('/')) !!},
+          "@@id": {!! json_encode(url('/')) !!},
           "url": {!! json_encode(url('/')) !!},
           "telephone": "+573000000000",
           "address": {
-            "@type": "PostalAddress",
+            "@@type": "PostalAddress",
             "streetAddress": "Calle Principal",
             "addressLocality": "Bogotá",
             "addressRegion": "DC",
@@ -22,7 +22,7 @@
             "addressCountry": "CO"
           },
           "geo": {
-            "@type": "GeoCoordinates",
+            "@@type": "GeoCoordinates",
             "latitude": 4.60971,
             "longitude": -74.08175
           },

@@ -1,24 +1,24 @@
-"@extends('site.layouts.app')
+@extends('site.layouts.app')
 
 @section('title', 'Catálogo | Cauchos Alfa')
 
 @section('schema')
 <script type="application/ld+json">
 {
-  "@context": "https://schema.org",
-  "@type": "CollectionPage",
+  "@@context": "https://schema.org",
+  "@@type": "CollectionPage",
   "name": "Catálogo de Cauchos Alfa",
   "description": "Explora nuestro catálogo completo de llantas y cauchos.",
   "url": {!! json_encode(url()->current()) !!},
   "mainEntity": {
-    "@type": "ItemList",
+    "@@type": "ItemList",
     "itemListElement": [
       @foreach($products as $index => $product)
       {
-        "@type": "ListItem",
+        "@@type": "ListItem",
         "position": {{ $index + 1 }},
         "item": {
-          "@type": "Product",
+          "@@type": "Product",
           "name": {!! json_encode($product->name) !!},
           "image": {!! json_encode(count($product->imageUrls()) > 0 ? $product->imageUrls()[0] : '') !!}
         }
@@ -194,4 +194,4 @@
             {{ $products->appends(request()->query())->links() }}
         </div>
     </section>
-@endsection"
+@endsection

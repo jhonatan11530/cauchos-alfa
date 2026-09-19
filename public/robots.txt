@@ -1,2 +1,23 @@
 User-agent: *
-Disallow:
+Allow: /
+
+# Permitir explícitamente rastreadores de IA (AI-SEO)
+User-agent: GPTBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: anthropic-ai
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: OmgiliBot
+Allow: /
+
+# Evitar rastreo de zonas privadas
+Disallow: /login
+Disallow: /vendedor
+Disallow: /dashboard
+
+Sitemap: /sitemap.xml

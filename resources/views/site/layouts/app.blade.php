@@ -4,17 +4,19 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Roja Bicis | Ciclismo de alto rendimiento')</title>
+    <title>@yield('title', 'Cauchos Alfa | Neumáticos y Llantas de alto rendimiento')</title>
     <meta name="description"
-        content="@yield('description', 'Descubre bicicletas premium de carretera, montaña y ciudad. Diseño, ligereza y rendimiento con estética minimalista.')">
-    <meta property="og:title" content="@yield('title', 'Roja Bicis | Ciclismo de alto rendimiento')">
+        content="@yield('description', 'Descubre la mejor selección de cauchos y neumáticos para todo tipo de vehículos. Diseño, seguridad y rendimiento.')">
+    <meta property="og:title" content="@yield('title', 'Cauchos Alfa | Neumáticos de alto rendimiento')">
     <meta property="og:description"
-        content="@yield('description', 'Bicicletas premium con diseño minimalista y tecnología de punta.')">
+        content="@yield('description', 'Cauchos premium y tecnología de punta para la máxima adherencia.')">
     <meta property="og:type" content="website">
     <meta property="og:image" content="{{ asset('img/hero-bike.png') }}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content="{{ asset('img/hero-bike.png') }}">
     <link rel="canonical" href="{{ url()->current() }}">
+
+    @yield('schema')
 
     <link href="{{ asset('/css/bootstrap-icons.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('/css/toastr.min.css') }}">

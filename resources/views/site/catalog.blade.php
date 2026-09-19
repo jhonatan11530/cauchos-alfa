@@ -2,6 +2,34 @@
 
 @section('title', 'Catálogo | Cauchos Alfa')
 
+@section('schema')
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Catálogo de Cauchos Alfa",
+  "description": "Explora nuestro catálogo completo de llantas y cauchos.",
+  "url": {!! json_encode(url()->current()) !!},
+  "mainEntity": {
+    "@type": "ItemList",
+    "itemListElement": [
+      @foreach($products as $index => $product)
+      {
+        "@type": "ListItem",
+        "position": {{ $index + 1 }},
+        "item": {
+          "@type": "Product",
+          "name": {!! json_encode($product->name) !!},
+          "image": {!! json_encode(count($product->imageUrls()) > 0 ? $product->imageUrls()[0] : '') !!}
+        }
+      }@if(!$loop->last),@endif
+      @endforeach
+    ]
+  }
+}
+</script>
+@endsection
+
 @section('content')
     <section class="bg-void text-white py-5 text-center" style="margin-top: 70px;">
         <div class="container">

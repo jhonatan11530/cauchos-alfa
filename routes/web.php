@@ -18,6 +18,7 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 // Pagina web publica
 Route::get('/', [SiteController::class, 'home'])->name('site.home');
 Route::get('/catalogo', [SiteController::class, 'catalog'])->name('site.catalog');
+Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])->name('site.sitemap');
 Route::middleware('auth')->group(function () {
     Route::post('/vendedor/pedido/agregar', [SiteController::class, 'addToCart'])->name('site.seller.add');
     Route::post('/vendedor/pedido/quitar', [SiteController::class, 'removeCartItem'])->name('site.seller.remove');

@@ -28,11 +28,12 @@
                                 href="{{ route('dashboard') }}">Panel Administrativo</a>
                         </li>
                     @endif
-                @else
+                @endauth
+                @guest
                     <li class="nav-item"><a class="nav-link btn btn-red btn-lg"
                             href="{{ route('site.seller.login') }}">Vendedores</a></li>
-                    <li class="nav-item"><a class="nav-link btn btn-red btn-lg" href="{{ route('login') }}">Ingresar</a>
-                    @endauth
+                    <li class="nav-item"><a class="nav-link btn btn-red btn-lg" href="{{ route('login') }}">Ingresar</a></li>
+                @endguest
             </ul>
         </div>
     </div>

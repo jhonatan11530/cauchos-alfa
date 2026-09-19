@@ -1,9 +1,37 @@
 @extends('site.layouts.app')
 
 @section('title', 'Cauchos Alfa | Neumáticos de alto rendimiento')
-@section('description',
-    'Descubre la mejor selección de cauchos y neumáticos para todo tipo de vehículos. Calidad,
-    durabilidad y rendimiento.')
+@section('description', 'Descubre la mejor selección de cauchos y neumáticos para todo tipo de vehículos. Calidad, durabilidad y rendimiento.')
+
+@section('schema')
+    <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "AutoPartsStore",
+          "name": "Cauchos Alfa",
+          "image": {!! json_encode(asset('img/hero-bike.png')) !!},
+          "@id": {!! json_encode(url('/')) !!},
+          "url": {!! json_encode(url('/')) !!},
+          "telephone": "+573000000000",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Calle Principal",
+            "addressLocality": "Bogotá",
+            "addressRegion": "DC",
+            "postalCode": "11001",
+            "addressCountry": "CO"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 4.60971,
+            "longitude": -74.08175
+          },
+          "sameAs": [
+            {!! json_encode(url('/')) !!}
+          ]
+        }
+    </script>
+@endsection
 
 @section('content')
     <header class="hero-section">
@@ -115,15 +143,21 @@
                                             </div>
                                             <button class="carousel-control-prev" type="button"
                                                 data-bs-target="#gallery-{{ $product->id }}" data-bs-slide="prev">
-                                            <span class="bg-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; opacity: 0.8;">
-                                                <span class="carousel-control-prev-icon" style="width: 15px; height: 15px;" aria-hidden="true"></span>
-                                            </span>
-                                            <span class="sr-only">Anterior</span>
-                                        </button>
+                                                <span
+                                                    class="bg-dark rounded-circle d-flex align-items-center justify-content-center"
+                                                    style="width: 35px; height: 35px; opacity: 0.8;">
+                                                    <span class="carousel-control-prev-icon"
+                                                        style="width: 15px; height: 15px;" aria-hidden="true"></span>
+                                                </span>
+                                                <span class="sr-only">Anterior</span>
+                                            </button>
                                             <button class="carousel-control-next" type="button"
                                                 data-bs-target="#gallery-{{ $product->id }}" data-bs-slide="next">
-                                                <span class="bg-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; opacity: 0.8;">
-                                                    <span class="carousel-control-next-icon" style="width: 15px; height: 15px;" aria-hidden="true"></span>
+                                                <span
+                                                    class="bg-dark rounded-circle d-flex align-items-center justify-content-center"
+                                                    style="width: 35px; height: 35px; opacity: 0.8;">
+                                                    <span class="carousel-control-next-icon"
+                                                        style="width: 15px; height: 15px;" aria-hidden="true"></span>
                                                 </span>
                                                 <span class="sr-only">Siguiente</span>
                                             </button>
@@ -137,25 +171,30 @@
                                             </div>
                                         </div>
                                     @elseif (count($urls) === 1)
-                                        <img src="{{$urls[0] }}" class="card-img-top w-100" alt="{{ $product->name }}"
-                                            style="aspect-ratio: 4 / 3; object-fit: cover;">
+                                        <img src="{{ $urls[0] }}" class="card-img-top w-100"
+                                            alt="{{ $product->name }}" style="aspect-ratio: 4 / 3; object-fit: cover;">
                                     @else
-                                        <svg class="card-img-top w-100" style="aspect-ratio: 4 / 3; background-color: #2b3035;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
-                                            <rect width="100%" height="100%" fill="#2b3035"/>
-                                            <text x="50%" y="50%" fill="#6c757d" font-family="sans-serif" font-size="18" text-anchor="middle" dominant-baseline="middle">Sin Imagen</text>
+                                        <svg class="card-img-top w-100"
+                                            style="aspect-ratio: 4 / 3; background-color: #2b3035;"
+                                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+                                            <rect width="100%" height="100%" fill="#2b3035" />
+                                            <text x="50%" y="50%" fill="#6c757d" font-family="sans-serif" font-size="18"
+                                                text-anchor="middle" dominant-baseline="middle">Sin Imagen</text>
                                         </svg>
                                     @endif
                                 </div>
                                 <div class="p-4">
-                                    <p class="text-red font-weight-bold mb-2" style="font-size:.8rem; letter-spacing:.1em;">
+                                    <p class="text-red font-weight-bold mb-2"
+                                        style="font-size:.8rem; letter-spacing:.1em;">
                                         {{ $product->category->name ?? 'General' }}
                                     </p>
                                     <h3 class="h4 font-weight-bold mb-2">{{ $product->name }}</h3>
                                     <p class="text-muted-custom mb-4">
-                                        {{ \Illuminate\Support\Str::limit($product->description, 100) }}</p>
+                                        {{ \Illuminate\Support\Str::limit($product->description, 100) }}
+                                    </p>
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <span
-                                            class="h4 font-weight-bold mb-0">Ref #{{ $product->reference ?? 'N/A' }}</span>
+                                        <span class="h4 font-weight-bold mb-0">Ref
+                                            #{{ $product->reference ?? 'N/A' }}</span>
                                         <a href="{{ route('site.catalog') }}" class="btn btn-sm btn-red">Ver más</a>
                                     </div>
                                 </div>

@@ -52,7 +52,7 @@
                                         </div>
                                         <div class="custom-control custom-switch ml-md-3">
                                             <input type="checkbox" class="custom-control-input" id="autoWhiteBgSwitch" checked>
-                                            <label class="custom-control-label fw-bold" for="autoWhiteBgSwitch" id="autoWhiteBgLabel">Activo</label>
+                                            <label class="custom-control-label fw-bold" for="autoWhiteBgSwitch" id="autoWhiteBgLabel" style="cursor: pointer;">Activo</label>
                                         </div>
                                     </div>
                                 </div>

@@ -9,7 +9,7 @@
 
     <!-- CSS Files -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-    <link rel="stylesheet" href="{{ asset('/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ asset('/css/atlantis.min.css') }}">
     <link rel="stylesheet" href="{{ asset('/css/select2.min.css') }}">
 </head>
@@ -179,13 +179,12 @@
         });
     </script>
     <!--   Core JS Files   -->
-    <script src="{{ asset('/js/core/jquery.3.2.1.min.js') }}"></script>
-    <script src="{{ asset('/js/core/popper.min.js') }}"></script>
-    <script src="{{ asset('/js/core/bootstrap.min.js') }}"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- jQuery UI -->
     <script src="{{ asset('/js/plugin/jquery-ui-1.12.1.custom/jquery-ui.min.js') }}"></script>
-    <script src="{{ asset('/js/plugin/jquery-ui-touch-punch/jquery.ui.touch-punch.min.js') }}"></script>
+
 
     <!-- jQuery Scrollbar -->
     <script src="{{ asset('/js/plugin/jquery-scrollbar/jquery.scrollbar.min.js') }}"></script>

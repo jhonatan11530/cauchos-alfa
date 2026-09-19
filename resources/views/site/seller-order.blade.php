@@ -90,8 +90,18 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Observaciones</label>
+                            <div class="form-group mt-3">
+                                <label class="small font-weight-bold">TIPO DE FACTURACIÓN</label>
+                                <select name="billing_type" class="form-control custom-select" required>
+                                    <option value="remision" @selected(old('billing_type') == 'remision')>Remisión</option>
+                                    <option value="factura_electronica" @selected(old('billing_type') == 'factura_electronica')>Factura Electrónica</option>
+                                </select>
+                                @error('billing_type')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="mb-3 mt-3">
+                                <label class="small font-weight-bold">OBSERVACIONES</label>
                                 <textarea name="notes" rows="3" class="form-control">{{ old('notes') }}</textarea>
                             </div>
                             @php

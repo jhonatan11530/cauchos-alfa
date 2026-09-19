@@ -8,9 +8,10 @@
             @csrf
             @if ($order->exists) @method('PUT') @endif
             <div class="row">
-                <div class="form-group col-md-4"><label>Código</label><input name="code" class="form-control" value="{{ old('code', $order->code) }}" placeholder="Automatico si se deja vacio"></div>
-                <div class="form-group col-md-4"><label>Cliente</label><select name="client_id" class="form-control" required><option value="">Seleccionar</option>@foreach ($clients as $client)<option value="{{ $client->id }}" @selected(old('client_id', $order->client_id) == $client->id)>{{ $client->name }}</option>@endforeach</select></div>
-                <div class="form-group col-md-4"><label>Fecha</label><input type="date" name="ordered_at" class="form-control" value="{{ old('ordered_at', optional($order->ordered_at)->format('Y-m-d') ?: now()->format('Y-m-d')) }}"></div>
+                <div class="form-group col-md-3"><label>Código</label><input name="code" class="form-control" value="{{ old('code', $order->code) }}" placeholder="Automatico si se deja vacio"></div>
+                <div class="form-group col-md-3"><label>Cliente</label><select name="client_id" class="form-control" required><option value="">Seleccionar</option>@foreach ($clients as $client)<option value="{{ $client->id }}" @selected(old('client_id', $order->client_id) == $client->id)>{{ $client->name }}</option>@endforeach</select></div>
+                <div class="form-group col-md-3"><label>Tipo de Facturación</label><select name="billing_type" class="form-control" required><option value="remision" @selected(old('billing_type', $order->billing_type ?? 'remision') == 'remision')>Remisión</option><option value="factura_electronica" @selected(old('billing_type', $order->billing_type ?? 'remision') == 'factura_electronica')>Factura Electrónica</option></select></div>
+                <div class="form-group col-md-3"><label>Fecha</label><input type="date" name="ordered_at" class="form-control" value="{{ old('ordered_at', optional($order->ordered_at)->format('Y-m-d') ?: now()->format('Y-m-d')) }}"></div>
                 <div class="form-group col-md-12"><label>Observaciones</label><textarea name="notes" class="form-control">{{ old('notes', $order->notes) }}</textarea></div>
             </div>
             <h4>Productos</h4>

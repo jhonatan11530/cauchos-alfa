@@ -61,6 +61,7 @@ Route::middleware('auth')->group(function () {
         Route::post('whatsapp/reiniciar', [WhatsAppController::class, 'restart'])->name('whatsapp.restart');
         Route::get('pedidos', [OrderController::class, 'index'])->name('pedidos.index');
         Route::get('pedidos/{pedido}', [OrderController::class, 'show'])->name('pedidos.show');
+        Route::get('pedidos/{pedido}/pdf', [OrderController::class, 'pdf'])->name('pedidos.pdf');
         Route::get('pedidos/{pedido}/edit', [OrderController::class, 'edit'])->name('pedidos.edit');
         Route::match(['put', 'patch'], 'pedidos/{pedido}', [OrderController::class, 'update'])->name('pedidos.update');
         Route::delete('pedidos/{pedido}', [OrderController::class, 'destroy'])->name('pedidos.destroy');

@@ -1,6 +1,9 @@
 @extends('admin.layout.plantilla')
 @section('banner')
-    <div><h2 class="text-white pb-2 fw-bold">Pedido {{ $order->code }}</h2><h5 class="text-white op-7 mb-2">Detalle y trazabilidad</h5></div>
+    <div class="d-flex justify-content-between align-items-center w-100">
+        <div><h2 class="text-white pb-2 fw-bold">Pedido {{ $order->code }}</h2><h5 class="text-white op-7 mb-2">Detalle y trazabilidad</h5></div>
+        <a href="{{ route('pedidos.pdf', $order) }}" target="_blank" class="btn btn-primary"><i class="fas fa-print"></i> Imprimir</a>
+    </div>
 @endsection
 @section('contenido')
     <div class="page-inner mt--5">
@@ -8,6 +11,7 @@
             <div class="col-md-8">
                 <div class="card"><div class="card-header"><h4 class="card-title">Detalle</h4></div><div class="card-body">
                     <p><strong>Cliente:</strong> {{ $order->client->name }}</p>
+                    <p><strong>Facturación:</strong> <span class="badge badge-info">{{ $order->billing_type == 'factura_electronica' ? 'Factura Electrónica' : 'Remisión' }}</span></p>
                     <p><strong>Estado actual:</strong> <span class="badge" style="background: {{ $order->status->color }}; color: #fff">{{ $order->status->name }}</span></p>
                     <p><strong>Observaciones:</strong> {{ $order->notes }}</p>
                     <table class="table">

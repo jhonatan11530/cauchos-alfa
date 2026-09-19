@@ -49,6 +49,7 @@ class OrderController extends Controller
             $order = Order::create([
                 'code' => $this->generateCode(),
                 'client_id' => $data['client_id'],
+                'billing_type' => $data['billing_type'],
                 'created_by' => Auth::id(),
                 'order_status_id' => $status->id,
                 'ordered_at' => now(),
@@ -92,6 +93,7 @@ class OrderController extends Controller
             $pedido->update([
                 'code' => $data['code'],
                 'client_id' => $data['client_id'],
+                'billing_type' => $data['billing_type'],
                 'ordered_at' => $data['ordered_at'],
                 'notes' => $data['notes'] ?? null,
             ]);
@@ -143,6 +145,7 @@ class OrderController extends Controller
         return $request->validate([
             'code' => ['nullable', 'string', 'max:100', 'unique:orders,code'.($order ? ','.$order->id : '')],
             'client_id' => ['required', 'exists:clients,id'],
+            'billing_type' => ['required', 'in:remision,factura_electronica'],
             'ordered_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'],
@@ -185,5 +188,12 @@ class OrderController extends Controller
             'observation' => $observation,
             'changed_at' => now(),
         ]);
+    }
+
+    public function pdf(Order $pedido)
+    {
+        $pedido->load(['client', 'items.product', 'creator']);
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.orders.pdf', compact('pedido'));
+        return $pdf->stream('pedido-'.$pedido->code.'.pdf');
     }
 }

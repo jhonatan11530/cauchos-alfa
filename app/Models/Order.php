@@ -11,6 +11,7 @@ class Order extends Model
     protected $fillable = [
         'code',
         'client_id',
+        'billing_type',
         'created_by',
         'order_status_id',
         'ordered_at',

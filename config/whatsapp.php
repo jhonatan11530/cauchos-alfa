@@ -19,4 +19,6 @@ return [
 
     // Prefijo por defecto para numeros locales sin codigo de pais.
     'default_country_code' => env('WHATSAPP_COUNTRY_CODE', '57'),
+    'phone' => env('WHATSAPP_MSG_URL', ''),
+
 ];

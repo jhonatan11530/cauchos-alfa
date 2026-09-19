@@ -10,17 +10,17 @@
             <div class="col-lg-2 col-6 mb-3 mb-lg-0">
                 <h4 class="h6 font-weight-bold mb-3">Productos</h4>
                 <ul class="list-unstyled">
-                    <li><a href="#bicicletas" class="footer-link d-block py-1">Carretera</a></li>
-                    <li><a href="#bicicletas" class="footer-link d-block py-1">Montaña</a></li>
-                    <li><a href="#bicicletas" class="footer-link d-block py-1">Urbana</a></li>
-                    <li><a href="#" class="footer-link d-block py-1">Accesorios</a></li>
+                    <li><a href="{{ route('site.catalog') }}" class="footer-link d-block py-1">Carretera</a></li>
+                    <li><a href="{{ route('site.catalog') }}" class="footer-link d-block py-1">Montaña</a></li>
+                    <li><a href="{{ route('site.catalog') }}" class="footer-link d-block py-1">Urbana</a></li>
+                    <li><a href="{{ route('site.catalog') }}" class="footer-link d-block py-1">Accesorios</a></li>
                 </ul>
             </div>
             <div class="col-lg-2 col-6 mb-3 mb-lg-0">
                 <h4 class="h6 font-weight-bold mb-3">Empresa</h4>
                 <ul class="list-unstyled">
-                    <li><a href="{{ route('site.home') }}#Descripción" class="footer-link d-block py-1">Nosotros</a></li>
-                    <li><a href="{{ route('site.home') }}#Contacto" class="footer-link d-block py-1">Contacto</a></li>
+                    <li><a href="{{ route('site.home') }}#MisiónVisión" class="footer-link d-block py-1">Nosotros</a></li>
+                    <li><a href="{{ route('site.home') }}#contacto" class="footer-link d-block py-1">Contacto</a></li>
                 </ul>
             </div>
             <div class="col-lg-4">

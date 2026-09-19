@@ -216,7 +216,7 @@
                 Contacta con nuestros expertos para encontrar el neumático ideal para tu vehículo.
             </p>
             <div class="d-flex flex-wrap justify-content-center btn-group-hero">
-                <a href="#" class="btn btn-red btn-lg">Contactar ahora</a>
+                <a href="{{config("whatsapp.phone")}}" class="btn btn-red btn-lg" target="_blank">Contactar ahora</a>
             </div>
         </div>
     </section>

@@ -7,6 +7,7 @@
         </button>
         <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav ml-auto">
+                <li class="nav-item"><a class="nav-link" href="{{ route('site.home') }}">Inicio</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('site.home') }}#Descripción">Sobre Nosotros</a>
                 </li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('site.home') }}#MisiónVisión">Misión y Visión</a></li>
@@ -30,9 +31,9 @@
                     @endif
                 @endauth
                 @guest
-                    <li class="nav-item"><a class="nav-link btn btn-red btn-lg"
+                    <li class="nav-item mb-2"><a class="nav-link btn btn-red btn-lg"
                             href="{{ route('site.seller.login') }}">Vendedores</a></li>
-                    <li class="nav-item"><a class="nav-link btn btn-red btn-lg" href="{{ route('login') }}">Ingresar</a></li>
+                    <li class="nav-item mb-2"><a class="nav-link btn btn-red btn-lg" href="{{ route('login') }}">Ingresar</a></li>
                 @endguest
             </ul>
         </div>

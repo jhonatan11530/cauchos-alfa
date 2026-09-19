@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Log;
 use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
@@ -37,11 +38,23 @@ class AuthController extends Controller
             'g-recaptcha-response.recaptchav3' => 'La verificación anti-robot falló. Vuelve a intentarlo.',
         ]);
 
+        $throttleKey = 'admin-login:' . strtolower($credentials['email']) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            return back()
+                ->withErrors(['email' => 'Demasiados intentos de acceso. Inténtalo de nuevo en ' . $seconds . ' segundos.'])
+                ->onlyInput('email');
+        }
+
         if (Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password'], 'is_active' => true], $request->boolean('remember'))) {
+            RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
             return redirect()->intended(route('dashboard'));
         }
+
+        RateLimiter::hit($throttleKey, 120);
 
         return back()
             ->withErrors(['email' => 'Las credenciales no coinciden o el usuario esta inactivo.'])

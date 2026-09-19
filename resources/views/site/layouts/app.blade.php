@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Cauchos Alfa | Neumáticos y Llantas de alto rendimiento')</title>
+    <meta name="google-site-verification" content="29v5bm7axdRaGKn_W81TiVpHGptO6pPlljdlvhmM-rc" />
     <meta name="description"
         content="@yield('description', 'Descubre la mejor selección de cauchos y neumáticos para todo tipo de vehículos. Diseño, seguridad y rendimiento.')">
     <meta property="og:title" content="@yield('title', 'Cauchos Alfa | Neumáticos de alto rendimiento')">

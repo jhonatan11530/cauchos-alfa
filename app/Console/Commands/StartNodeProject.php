@@ -89,7 +89,9 @@ class StartNodeProject extends Command
 
             // Construir el dashboard y backend con build:all
             $this->info('Construyendo el Dashboard (npm run build:all)...');
-            $buildProcess = Process::fromShellCommandline('npm run build:all', $path);
+            $buildProcess = Process::fromShellCommandline('npm run build:all', $path, [
+                'RAYON_NUM_THREADS' => '2'
+            ]);
             $buildProcess->setTimeout(null);
 
             $buildProcess->run(function ($type, $buffer) {

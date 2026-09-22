@@ -270,3 +270,25 @@
 }
 
 .bike-landing .btn-group-hero .btn { margin: 0.5rem; }
+
+/* Pagination Dark Theme */
+.bike-landing .pagination .page-link {
+  background-color: var(--bike-charcoal);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--bike-white);
+}
+.bike-landing .pagination .page-link:hover {
+  background-color: var(--bike-graphite);
+  color: var(--bike-red);
+}
+.bike-landing .pagination .page-item.active .page-link {
+  background-color: var(--bike-red);
+  border-color: var(--bike-red);
+  color: #fff;
+}
+.bike-landing .pagination .page-item.disabled .page-link {
+  background-color: var(--bike-void);
+  color: var(--bike-gray);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+

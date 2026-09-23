@@ -3,35 +3,6 @@
 @section('title', 'Cauchos Alfa | Neumáticos de alto rendimiento')
 @section('description', 'Descubre la mejor selección de cauchos y neumáticos para todo tipo de vehículos. Calidad, durabilidad y rendimiento.')
 
-@section('schema')
-    <script type="application/ld+json">
-        {
-          "@@context": "https://schema.org",
-          "@@type": "AutoPartsStore",
-          "name": "Cauchos Alfa",
-          "image": {!! json_encode(asset('img/hero-bike.png')) !!},
-          "@@id": {!! json_encode(url('/')) !!},
-          "url": {!! json_encode(url('/')) !!},
-          "telephone": "+573000000000",
-          "address": {
-            "@@type": "PostalAddress",
-            "streetAddress": "Calle Principal",
-            "addressLocality": "Cali",
-            "addressRegion": "DC",
-            "postalCode": "11001",
-            "addressCountry": "CO"
-          },
-          "geo": {
-            "@@type": "GeoCoordinates",
-            "latitude": 4.60971,
-            "longitude": -74.08175
-          },
-          "sameAs": [
-            {!! json_encode(url('/')) !!}
-          ]
-        }
-    </script>
-@endsection
 
 @section('content')
     <header class="hero-section">

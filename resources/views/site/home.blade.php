@@ -1,30 +1,30 @@
 @extends('site.layouts.app')
 
-@section('title', 'Cauchos Alfa | Neumáticos de alto rendimiento')
-@section('description', 'Descubre la mejor selección de cauchos y neumáticos para todo tipo de vehículos. Calidad, durabilidad y rendimiento.')
+@section('title', 'Cauchos Alfa | Mayorista de Repuestos y Llantas para Bicicletas en Cali')
+@section('description', 'Distribuidor mayorista de cauchos, llantas y repuestos de bicicletas en Cali. Encuentra la mejor calidad, rendimiento y marcas líderes para tu negocio o bicicleta.')
 
 @section('schema')
     <script type="application/ld+json">
         {
           "@@context": "https://schema.org",
-          "@@type": "AutoPartsStore",
+          "@@type": "BicycleStore",
           "name": "Cauchos Alfa",
           "image": {!! json_encode(asset('img/hero-bike.png')) !!},
           "@@id": {!! json_encode(url('/')) !!},
           "url": {!! json_encode(url('/')) !!},
-          "telephone": "+573000000000",
+          "telephone": "+573128416915",
           "address": {
             "@@type": "PostalAddress",
-            "streetAddress": "Calle Principal",
+            "streetAddress": "Cr28 A 1-72 Y 1 El Poblado II",
             "addressLocality": "Cali",
-            "addressRegion": "DC",
-            "postalCode": "11001",
+            "addressRegion": "Valle del Cauca",
+            "postalCode": "760001",
             "addressCountry": "CO"
           },
           "geo": {
             "@@type": "GeoCoordinates",
-            "latitude": 4.60971,
-            "longitude": -74.08175
+            "latitude": 3.42158,
+            "longitude": -76.5205
           },
           "sameAs": [
             {!! json_encode(url('/')) !!}
@@ -37,11 +37,11 @@
     <header class="hero-section">
         <div class="container">
             <p class="text-red font-weight-bold mb-3" style="letter-spacing:.15em; font-size:.85rem;">
-                CATÁLAGO ACTUALIZADO 2026
+                CATÁLOGO DE REPUESTOS Y LLANTAS 2026
             </p>
-            <h1 class="hero-title">Neumáticos diseñados para<br>el camino extraordinario.</h1>
+            <h1 class="hero-title">Llantas y Repuestos para Bicicletas en Cali.</h1>
             <p class="hero-subtitle">
-                Venta de cauchos y neumáticos de alto rendimiento en Cali. La máxima adherencia, seguridad y durabilidad para quienes entienden que la calidad es la base de cada viaje.
+                Distribuidores mayoristas e importadores de cauchos, llantas y neumáticos de alto rendimiento en Cali. La máxima adherencia, seguridad y durabilidad para ciclistas exigentes y tiendas especializadas.
             </p>
             <div class="d-flex flex-wrap justify-content-center btn-group-hero">
                 <a href="{{ route('site.catalog') }}" class="btn btn-red btn-lg">Ver Catálogo</a>
@@ -136,7 +136,6 @@
                                                     <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
                                                         <img src="{{ $url }}" class="d-block w-100 card-img-top"
                                                             alt="{{ $product->name }} - imagen {{ $i + 1 }}"
-                                                            loading="lazy"
                                                             style="aspect-ratio: 4 / 3; object-fit: cover;">
                                                     </div>
                                                 @endforeach
@@ -172,7 +171,7 @@
                                         </div>
                                     @elseif (count($urls) === 1)
                                         <img src="{{ $urls[0] }}" class="card-img-top w-100"
-                                            alt="{{ $product->name }}" loading="lazy" style="aspect-ratio: 4 / 3; object-fit: cover;">
+                                            alt="{{ $product->name }}" style="aspect-ratio: 4 / 3; object-fit: cover;">
                                     @else
                                         <svg class="card-img-top w-100"
                                             style="aspect-ratio: 4 / 3; background-color: #2b3035;"

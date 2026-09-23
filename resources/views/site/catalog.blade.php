@@ -1,14 +1,14 @@
 @extends('site.layouts.app')
 
-@section('title', 'Catálogo | Cauchos Alfa')
+@section('title', 'Catálogo Mayorista de Repuestos y Llantas para Bicicletas | Cauchos Alfa')
 
 @section('schema')
 <script type="application/ld+json">
 {
   "@@context": "https://schema.org",
   "@@type": "CollectionPage",
-  "name": "Catálogo de Cauchos Alfa",
-  "description": "Explora nuestro catálogo completo de llantas y cauchos.",
+  "name": "Catálogo de Repuestos y Llantas para Bicicletas - Cauchos Alfa",
+  "description": "Explora nuestro catálogo completo de llantas, cauchos y repuestos para bicicletas en Cali.",
   "url": {!! json_encode(url()->current()) !!},
   "mainEntity": {
     "@@type": "ItemList",
@@ -103,7 +103,6 @@
                                                 <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
                                                     <img src="{{$url }}" class="d-block w-100 card-img-top"
                                                         alt="{{ $product->name }} - imagen {{ $i + 1 }}"
-                                                        loading="lazy"
                                                         style="aspect-ratio: 4 / 3; object-fit: cover;max-height: 100%; transition: 0.3s;"
                                                         onmouseover="this.style.transform='scale(1.1)'"
                                                         onmouseout="this.style.transform='scale(1)'">
@@ -135,7 +134,6 @@
                                     </div>
                                 @elseif (count($urls) === 1)
                                     <img src="{{ $urls[0] }}" class="card-img-top w-100" alt="{{ $product->name }}"
-                                        loading="lazy"
                                         style="aspect-ratio: 4 / 3; object-fit: cover;max-height: 100%; transition: 0.3s;"
                                         onmouseover="this.style.transform='scale(1.1)'"
                                         onmouseout="this.style.transform='scale(1)'">

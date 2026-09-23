@@ -25,16 +25,19 @@ class SiteController extends Controller
         ]);
     }
 
-    public function catalog(Request $request): View
+    public function catalog(Request $request, $categoriaId = null, $slug = null): View
     {
         $categories = Category::where('is_active', true)
             ->withCount(['products' => fn($q) => $q->where('is_active', true)])
             ->orderBy('name')
             ->get();
 
+        // Si viene por SEO url (/catalogo/1-llantas) o por query string (?categoria=1)
+        $filterCategoryId = $categoriaId ?? $request->input('categoria');
+
         $products = Product::where('is_active', true)
             ->with(['category', 'images'])
-            ->when($request->filled('categoria'), fn($q) => $q->where('category_id', $request->input('categoria')))
+            ->when($filterCategoryId, fn($q) => $q->where('category_id', $filterCategoryId))
             ->orderBy('name')
             ->paginate(12)
             ->withQueryString();
@@ -42,9 +45,26 @@ class SiteController extends Controller
         return view('site.catalog', [
             'products' => $products,
             'categories' => $categories,
-            'selectedCategory' => $categories->firstWhere('id', (int) $request->input('categoria')),
+            'selectedCategory' => $categories->firstWhere('id', (int) $filterCategoryId),
             'activeCatalogs' => Catalog::where('is_active', true)->withCount('products')->get(),
         ]);
+    }
+
+    public function product(Request $request, $id, $slug = null): View
+    {
+        $product = Product::where('is_active', true)
+            ->with(['category', 'images'])
+            ->findOrFail($id);
+
+        $relatedProducts = Product::where('is_active', true)
+            ->where('category_id', $product->category_id)
+            ->where('id', '!=', $product->id)
+            ->with('images')
+            ->inRandomOrder()
+            ->take(4)
+            ->get();
+
+        return view('site.product', compact('product', 'relatedProducts'));
     }
 
     public function showSellerLogin(): View|RedirectResponse

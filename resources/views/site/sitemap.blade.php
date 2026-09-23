@@ -10,14 +10,15 @@
         <lastmod>{{ now()->tz('UTC')->toAtomString() }}</lastmod>
         <changefreq>daily</changefreq>
         <priority>0.8</priority>
-    </url>
-    @foreach($categories as $category)
-    <url>
-        <loc>{{ route('site.catalog', ['categoria' => $category->id]) }}</loc>
-        <lastmod>{{ $category->updated_at ? $category->updated_at->tz('UTC')->toAtomString() : now()->tz('UTC')->toAtomString() }}</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.6</priority>
-    </url>
-    @endforeach
+    </url> @foreach($categories as $category)
+        <url>
+            <loc>
+                {{ route('site.catalog.category', ['slug' => \Illuminate\Support\Str::slug($category->name), 'categoriaId' => $category->id]) }}
+            </loc>
+            <lastmod>
+                {{ $category->updated_at ? $category->updated_at->tz('UTC')->toAtomString() : now()->tz('UTC')->toAtomString() }}
+            </lastmod>
+            <changefreq>weekly</changefreq>
+            <priority>0.6</priority>
+    </url> @endforeach
 </urlset>
-

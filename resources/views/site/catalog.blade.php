@@ -61,7 +61,7 @@
             </div>
             @foreach ($categories as $category)
                 <div class="col-6 col-md-4 col-lg-3 mb-3">
-                    <a href="{{ route('site.catalog', ['categoria' => $category->id]) }}" style="text-decoration: none;">
+                    <a href="{{ route('site.catalog.category', ['slug' => \Illuminate\Support\Str::slug($category->name), 'categoriaId' => $category->id]) }}" style="text-decoration: none;">
                         <div class="card h-100 shadow-sm text-center {{ request('categoria') == $category->id ? 'border-danger' : '' }}"
                             style="background: var(--bike-charcoal); border-width: 2px; transition: 0.3s; border-radius: 20px; color: white;">
                             <div class="card-body">
@@ -151,8 +151,12 @@
                                 <p class="text-red font-weight-bold mb-1" style="font-size:.75rem; letter-spacing:.05em;">
                                     {{ $product->category->name ?? 'General' }}
                                 </p>
-                                <h5 class="font-weight-bold mb-2 text-white">{{ $product->name }}</h5>
-                                <p class="text-muted-custom small mb-2">{{ $product->description }}</p>
+                                <h5 class="font-weight-bold mb-2">
+                                    <a href="{{ route('site.product', ['slug' => \Illuminate\Support\Str::slug($product->name), 'id' => $product->id]) }}" class="text-white text-decoration-none">
+                                        {{ $product->name }}
+                                    </a>
+                                </h5>
+                                <p class="text-muted-custom small mb-2">{{ \Illuminate\Support\Str::limit($product->description, 60) }}</p>
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <span class="small font-weight-bold text-white">Ref:
                                         {{ $product->reference ?? 'N/A' }}</span>
@@ -161,6 +165,9 @@
                                         style="font-size: .7rem;">
                                         {{ $product->availability === 'disponible' ? 'Disponible' : 'No disponible' }}
                                     </span>
+                                </div>
+                                <div class="mb-3">
+                                    <a href="{{ route('site.product', ['slug' => \Illuminate\Support\Str::slug($product->name), 'id' => $product->id]) }}" class="btn btn-sm btn-outline-danger w-100" style="border-radius: 20px;">Ver más detalles</a>
                                 </div>
 
                                 @auth

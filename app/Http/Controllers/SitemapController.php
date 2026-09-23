@@ -16,4 +16,11 @@ class SitemapController extends Controller
 
         return response($content)->header('Content-Type', 'text/xml');
     }
+
+    public function feed(): Response
+    {
+        $products = \App\Models\Product::where('is_active', true)->with('category')->get();
+        $content = view('site.feed', compact('products'))->render();
+        return response($content)->header('Content-Type', 'text/xml');
+    }
 }

@@ -18,7 +18,10 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 // Pagina web publica
 Route::get('/', [SiteController::class, 'home'])->name('site.home');
 Route::get('/catalogo', [SiteController::class, 'catalog'])->name('site.catalog');
+Route::get('/catalogo/{categoriaId}-{slug}', [SiteController::class, 'catalog'])->name('site.catalog.category');
+Route::get('/producto/{id}-{slug}', [SiteController::class, 'product'])->name('site.product');
 Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])->name('site.sitemap');
+Route::get('/feed.xml', [App\Http\Controllers\SitemapController::class, 'feed'])->name('site.feed');
 Route::middleware('auth')->group(function () {
     Route::post('/vendedor/pedido/agregar', [SiteController::class, 'addToCart'])->name('site.seller.add');
     Route::post('/vendedor/pedido/quitar', [SiteController::class, 'removeCartItem'])->name('site.seller.remove');

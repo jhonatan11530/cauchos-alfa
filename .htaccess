@@ -1,11 +1,42 @@
-<IfModule mod_rewrite.c>
+﻿<IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
 
     RewriteEngine On
 
-    # Si la petición no va ya hacia la carpeta public, la redirigimos de forma invisible
+    # --------------------------------------------------------------------------
+    # 1. SEGURIDAD: Proteger archivos y carpetas sensibles
+    # --------------------------------------------------------------------------
+    
+    # Bloquear archivos ocultos (como .env o .git) pero permitir .well-known (para certificados SSL)
+    RewriteCond %{REQUEST_URI} !^/\.well-known/
+    RewriteRule (^|/)\. - [F,L,NC]
+
+    # Bloquear archivos de configuracion e instalacion
+    RewriteRule ^(composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|server\.php|artisan)$ - [F,L,NC]
+
+    # Bloquear el acceso directo a carpetas clave de Laravel
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor)(/.*)?$ - [F,L,NC]
+
+    # --------------------------------------------------------------------------
+    # 2. ENRUTAMIENTO PRINCIPAL
+    # --------------------------------------------------------------------------
+
+    # Si la peticion no va ya hacia la carpeta public, la redirigimos
     RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
+
+# --------------------------------------------------------------------------
+# 3. SEGURIDAD ADICIONAL: Bloqueo preventivo por extensiones vulnerables
+# --------------------------------------------------------------------------
+<FilesMatch "\.(log|sql|bak|yml|yaml|ini|sh|sqlite)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>

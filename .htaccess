@@ -5,18 +5,7 @@
 
     RewriteEngine On
 
-    # Si es una peticion hacia public, dejala intacta
-    RewriteRule ^public/ - [L]
-
-    # Si es una ruta (no tiene extension de archivo), enviala al index de la raiz
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} !\.[a-zA-Z0-9_-]+$
-    RewriteRule ^ index.php [L]
-
-    # Si parece un archivo estatico (tiene extension) envialo a public/
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} \.[a-zA-Z0-9_-]+$
+    # Si la petición no va ya hacia la carpeta public, la redirigimos de forma invisible
+    RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

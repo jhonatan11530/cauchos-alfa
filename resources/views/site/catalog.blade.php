@@ -1,6 +1,7 @@
 @extends('site.layouts.app')
 
 @section('title', 'Catálogo Mayorista de Repuestos y Llantas para Bicicletas | Cauchos Alfa')
+@section('title', 'Catálogo Mayorista | Cauchos para Motos y Bicicletas | Cauchos Alfa')
 
 @section('schema')
 <script type="application/ld+json">
@@ -9,6 +10,8 @@
   "@@type": "CollectionPage",
   "name": "Catálogo de Repuestos y Llantas para Bicicletas - Cauchos Alfa",
   "description": "Explora nuestro catálogo completo de llantas, cauchos y repuestos para bicicletas en Cali.",
+  "name": "Catálogo de Cauchos para Motos y Bicicletas - Cauchos Alfa",
+  "description": "Explora nuestro catálogo de fábrica e importación directa de cauchos, llantas para motos, repuestos de bicicletas y bicicletas en Cali.",
   "url": {!! json_encode(url()->current()) !!},
   "mainEntity": {
     "@@type": "ItemList",
@@ -192,6 +195,18 @@
 
         <div class="mt-4 d-flex justify-content-center">
             {{ $products->appends(request()->query())->links() }}
+        </div>
+
+        <!-- SEO Text Block -->
+        <div class="row mt-5 pt-4 border-top">
+            <div class="col-12">
+                <h3 class="h5 font-weight-bold text-dark">Llantas, Repuestos y Accesorios para Bicicletas en Colombia</h3>
+                <h3 class="h5 font-weight-bold text-dark">Fabricantes e Importadores de Cauchos para Motos y Bicicletas</h3>
+                <p class="text-muted" style="font-size: 0.9rem;">
+                    En Cauchos Alfa nos especializamos en la distribución mayorista y venta al detal de <strong>repuestos para bicicletas en Cali</strong> y envíos a toda Colombia. Contamos con un amplio inventario de <strong>llantas tubeless, neumáticos MTB 29, llantas para ruta y gravel</strong>, así como <strong>repuestos Shimano originales</strong>, cadenas, pastillas de freno y componentes de transmisión. Ya sea que busques mejorar el rendimiento de tus ruedas, hacer conversión a tubeless, o abastecer tu tienda, tenemos la calidad y durabilidad que necesitas.
+                    En <strong>Cauchos Alfa</strong> somos fabricantes directos e importadores especializados en <strong>cauchos y llantas para motos</strong> y <strong>bicicletas</strong> en Cali, Colombia. Nuestro catálogo incluye desde llantas tubeless y neumáticos para bicicletas de ruta y MTB, hasta llantas de alto rendimiento y durabilidad extrema para motocicletas de trabajo y calle. Además, somos distribuidores mayoristas de bicicletas completas y repuestos. Compra con la confianza de fábrica y mejora la adherencia y seguridad de tu vehículo.
+                </p>
+            </div>
         </div>
     </section>
 @endsection

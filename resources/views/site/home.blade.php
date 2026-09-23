@@ -130,7 +130,7 @@
                                     @endphp
                                     @if (count($urls) > 1)
                                         <div id="gallery-{{ $product->id }}" class="carousel slide carousel-fade w-100"
-                                            data-bs-ride="carousel">
+                                            data-ride="carousel">
                                             <div class="carousel-inner">
                                                 @foreach ($urls as $i => $url)
                                                     <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
@@ -141,7 +141,7 @@
                                                 @endforeach
                                             </div>
                                             <button class="carousel-control-prev" type="button"
-                                                data-bs-target="#gallery-{{ $product->id }}" data-bs-slide="prev">
+                                                data-target="#gallery-{{ $product->id }}" data-slide="prev">
                                                 <span
                                                     class="bg-dark rounded-circle d-flex align-items-center justify-content-center"
                                                     style="width: 35px; height: 35px; opacity: 0.8;">
@@ -151,7 +151,7 @@
                                                 <span class="sr-only">Anterior</span>
                                             </button>
                                             <button class="carousel-control-next" type="button"
-                                                data-bs-target="#gallery-{{ $product->id }}" data-bs-slide="next">
+                                                data-target="#gallery-{{ $product->id }}" data-slide="next">
                                                 <span
                                                     class="bg-dark rounded-circle d-flex align-items-center justify-content-center"
                                                     style="width: 35px; height: 35px; opacity: 0.8;">
@@ -160,14 +160,14 @@
                                                 </span>
                                                 <span class="sr-only">Siguiente</span>
                                             </button>
-                                            <div class="carousel-indicators">
+                                            <ol class="carousel-indicators">
                                                 @foreach ($urls as $i => $url)
-                                                    <button type="button" data-bs-target="#gallery-{{ $product->id }}"
-                                                        data-bs-slide-to="{{ $i }}"
+                                                    <li data-target="#gallery-{{ $product->id }}"
+                                                        data-slide-to="{{ $i }}"
                                                         class="{{ $i === 0 ? 'active' : '' }}"
-                                                        aria-label="Imagen {{ $i + 1 }}"></button>
+                                                        aria-label="Imagen {{ $i + 1 }}"></li>
                                                 @endforeach
-                                            </div>
+                                            </ol>
                                         </div>
                                     @elseif (count($urls) === 1)
                                         <img src="{{ $urls[0] }}" class="card-img-top w-100"

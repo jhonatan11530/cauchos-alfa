@@ -1,75 +1,22 @@
-# ============================================================
-# Laravel - .htaccess en la raíz del proyecto
-# ============================================================
-
 <IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
 
     RewriteEngine On
 
-    # --------------------------------------------------------
-    # 1. BLOQUEAR ARCHIVOS Y DIRECTORIOS SENSIBLES
-    # --------------------------------------------------------
+    # Si es una peticion hacia public, dejala intacta
+    RewriteRule ^public/ - [L]
 
-    # Variables de entorno
-    RewriteRule ^\.env(?:\..*)?$ - [F,L,NC]
+    # Si es una ruta (no tiene extension de archivo), enviala al index de la raiz
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} !\.[a-zA-Z0-9_-]+$
+    RewriteRule ^ index.php [L]
 
-    # Git
-    RewriteRule ^\.git(?:/|$) - [F,L,NC]
-
-    # Composer
-    RewriteRule ^composer\.(json|lock)$ - [F,L,NC]
-
-    # Laravel Artisan
-    RewriteRule ^artisan$ - [F,L,NC]
-
-    # Configuración de servidores
-    RewriteRule ^\.htaccess$ - [F,L,NC]
-    RewriteRule ^\.user\.ini$ - [F,L,NC]
-
-    # Archivos de configuración / desarrollo
-    RewriteRule ^(phpunit\.xml|\.editorconfig|\.env\.example)$ - [F,L,NC]
-
-    # Directorios que nunca deberían ser públicos
-    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor)(?:/|$) - [F,L,NC]
-
-    # --------------------------------------------------------
-    # 2. BLOQUEAR ARCHIVOS OCULTOS
-    # --------------------------------------------------------
-
-    RewriteRule (^|/)\. - [F,L,NC]
-
-    # --------------------------------------------------------
-    # 3. REDIRIGIR TODO A LA CARPETA PUBLIC
-    # --------------------------------------------------------
-
-    # Cualquier petición que no comience con "public/" se redirige a "public/..."
-    # Esto permite que public/.htaccess se encargue de servir los archivos estáticos
-    # reales (como imágenes, css, js) o enrutarlos a index.php si no existen.
-    RewriteRule ^((?!public/).*)$ public/$1 [L,NC]
-
+    # Si parece un archivo estatico (tiene extension) envialo a public/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} \.[a-zA-Z0-9_-]+$
+    RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
-
-
-# ============================================================
-# BLOQUEO ADICIONAL DE ARCHIVOS SENSIBLES
-# ============================================================
-
-<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|artisan|phpunit\.xml|\.gitignore|\.gitattributes)$">
-    Require all denied
-</FilesMatch>
-
-
-# ============================================================
-# PROTEGER ARCHIVOS DE CONFIGURACIÓN Y BACKUPS
-# ============================================================
-
-<FilesMatch "\.(bak|config|dist|fla|inc|ini|log|old|orig|sh|sql|swp|tmp|tpl|yml|yaml)$">
-    Require all denied
-</FilesMatch>
-
-
-# ============================================================
-# DESACTIVAR LISTADO DE DIRECTORIOS
-# ============================================================
-
-Options -Indexes

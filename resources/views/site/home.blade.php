@@ -136,6 +136,7 @@
                                                     <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
                                                         <img src="{{ $url }}" class="d-block w-100 card-img-top"
                                                             alt="{{ $product->name }} - imagen {{ $i + 1 }}"
+                                                            loading="lazy"
                                                             style="aspect-ratio: 4 / 3; object-fit: cover;">
                                                     </div>
                                                 @endforeach
@@ -172,6 +173,7 @@
                                     @elseif (count($urls) === 1)
                                         <img src="{{ $urls[0] }}" class="card-img-top w-100"
                                             alt="{{ $product->name }}" style="aspect-ratio: 4 / 3; object-fit: cover;">
+                                            alt="{{ $product->name }}" loading="lazy" style="aspect-ratio: 4 / 3; object-fit: cover;">
                                     @else
                                         <svg class="card-img-top w-100"
                                             style="aspect-ratio: 4 / 3; background-color: #2b3035;"

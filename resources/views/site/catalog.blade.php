@@ -103,6 +103,7 @@
                                                 <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
                                                     <img src="{{$url }}" class="d-block w-100 card-img-top"
                                                         alt="{{ $product->name }} - imagen {{ $i + 1 }}"
+                                                        loading="lazy"
                                                         style="aspect-ratio: 4 / 3; object-fit: cover;max-height: 100%; transition: 0.3s;"
                                                         onmouseover="this.style.transform='scale(1.1)'"
                                                         onmouseout="this.style.transform='scale(1)'">
@@ -134,6 +135,7 @@
                                     </div>
                                 @elseif (count($urls) === 1)
                                     <img src="{{ $urls[0] }}" class="card-img-top w-100" alt="{{ $product->name }}"
+                                        loading="lazy"
                                         style="aspect-ratio: 4 / 3; object-fit: cover;max-height: 100%; transition: 0.3s;"
                                         onmouseover="this.style.transform='scale(1.1)'"
                                         onmouseout="this.style.transform='scale(1)'">

@@ -32,7 +32,7 @@
                     <tr>
                         <td><a href="{{ route('pedidos.show', $order) }}">{{ $order->code }}</a></td>
                         <td>{{ $order->client->name }}</td>
-                        <td>{{ optional($order->ordered_at)->format('Y-m-d') }}</td>
+                        <td>{{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y h:i A') }}</td>
                         <td><span class="badge" style="background: {{ $order->status->color }}; color: #fff">{{ $order->status->name }}</span></td>
                         <td>
                             <a href="{{ route('pedidos.edit', $order) }}" class="btn btn-sm btn-primary">Editar</a>

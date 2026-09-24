@@ -16,14 +16,14 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content="{{ asset('img/hero-bike.png') }}">
     <link rel="canonical" href="{{ url()->current() }}">
+    <link rel="shortcut icon" href="{{ asset('img/favicon.ico') }}" type="image/x-icon">
 
     @yield('schema')
 
     <link href="{{ asset('/css/bootstrap-icons.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('/css/toastr.min.css') }}">
     <link rel="stylesheet" href="{{ asset('/css/select2-bootstrap4.min.css') }}">
-
-    <link rel="stylesheet" href="{{ asset('/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/roja.css') }}">
     <link rel="stylesheet" href="{{ asset('/css/select2.min.css') }}">
     @if (config('recaptchav3.sitekey'))

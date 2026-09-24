@@ -11,6 +11,7 @@
             <div class="col-md-8">
                 <div class="card"><div class="card-header"><h4 class="card-title">Detalle</h4></div><div class="card-body">
                     <p><strong>Cliente:</strong> {{ $order->client->name }}</p>
+                    <p><strong>Fecha de pedido:</strong> {{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y h:i A') }}</p>
                     <p><strong>Facturación:</strong> <span class="badge badge-info">{{ $order->billing_type == 'factura_electronica' ? 'Factura Electrónica' : 'Remisión' }}</span></p>
                     <p><strong>Estado actual:</strong> <span class="badge" style="background: {{ $order->status->color }}; color: #fff">{{ $order->status->name }}</span></p>
                     <p><strong>Observaciones:</strong> {{ $order->notes }}</p>

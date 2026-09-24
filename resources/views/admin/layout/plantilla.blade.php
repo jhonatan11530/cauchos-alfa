@@ -5,13 +5,11 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>Panel Administrativo</title>
     <meta content='width=device-width, initial-scale=1.0, shrink-to-fit=no' name='viewport' />
-    <link rel="icon" href="{{ asset('/img/icon.ico') }}" type="image/x-icon" />
+    <link rel="shortcut icon" href="{{ asset('img/favicon.ico') }}" type="image/x-icon">
 
     <!-- CSS Files -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ asset('/css/toastr.min.css') }}">
     <link rel="stylesheet" href="{{ asset('/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('/css/toastr.min.css') }}">
     <link rel="stylesheet" href="{{ asset('/css/atlantis.min.css') }}">
     <link rel="stylesheet" href="{{ asset('/css/select2.min.css') }}">
 </head>
@@ -56,7 +54,9 @@
                 <div class="sidebar-content">
                     <div class="user">
                         <div class="avatar-sm float-left mr-2">
-                            <img src="{{ asset('/img/foto.png') }}" alt="..." class="avatar-img rounded-circle">
+                            <div class="avatar-img rounded-circle bg-primary d-flex align-items-center justify-content-center text-white" style="font-size: 1.2rem;">
+                                <i class="fas fa-users"></i>
+                            </div>
                         </div>
                         <div class="info">
                             <a href="#">
@@ -181,33 +181,15 @@
         });
     </script>
     <!--   Core JS Files   -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ asset('/js/jquery-3.7.1.min.js') }}"></script>
     <script src="{{ asset('/js/bootstrap.bundle.min.js') }}"></script>
 
     <!-- jQuery UI -->
     <script src="{{ asset('/js/plugin/jquery-ui-1.12.1.custom/jquery-ui.min.js') }}"></script>
 
-
     <!-- jQuery Scrollbar -->
     <script src="{{ asset('/js/plugin/jquery-scrollbar/jquery.scrollbar.min.js') }}"></script>
 
-    <!-- Chart JS -->
-    <script src="{{ asset('/js/plugin/chart.js/chart.min.js') }}"></script>
-
-    <!-- jQuery Sparkline -->
-    <script src="{{ asset('/js/plugin/jquery.sparkline/jquery.sparkline.min.js') }}"></script>
-
-    <!-- Chart Circle -->
-    <script src="{{ asset('/js/plugin/chart-circle/circles.min.js') }}"></script>
-
-    <!-- Datatables -->
-    <script src="{{ asset('/js/plugin/datatables/datatables.min.js') }}"></script>
-
-    <!-- Sweet Alert -->
-    <script src="{{ asset('/js/plugin/sweetalert/sweetalert.min.js') }}"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="{{ asset('/js/toastr.min.js') }}"></script>
 
 

@@ -18,6 +18,7 @@ class Catalog extends Model
         'contact_address',
         'notes',
         'is_active',
+        'template',
     ];
 
     protected function casts(): array

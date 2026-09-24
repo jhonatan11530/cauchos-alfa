@@ -77,7 +77,7 @@ class CatalogController extends Controller
             return $product->category?->name ?? 'Otros Productos';
         });
 
-        $pdf = app('dompdf.wrapper')->loadView('admin.catalogs.pdf', [
+        $pdf = app('dompdf.wrapper')->loadView('admin.catalogs.templates.' . ($catalogo->template ?: 'default'), [
             'catalog' => $catalogo,
             'productsByCategory' => $productsByCategory,
         ]);
@@ -94,7 +94,7 @@ class CatalogController extends Controller
         });
 
         return app('dompdf.wrapper')
-            ->loadView('admin.catalogs.pdf', [
+            ->loadView('admin.catalogs.templates.' . ($catalogo->template ?: 'default'), [
                 'catalog' => $catalogo,
                 'productsByCategory' => $productsByCategory,
             ])
@@ -121,6 +121,7 @@ class CatalogController extends Controller
             'contact_phone' => ['nullable', 'string', 'max:50'],
             'contact_address' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
+            'template' => ['required', 'string', 'in:default,modern,classic,catalogo-web'],
             'products' => ['nullable', 'array'],
             'products.*' => ['exists:products,id'],
         ]);

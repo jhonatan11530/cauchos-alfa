@@ -16,6 +16,14 @@
                 <div class="form-group col-md-4"><label>Logo</label><input type="file" name="logo" class="form-control"></div>
                 <div class="form-group col-md-12"><label>Dirección contacto</label><input name="contact_address" class="form-control" value="{{ old('contact_address', $catalog->contact_address) }}"></div>
                 <div class="form-group col-md-12"><label>Notas</label><textarea name="notes" class="form-control">{{ old('notes', $catalog->notes) }}</textarea></div>
+                <div class="form-group col-md-12">
+                    <label>Plantilla de Diseño (PDF)</label>
+                    <select name="template" class="form-control">
+                        <option value="default" {{ old('template', $catalog->template ?? 'default') == 'default' ? 'selected' : '' }}>Plantilla por defecto</option>
+                        <option value="catalogo-web" {{ old('template', $catalog->template ?? '') == 'catalogo-web' ? 'selected' : '' }}>Plantilla Moderna</option>
+                        <option value="classic" {{ old('template', $catalog->template ?? '') == 'classic' ? 'selected' : '' }}>Lista Minimalista</option>
+                    </select>
+                </div>
             </div>
             <div class="form-group"><label><input type="checkbox" name="is_active" value="1" {{ old('is_active', $catalog->is_active ?? true) ? 'checked' : '' }}> Activo</label></div>
             <div class="form-group">

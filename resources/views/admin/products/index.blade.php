@@ -15,7 +15,19 @@
                     <tr>
                         <td>{{ $product->name }}</td><td>{{ $product->reference }}</td><td>{{ $product->category->name ?? 'Sin categoría' }}</td>
                         <td>{{ $product->availability }}</td><td>{{ $product->is_active ? 'Activo' : 'Inactivo' }}</td>
-                        <td>@include('admin.partials.actions', ['edit' => route('productos.edit', $product), 'destroy' => route('productos.destroy', $product), 'active' => $product->is_active])</td>
+                        <td>
+                            @php
+                                $actionParams = [
+                                    'edit' => route('productos.edit', $product), 
+                                    'destroy' => route('productos.destroy', $product), 
+                                    'active' => $product->is_active
+                                ];
+                                if ($product->category_id === null) {
+                                    $actionParams['forceDelete'] = route('productos.forceDelete', $product);
+                                }
+                            @endphp
+                            @include('admin.partials.actions', $actionParams)
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="7" class="text-center">No hay productos registrados.</td></tr>

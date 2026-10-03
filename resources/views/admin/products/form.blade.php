@@ -277,7 +277,7 @@
     }
 
     // Procesar una imagen para aislar objeto y montarlo sobre fondo blanco puro (#ffffff)
-    async function processImageToStudioWhite(file, onProgress) {
+    async function processImageToStudioWhite(file, onProgress, mode = 'creation') {
         const isAutoEnabled = autoSwitch ? autoSwitch.checked : true;
         if (!isAutoEnabled) {
             return {
@@ -287,28 +287,31 @@
             };
         }
 
-        // 1. Reducir dimensiones de fotos gigantes antes de inferencia (ahorra 80% RAM y tiempo)
-        if (onProgress) onProgress('Optimizando resolución...');
-        const optimizedFile = await downscaleImageIfNeeded(file, 1400);
+        const isEnhance = mode === 'enhance';
+
+        // 1. Reducir dimensiones ANTES de inferencia SOLO si es modo creacion rapido.
+        if (onProgress) onProgress(isEnhance ? 'Preparando imagen original...' : 'Optimizando resolucion...');
+        const optimizedFile = isEnhance ? file : await downscaleImageIfNeeded(file, 1400);
 
         if (onProgress) onProgress('Cargando motor de IA...');
         const removeBg = await getRemoveBgFunction();
 
-        if (onProgress) onProgress('Aislando producto con IA (GPU/CPU)...');
+        const aiModel = isEnhance ? 'isnet' : 'isnet_quint8';
+
+        if (onProgress) onProgress('Aislando producto con IA (' + (isEnhance ? 'Alta Calidad' : 'Rapido') + ')...');
         const transparentBlob = await removeBg(optimizedFile, {
             debug: false,
-            model: 'isnet', // Modelo de máxima precisión IS-Net (~170MB)
+            model: aiModel,
             progress: (key, current, total) => {
                 if (onProgress && total > 0) {
                     const pct = Math.min(100, Math.round((current / total) * 100));
-                    onProgress(`Segmentando objeto (${pct}%)...`);
+                    onProgress('Segmentando objeto (' + pct + '%)...');
                 }
             }
         });
 
-        if (onProgress) onProgress('Aplicando renderizado fotográfico hiperrealista...');
+        if (onProgress) onProgress('Aplicando fondo blanco de alta fidelidad...');
 
-        // Cargar el blob transparente en un elemento de imagen
         const img = new Image();
         const objectUrl = URL.createObjectURL(transparentBlob);
         await new Promise((resolve, reject) => {
@@ -317,49 +320,95 @@
             img.src = objectUrl;
         });
 
-        // Tamaño estandarizado para la tienda
-        const TARGET_SIZE = 1000;
-        const PADDING = 100; // Margen para que el producto no toque los bordes
-
         const canvas = document.createElement('canvas');
-        canvas.width = TARGET_SIZE;
-        canvas.height = TARGET_SIZE;
         const ctx = canvas.getContext('2d');
 
-        // --- RENDERIZADO DE ALTA DEFINICIÓN (ESTILO CATÁLOGO INDUSTRIAL) ---
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
 
-        // 1. Asegurar un fondo blanco clínico y perfecto
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (isEnhance) {
+            // 1. Dibujar en canvas temporal para recortar el espacio transparente
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = img.naturalWidth || img.width;
+            tempCanvas.height = img.naturalHeight || img.height;
+            tempCtx.drawImage(img, 0, 0);
 
-        // 2. Calcular dimensiones para centrado perfecto con padding
-        const objWidth = img.naturalWidth || img.width;
-        const objHeight = img.naturalHeight || img.height;
-        const availableSize = TARGET_SIZE - (PADDING * 2);
-        const scale = Math.min(availableSize / objWidth, availableSize / objHeight);
-        const drawWidth = objWidth * scale;
-        const drawHeight = objHeight * scale;
-        const dx = (TARGET_SIZE - drawWidth) / 2;
-        const dy = (TARGET_SIZE - drawHeight) / 2;
+            // 2. Encontrar los limites (Bounding Box) y limpiar blancos falsos
+            const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const data = imgData.data;
+            let minX = tempCanvas.width, minY = tempCanvas.height, maxX = 0, maxY = 0;
+            let found = false;
 
-        // 3. Aplicar realce de textura fotográfica
-        // - contrast(1.15): Profundiza los negros del caucho
-        // - brightness(1.05): Resalta el reflejo de luz en los relieves
-        // - saturate(1.05): Elimina el tono lavado
-        ctx.filter = 'contrast(1.15) brightness(1.05) saturate(1.05)';
+            // Escaneo completo para borrar bolsas plasticas y encontrar limites
+            for (let y = 0; y < tempCanvas.height; y++) {
+                for (let x = 0; x < tempCanvas.width; x++) {
+                    const idx = (y * tempCanvas.width + x) * 4;
+                    const r = data[idx];
+                    const g = data[idx + 1];
+                    const b = data[idx + 2];
+                    let alpha = data[idx + 3];
 
-        // 4. Cero sombras extensas para mantener el estilo troquelado limpio
-        ctx.shadowColor = 'transparent';
+                    // FILTRO DE BLANCO FALSO (Bolsas plásticas, sombras claras)
+                    // Si el pixel es muy claro (brillo promedio > 215) lo hacemos transparente
+                    const brightness = (r + g + b) / 3;
+                    if (brightness > 215 && alpha > 0) {
+                        data[idx + 3] = 0; // Transparente total
+                        alpha = 0;
+                    }
 
-        // 5. Dibujar la pieza central
-        ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+                    if (alpha > 10) { // Umbral de transparencia para los bordes
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                        found = true;
+                    }
+                }
+            }
 
-        // Resetear filtros
-        ctx.filter = 'none';
+            // Aplicar los pixeles corregidos (bolsas eliminadas) al canvas temporal
+            tempCtx.putImageData(imgData, 0, 0);
+
+            let cropX = 0, cropY = 0, cropW = tempCanvas.width, cropH = tempCanvas.height;
+            if (found) {
+                cropX = minX;
+                cropY = minY;
+                cropW = maxX - minX + 1;
+                cropH = maxY - minY + 1;
+            }
+
+            // 3. Dibujar en canvas final estandarizado de 1000x1000
+            const TARGET_SIZE = 1000;
+            const PADDING = 70; // Reducido a 70px para que el objeto se vea aun mas grande y detallado
+
+            canvas.width = TARGET_SIZE;
+            canvas.height = TARGET_SIZE;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 4. Escalar SOLO el objeto recortado (no todo el espacio vacio)
+            const availableSize = TARGET_SIZE - (PADDING * 2);
+            const scale = Math.min(availableSize / cropW, availableSize / cropH);
+
+            const drawWidth = cropW * scale;
+            const drawHeight = cropH * scale;
+            const dx = (TARGET_SIZE - drawWidth) / 2;
+            const dy = (TARGET_SIZE - drawHeight) / 2;
+
+            ctx.drawImage(tempCanvas, cropX, cropY, cropW, cropH, dx, dy, drawWidth, drawHeight);
+        } else {
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+        }
 
         URL.revokeObjectURL(objectUrl);
 
-        // Convertir a JPEG de alta calidad
         return new Promise((resolve, reject) => {
             canvas.toBlob((blob) => {
                 if (!blob) {
@@ -369,10 +418,10 @@
                 const whiteBgFile = new File([blob], cleanName, { type: 'image/jpeg' });
                 resolve({
                     file: whiteBgFile,
-                    previewUrl: canvas.toDataURL('image/jpeg', 0.90),
+                    previewUrl: canvas.toDataURL('image/jpeg', 1.0),
                     processed: true
                 });
-            }, 'image/jpeg', 0.92);
+            }, 'image/jpeg', 1.0);
         });
     }
 
@@ -559,7 +608,7 @@
 
                 const result = await processImageToStudioWhite(file, (msg) => {
                     if(statusEl) statusEl.textContent = msg;
-                });
+                }, 'enhance');
 
                 const formData = new FormData();
                 formData.append('image', result.file);
@@ -631,3 +680,5 @@
     }
 </script>
 @endpush
+
+

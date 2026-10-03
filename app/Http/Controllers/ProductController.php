@@ -69,6 +69,23 @@ class ProductController extends Controller
         return back()->with('success', 'Estado del producto actualizado.');
     }
 
+    public function forceDelete(Product $producto): RedirectResponse
+    {
+        if ($producto->category_id !== null) {
+            return back()->with('error', 'No se puede eliminar porque el producto pertenece a una categoría.');
+        }
+        
+        if ($producto->image_path) {
+            Storage::disk('public')->delete($producto->image_path);
+        }
+        foreach ($producto->images as $imagen) {
+            Storage::disk('public')->delete($imagen->path);
+        }
+        
+        $producto->delete();
+        return back()->with('success', 'Producto eliminado definitivamente.');
+    }
+
     private function formData(Product $product): array
     {
         return [
@@ -140,10 +157,29 @@ class ProductController extends Controller
         
         $producto->update(['image_path' => $request->file('image')->store('products', 'public')]);
         
+        $this->sweepOrphanedImages();
+        
         return response()->json([
             'success' => true, 
             'path' => \App\Models\Product::getStorageUrl($producto->image_path)
         ]);
+    }
+
+    /**
+     * Sistema de Barrido: Borra fotos antiguas que no usa el sistema.
+     */
+    private function sweepOrphanedImages()
+    {
+        $filesOnDisk = Storage::disk('public')->files('products');
+        
+        $mainImages = \App\Models\Product::pluck('image_path')->filter()->toArray();
+        $galleryImages = \App\Models\ProductImage::pluck('path')->filter()->toArray();
+        $usedFiles = array_merge($mainImages, $galleryImages);
+        
+        $orphans = array_diff($filesOnDisk, $usedFiles);
+        foreach ($orphans as $orphan) {
+            Storage::disk('public')->delete($orphan);
+        }
     }
 
     public function replaceGalleryImage(Request $request, ProductImage $imagen)
@@ -154,9 +190,13 @@ class ProductController extends Controller
         
         $imagen->update(['path' => $request->file('image')->store('products', 'public')]);
         
+        $this->sweepOrphanedImages();
+        
         return response()->json([
             'success' => true, 
             'path' => \App\Models\Product::getStorageUrl($imagen->path)
         ]);
     }
 }
+
+

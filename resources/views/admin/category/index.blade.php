@@ -22,7 +22,19 @@
                             <td>{{ $category->name }}</td>
                             <td>{{ $category->description }}</td>
                             <td>{{ $category->is_active ? 'Activa' : 'Inactiva' }}</td>
-                            <td>@include('admin.partials.actions', ['edit' => route('categoria.edit', $category), 'destroy' => route('categoria.destroy', $category), 'active' => $category->is_active])</td>
+                            <td>
+                                @php
+                                    $actionParams = [
+                                        'edit' => route('categoria.edit', $category), 
+                                        'destroy' => route('categoria.destroy', $category), 
+                                        'active' => $category->is_active
+                                    ];
+                                    if ($category->products()->count() === 0) {
+                                        $actionParams['forceDelete'] = route('categoria.forceDelete', $category);
+                                    }
+                                @endphp
+                                @include('admin.partials.actions', $actionParams)
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="5" class="text-center">No hay categorías registradas.</td></tr>

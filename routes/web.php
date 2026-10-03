@@ -44,6 +44,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware('no-seller')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::resource('clientes', ClientController::class);
+        
+        // Rutas de eliminación definitiva
+        Route::delete('categoria/{categoria}/force-delete', [CategoryController::class, 'forceDelete'])->name('categoria.forceDelete');
+        Route::delete('productos/{producto}/force-delete', [ProductController::class, 'forceDelete'])->name('productos.forceDelete');
+        
         Route::resource('categoria', CategoryController::class);
         Route::resource('productos', ProductController::class)->except('show');
         Route::delete('productos/{producto}/imagenes/{imagen}', [ProductController::class, 'destroyImage'])

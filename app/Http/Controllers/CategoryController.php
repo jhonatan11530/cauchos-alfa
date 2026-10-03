@@ -59,4 +59,13 @@ class CategoryController extends Controller
 
         return back()->with('success', 'Estado de la categoria actualizado.');
     }
+
+    public function forceDelete(Category $categoria): RedirectResponse
+    {
+        if ($categoria->products()->count() > 0) {
+            return back()->with('error', 'No se puede eliminar la categoría porque tiene productos asociados.');
+        }
+        $categoria->delete();
+        return back()->with('success', 'Categoría eliminada definitivamente.');
+    }
 }

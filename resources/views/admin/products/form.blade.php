@@ -59,6 +59,18 @@
                             </div>
                         </div>
 
+                        @if ($product->exists && ($product->images->isNotEmpty() || $product->image_path))
+                        <div class="col-md-12 mb-3">
+                            <button type="button" id="btnEnhanceAll" class="btn btn-outline-primary font-weight-bold" onclick="enhanceAllImages()">
+                                <i class="fas fa-magic mr-1"></i> Estandarizar y Mejorar imágenes ya cargadas
+                            </button>
+                            <div id="enhanceAllStatus" class="mt-2 text-primary small d-none font-weight-bold">
+                                <span class="spinner-border spinner-border-sm mr-1"></span>
+                                <span id="enhanceAllStatusText">Iniciando proceso...</span>
+                            </div>
+                        </div>
+                        @endif
+
                         <div class="form-group col-md-12">
                             <label class="fw-bold">Imagen principal</label>
                             <input type="file" name="image" id="mainImageInput" class="form-control" accept="image/*">
@@ -117,14 +129,21 @@
                             @if ($product->image_path)
                                 <div class="border rounded p-1 text-center">
                                     <img src="{{ \App\Models\Product::getStorageUrl($product->image_path) }}"
+                                        id="existing_main_img"
+                                        data-url="{{ \App\Models\Product::getStorageUrl($product->image_path) }}"
                                         style="height:80px;width:80px;object-fit:cover;" alt="Imagen principal">
                                     <div class="small text-muted">Principal</div>
+                                    <div id="status_existing_main" class="small fw-bold mt-1 text-primary"></div>
                                 </div>
                             @endif
                             @foreach ($product->images as $image)
                                 <div class="border rounded p-1 text-center">
                                     <img src="{{ \App\Models\Product::getStorageUrl($image->path) }}"
+                                        class="existing_gallery_img"
+                                        data-id="{{ $image->id }}"
+                                        data-url="{{ \App\Models\Product::getStorageUrl($image->path) }}"
                                         style="height:80px;width:80px;object-fit:cover;" alt="Imagen">
+                                    <div id="status_existing_gallery_{{ $image->id }}" class="small fw-bold mt-1 text-primary"></div>
                                     <form action="{{ route('productos.images.destroy', [$product, $image]) }}"
                                         method="POST" onsubmit="return confirm('¿Eliminar esta imagen?')">
                                         @csrf
@@ -200,8 +219,8 @@
 
             // Precalentar modelo ligero en segundo plano mientras el usuario llena el formulario
             if (typeof module.preload === 'function') {
-                module.preload({ model: 'small' }).then(() => {
-                    console.log('🚀 Modelo IA cuantizado (small) precalentado en memoria.');
+                module.preload({ model: 'medium' }).then(() => {
+                    console.log('🚀 Modelo IA alta calidad (medium) precalentado en memoria.');
                 }).catch(() => {});
             }
             return removeBgModule;
@@ -278,7 +297,7 @@
         if (onProgress) onProgress('Aislando producto con IA (GPU/CPU)...');
         const transparentBlob = await removeBg(optimizedFile, {
             debug: false,
-            model: 'small', // Modelo cuantizado en 8 bits (~15MB vs ~40MB), 2.5x más rápido y ligero
+            model: 'isnet', // Modelo de máxima precisión IS-Net (~170MB)
             progress: (key, current, total) => {
                 if (onProgress && total > 0) {
                     const pct = Math.min(100, Math.round((current / total) * 100));
@@ -287,7 +306,7 @@
             }
         });
 
-        if (onProgress) onProgress('Aplicando fondo blanco puro de estudio...');
+        if (onProgress) onProgress('Aplicando renderizado fotográfico hiperrealista...');
 
         // Cargar el blob transparente en un elemento de imagen
         const img = new Image();
@@ -298,18 +317,46 @@
             img.src = objectUrl;
         });
 
-        // Crear canvas con las dimensiones del objeto
+        // Tamaño estandarizado para la tienda
+        const TARGET_SIZE = 1000;
+        const PADDING = 100; // Margen para que el producto no toque los bordes
+
         const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
+        canvas.width = TARGET_SIZE;
+        canvas.height = TARGET_SIZE;
         const ctx = canvas.getContext('2d');
 
-        // Rellenar con fondo blanco de estudio (#ffffff)
+        // --- RENDERIZADO DE ALTA DEFINICIÓN (ESTILO CATÁLOGO INDUSTRIAL) ---
+
+        // 1. Asegurar un fondo blanco clínico y perfecto
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Dibujar el producto extraído sobre el lienzo blanco
-        ctx.drawImage(img, 0, 0);
+        // 2. Calcular dimensiones para centrado perfecto con padding
+        const objWidth = img.naturalWidth || img.width;
+        const objHeight = img.naturalHeight || img.height;
+        const availableSize = TARGET_SIZE - (PADDING * 2);
+        const scale = Math.min(availableSize / objWidth, availableSize / objHeight);
+        const drawWidth = objWidth * scale;
+        const drawHeight = objHeight * scale;
+        const dx = (TARGET_SIZE - drawWidth) / 2;
+        const dy = (TARGET_SIZE - drawHeight) / 2;
+
+        // 3. Aplicar realce de textura fotográfica
+        // - contrast(1.15): Profundiza los negros del caucho
+        // - brightness(1.05): Resalta el reflejo de luz en los relieves
+        // - saturate(1.05): Elimina el tono lavado
+        ctx.filter = 'contrast(1.15) brightness(1.05) saturate(1.05)';
+
+        // 4. Cero sombras extensas para mantener el estilo troquelado limpio
+        ctx.shadowColor = 'transparent';
+
+        // 5. Dibujar la pieza central
+        ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+
+        // Resetear filtros
+        ctx.filter = 'none';
+
         URL.revokeObjectURL(objectUrl);
 
         // Convertir a JPEG de alta calidad
@@ -479,6 +526,96 @@
         `;
         galleryContainer.appendChild(div);
     }
+
+    window.enhanceAllImages = async function() {
+        const btn = document.getElementById('btnEnhanceAll');
+        const statusDiv = document.getElementById('enhanceAllStatus');
+        const statusText = document.getElementById('enhanceAllStatusText');
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+            btn.disabled = true;
+            statusDiv.classList.remove('d-none');
+
+            const productId = "{{ $product->id ?? '' }}";
+            const csrf = document.querySelector('input[name="_token"]').value;
+
+            // 1. Recopilar imagenes principales
+            const mainImg = document.getElementById('existing_main_img');
+            const galleryImgs = document.querySelectorAll('.existing_gallery_img');
+
+            let total = (mainImg ? 1 : 0) + galleryImgs.length;
+            let current = 0;
+
+            async function processOne(url, type, id, statusEl) {
+                current++;
+                statusText.textContent = `Procesando imagen ${current} de ${total}...`;
+                if(statusEl) statusEl.textContent = 'Procesando...';
+
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const file = new File([blob], `image_${id}.jpg`, { type: blob.type || 'image/jpeg' });
+
+                const result = await processImageToStudioWhite(file, (msg) => {
+                    if(statusEl) statusEl.textContent = msg;
+                });
+
+                const formData = new FormData();
+                formData.append('image', result.file);
+                formData.append('_token', csrf);
+
+                let endpoint = type === 'main'
+                    ? `/productos/${id}/replace-main-image`
+                    : `/productos/imagenes/${id}/replace`;
+
+                const uploadRes = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                const data = await uploadRes.json();
+                if (data.success) {
+                    if(statusEl) {
+                        statusEl.classList.remove('text-primary');
+                        statusEl.classList.add('text-success');
+                        statusEl.textContent = '¡Mejorada!';
+                    }
+                    return data.path;
+                }
+                throw new Error('Error al guardar');
+            }
+
+            if (mainImg) {
+                const url = mainImg.getAttribute('data-url');
+                const newPath = await processOne(url, 'main', productId, document.getElementById('status_existing_main'));
+                mainImg.src = newPath + '?t=' + new Date().getTime();
+            }
+
+            for (let i = 0; i < galleryImgs.length; i++) {
+                const img = galleryImgs[i];
+                const url = img.getAttribute('data-url');
+                const id = img.getAttribute('data-id');
+                const statusEl = document.getElementById('status_existing_gallery_' + id);
+                const newPath = await processOne(url, 'gallery', id, statusEl);
+                img.src = newPath + '?t=' + new Date().getTime();
+            }
+
+            statusText.textContent = '¡Todas las imágenes mejoradas!';
+            statusDiv.classList.remove('text-primary');
+            statusDiv.classList.add('text-success');
+            if (window.toastr) toastr.success('Todas las imágenes fueron estandarizadas con IA.');
+
+        } catch (error) {
+            console.error('Error al mejorar imagenes:', error);
+            if (window.toastr) toastr.error('Error: ' + error.message);
+            statusText.textContent = 'Ocurrió un error.';
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    };
 
     // Prevenir envío prematuro si las imágenes aún se están procesando
     const form = document.querySelector('form[action*="productos"]');

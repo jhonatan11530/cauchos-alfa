@@ -129,4 +129,34 @@ class ProductController extends Controller
 
         return back()->with('success', 'Imagen eliminada correctamente.');
     }
+
+    public function replaceMainImage(Request $request, Product $producto)
+    {
+        $request->validate(['image' => ['required', 'image', 'max:2048']]);
+        
+        if ($producto->image_path) {
+            Storage::disk('public')->delete($producto->image_path);
+        }
+        
+        $producto->update(['image_path' => $request->file('image')->store('products', 'public')]);
+        
+        return response()->json([
+            'success' => true, 
+            'path' => \App\Models\Product::getStorageUrl($producto->image_path)
+        ]);
+    }
+
+    public function replaceGalleryImage(Request $request, ProductImage $imagen)
+    {
+        $request->validate(['image' => ['required', 'image', 'max:2048']]);
+        
+        Storage::disk('public')->delete($imagen->path);
+        
+        $imagen->update(['path' => $request->file('image')->store('products', 'public')]);
+        
+        return response()->json([
+            'success' => true, 
+            'path' => \App\Models\Product::getStorageUrl($imagen->path)
+        ]);
+    }
 }

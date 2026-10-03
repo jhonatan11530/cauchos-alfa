@@ -49,6 +49,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('productos/{producto}/imagenes/{imagen}', [ProductController::class, 'destroyImage'])
             ->middleware(EnsureUserIsAdmin::class)
             ->name('productos.images.destroy');
+            
+        Route::post('productos/{producto}/replace-main-image', [ProductController::class, 'replaceMainImage'])
+            ->name('productos.images.replaceMain');
+            
+        Route::post('productos/imagenes/{imagen}/replace', [ProductController::class, 'replaceGalleryImage'])
+            ->name('productos.images.replaceGallery');
+
         Route::get('catalogos/{catalogo}/pdf', [CatalogController::class, 'pdf'])->name('catalogos.pdf');
         Route::resource('catalogos', CatalogController::class);
         Route::get('whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');

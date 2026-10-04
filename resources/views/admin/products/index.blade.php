@@ -22,7 +22,7 @@
                                     'destroy' => route('productos.destroy', $product), 
                                     'active' => $product->is_active
                                 ];
-                                if ($product->category_id === null) {
+                                if (empty($product->category_id)) {
                                     $actionParams['forceDelete'] = route('productos.forceDelete', $product);
                                 }
                             @endphp

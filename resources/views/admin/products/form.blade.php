@@ -161,6 +161,9 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/upscaler@1.0.0/dist/browser/umd/upscaler.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@upscalerjs/default-model@1.0.0/dist/umd/index.min.js"></script>
 <script type="module">
     let removeBgModule = null;
     let activeProcessCount = 0;
@@ -378,9 +381,53 @@
                 cropH = maxY - minY + 1;
             }
 
-            // 3. Dibujar en canvas final estandarizado de 1000x1000
-            const TARGET_SIZE = 1000;
-            const PADDING = 70; // Reducido a 70px para que el objeto se vea aun mas grande y detallado
+            // --- NUEVO: RED NEURONAL (UPSCALERJS) ---
+            
+            // 1. Crear un canvas temporal adaptado a la red neuronal (Máximo 500px para no saturar WebGL, ya que Upscaler x2 lo subirá a 1000px)
+            const maxAiSize = 500;
+            let aiScale = 1;
+            if (cropW > maxAiSize || cropH > maxAiSize) {
+                aiScale = Math.min(maxAiSize / cropW, maxAiSize / cropH);
+            }
+            const aiW = Math.round(cropW * aiScale);
+            const aiH = Math.round(cropH * aiScale);
+
+            const preAiCanvas = document.createElement('canvas');
+            preAiCanvas.width = aiW;
+            preAiCanvas.height = aiH;
+            const preAiCtx = preAiCanvas.getContext('2d');
+            
+            // IMPORTANTE: Llenar el fondo de blanco ANTES de pasarlo a la IA.
+            // Los modelos ESRGAN descartan la transparencia (canal alfa).
+            // Si el fondo es transparente (rgba: 0,0,0,0), la IA lo interpretará como negro sólido.
+            preAiCtx.fillStyle = '#ffffff';
+            preAiCtx.fillRect(0, 0, aiW, aiH);
+
+            preAiCtx.drawImage(tempCanvas, cropX, cropY, cropW, cropH, 0, 0, aiW, aiH);
+
+            // 2. INFERENCIA DE LA RED NEURONAL (Super Resolución)
+            if (onProgress) onProgress('Mejorando texturas con IA Neuronal (UpscalerJS)...');
+            // Inicializar el modelo predeterminado de UpscalerJS (2x resolution) explícitamente
+            const upscaler = new window.Upscaler({
+                model: window.DefaultUpscalerJSModel
+            });
+            // El patchSize divide la imagen en fragmentos más pequeños para evitar quedarse sin memoria VRAM en WebGL.
+            const superResDataUrl = await upscaler.upscale(preAiCanvas, {
+                patchSize: 64,
+                padding: 4
+            });
+
+            // 3. Cargar la imagen ultra-nítida resultante
+            const superResImg = new Image();
+            await new Promise((res, rej) => {
+                superResImg.onload = res;
+                superResImg.onerror = rej;
+                superResImg.src = superResDataUrl;
+            });
+
+            // 4. Dibujar en el lienzo final estandarizado blanco (1500px)
+            const TARGET_SIZE = 1500;
+            const PADDING = 100; // Margen proporcional
 
             canvas.width = TARGET_SIZE;
             canvas.height = TARGET_SIZE;
@@ -388,16 +435,73 @@
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 4. Escalar SOLO el objeto recortado (no todo el espacio vacio)
-            const availableSize = TARGET_SIZE - (PADDING * 2);
-            const scale = Math.min(availableSize / cropW, availableSize / cropH);
+            // Liberar memoria de la IA para el siguiente ciclo
+            if (typeof upscaler.dispose === 'function') {
+                await upscaler.dispose();
+            }
 
-            const drawWidth = cropW * scale;
-            const drawHeight = cropH * scale;
+            const srW = superResImg.naturalWidth || superResImg.width;
+            const srH = superResImg.naturalHeight || superResImg.height;
+
+            const availableSize = TARGET_SIZE - (PADDING * 2);
+            const scale = Math.min(availableSize / srW, availableSize / srH);
+
+            const drawWidth = srW * scale;
+            const drawHeight = srH * scale;
             const dx = (TARGET_SIZE - drawWidth) / 2;
             const dy = (TARGET_SIZE - drawHeight) / 2;
 
-            ctx.drawImage(tempCanvas, cropX, cropY, cropW, cropH, dx, dy, drawWidth, drawHeight);
+            ctx.drawImage(superResImg, 0, 0, srW, srH, dx, dy, drawWidth, drawHeight);
+
+            // 5. ALGORITMOS DE VISIÓN COMPUTACIONAL (Tone Mapping & Unsharp Mask)
+            // Para recuperar la textura fotográfica profunda y micro-contraste del estándar.
+            if (onProgress) onProgress('Aplicando fotometría avanzada HDR y texturas...');
+
+            // --- A) Corrección Gamma (Levantar Sombras) ---
+            // Levanta los medios tonos para revelar los detalles ocultos en las partes oscuras del caucho.
+            let finalImgData = ctx.getImageData(0, 0, TARGET_SIZE, TARGET_SIZE);
+            let finalData = finalImgData.data;
+            const gamma = 0.85; // Menor a 1.0 aclara las sombras
+
+            for (let i = 0; i < finalData.length; i += 4) {
+                // Ignorar el blanco puro del fondo
+                if (finalData[i] > 245 && finalData[i+1] > 245 && finalData[i+2] > 245) continue;
+                for(let c = 0; c < 3; c++) {
+                    let normalized = finalData[i+c] / 255.0;
+                    // Formula Gamma
+                    finalData[i+c] = Math.pow(normalized, gamma) * 255;
+                }
+            }
+            ctx.putImageData(finalImgData, 0, 0);
+
+            // --- B) Hardware-Accelerated Local Contrast (Clarity) ---
+            // Extrae diferencias de frecuencia amplia (volumen 3D del caucho) y los multiplica.
+            const blurCanvas = document.createElement('canvas');
+            blurCanvas.width = TARGET_SIZE;
+            blurCanvas.height = TARGET_SIZE;
+            const blurCtx = blurCanvas.getContext('2d');
+            
+            // Aplicar desenfoque gaussiano amplio para "Claridad HDR"
+            blurCtx.filter = 'blur(5px)';
+            blurCtx.drawImage(canvas, 0, 0);
+            
+            const blurredData = blurCtx.getImageData(0, 0, TARGET_SIZE, TARGET_SIZE).data;
+            const originalData = ctx.getImageData(0, 0, TARGET_SIZE, TARGET_SIZE);
+            const oData = originalData.data;
+            
+            const usmAmount = 2.2; // Alta agresividad para el micro-contraste fotográfico
+            
+            for (let i = 0; i < oData.length; i += 4) {
+                // Ignorar el fondo
+                if (oData[i] > 245 && oData[i+1] > 245 && oData[i+2] > 245) continue;
+                for(let c = 0; c < 3; c++) {
+                    let diff = oData[i+c] - blurredData[i+c];
+                    let sharpened = oData[i+c] + (diff * usmAmount);
+                    // Clamping
+                    oData[i+c] = Math.min(255, Math.max(0, Math.round(sharpened)));
+                }
+            }
+            ctx.putImageData(originalData, 0, 0);
         } else {
             canvas.width = img.naturalWidth || img.width;
             canvas.height = img.naturalHeight || img.height;
@@ -640,6 +744,7 @@
                 const url = mainImg.getAttribute('data-url');
                 const newPath = await processOne(url, 'main', productId, document.getElementById('status_existing_main'));
                 mainImg.src = newPath + '?t=' + new Date().getTime();
+                mainImg.setAttribute('data-url', newPath);
             }
 
             for (let i = 0; i < galleryImgs.length; i++) {
@@ -649,6 +754,7 @@
                 const statusEl = document.getElementById('status_existing_gallery_' + id);
                 const newPath = await processOne(url, 'gallery', id, statusEl);
                 img.src = newPath + '?t=' + new Date().getTime();
+                img.setAttribute('data-url', newPath);
             }
 
             statusText.textContent = '¡Todas las imágenes mejoradas!';

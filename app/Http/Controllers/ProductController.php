@@ -71,7 +71,7 @@ class ProductController extends Controller
 
     public function forceDelete(Product $producto): RedirectResponse
     {
-        if ($producto->category_id !== null) {
+        if (!empty($producto->category_id)) {
             return back()->with('error', 'No se puede eliminar porque el producto pertenece a una categoría.');
         }
         

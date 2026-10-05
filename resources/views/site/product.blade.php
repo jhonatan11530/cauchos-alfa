@@ -44,7 +44,9 @@
     <div class="row">
         <!-- Imágenes del Producto -->
         <div class="col-md-6 mb-4">
-            @php $urls = $product->imageUrls(); @endphp
+            @php 
+                $urls = $product->imageUrls();
+            @endphp
             @if (count($urls) > 1)
                 <div id="gallery-{{ $product->id }}" class="carousel slide" data-ride="carousel">
                     <ol class="carousel-indicators">
@@ -131,6 +133,11 @@
                                 </button>
                             </div>
                         </form>
+
+                        <button type="button" class="btn btn-outline-info px-4 py-2 d-flex align-items-center mt-2 mt-md-0 ml-md-2" style="border-radius: 20px;"
+                            onclick="compartirWhatsApp('{{ count($urls) > 0 ? $urls[0] : '' }}')">
+                            <i class="bi bi-whatsapp mr-2" style="font-size: 1.2rem;"></i> Compartir en Estado
+                        </button>
                     @endif
                 @endauth
 
@@ -175,3 +182,31 @@
 </div>
 @endsection
 
+@push('scripts')
+<script>
+async function compartirWhatsApp(urlImagen) {
+    if (!urlImagen) {
+        alert('Este producto no tiene imagen para compartir.');
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(urlImagen);
+        const blob = await respuesta.blob();
+
+        const extension = blob.type.split('/')[1] || 'jpg';
+        const archivo = new File([blob], `producto.${extension}`, { type: blob.type });
+
+        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+            await navigator.share({
+                files: [archivo]
+            });
+        } else {
+            alert('Tu navegador no soporta compartir imágenes directamente.');
+        }
+    } catch (error) {
+        console.error('El usuario canceló o hubo un error', error);
+    }
+}
+</script>
+@endpush

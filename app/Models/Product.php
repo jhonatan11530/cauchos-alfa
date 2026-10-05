@@ -16,6 +16,7 @@ class Product extends Model
         'name',
         'reference',
         'image_path',
+        'flyer_path',
         'description',
         'features',
         'availability',
@@ -65,13 +66,17 @@ class Product extends Model
      */
     public function imageUrls(): array
     {
-        $urls = $this->images->map(fn (ProductImage $img) => self::getStorageUrl($img->path))->all();
-
-        if ($this->image_path) {
+        $urls = [];
+        
+        if ($this->flyer_path) {
+            $urls[] = self::getStorageUrl($this->flyer_path);
+        } elseif ($this->image_path) {
             $urls[] = self::getStorageUrl($this->image_path);
         }
-
-        return $urls;
+        
+        $galleryUrls = $this->images->map(fn (ProductImage $img) => self::getStorageUrl($img->path))->all();
+        
+        return array_merge($urls, $galleryUrls);
     }
 
     /**

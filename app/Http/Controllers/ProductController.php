@@ -54,6 +54,10 @@ class ProductController extends Controller
 
         if ($path = $this->storeImage($request)) {
             $data['image_path'] = $path;
+            $data['flyer_path'] = null;
+            if ($producto->flyer_path) {
+                Storage::disk('public')->delete($producto->flyer_path);
+            }
         }
 
         $producto->update($data);
@@ -154,14 +158,36 @@ class ProductController extends Controller
         if ($producto->image_path) {
             Storage::disk('public')->delete($producto->image_path);
         }
+        if ($producto->flyer_path) {
+            Storage::disk('public')->delete($producto->flyer_path);
+        }
         
-        $producto->update(['image_path' => $request->file('image')->store('products', 'public')]);
+        $producto->update([
+            'image_path' => $request->file('image')->store('products', 'public'),
+            'flyer_path' => null
+        ]);
         
         $this->sweepOrphanedImages();
         
         return response()->json([
             'success' => true, 
             'path' => \App\Models\Product::getStorageUrl($producto->image_path)
+        ]);
+    }
+
+    public function uploadFlyer(Request $request, Product $producto)
+    {
+        $request->validate(['flyer' => ['required', 'image', 'max:2048']]);
+        
+        if ($producto->flyer_path) {
+            Storage::disk('public')->delete($producto->flyer_path);
+        }
+        
+        $producto->update(['flyer_path' => $request->file('flyer')->store('products/flyers', 'public')]);
+        
+        return response()->json([
+            'success' => true, 
+            'path' => \App\Models\Product::getStorageUrl($producto->flyer_path)
         ]);
     }
 

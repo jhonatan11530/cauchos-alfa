@@ -58,6 +58,9 @@ Route::middleware('auth')->group(function () {
         Route::post('productos/{producto}/replace-main-image', [ProductController::class, 'replaceMainImage'])
             ->name('productos.images.replaceMain');
             
+        Route::post('productos/{producto}/upload-flyer', [ProductController::class, 'uploadFlyer'])
+            ->name('productos.images.uploadFlyer');
+            
         Route::post('productos/imagenes/{imagen}/replace', [ProductController::class, 'replaceGalleryImage'])
             ->name('productos.images.replaceGallery');
 

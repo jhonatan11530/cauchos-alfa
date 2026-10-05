@@ -382,7 +382,7 @@
             }
 
             // --- NUEVO: RED NEURONAL (UPSCALERJS) ---
-            
+
             // 1. Crear un canvas temporal adaptado a la red neuronal (Máximo 500px para no saturar WebGL, ya que Upscaler x2 lo subirá a 1000px)
             const maxAiSize = 500;
             let aiScale = 1;
@@ -396,7 +396,7 @@
             preAiCanvas.width = aiW;
             preAiCanvas.height = aiH;
             const preAiCtx = preAiCanvas.getContext('2d');
-            
+
             // IMPORTANTE: Llenar el fondo de blanco ANTES de pasarlo a la IA.
             // Los modelos ESRGAN descartan la transparencia (canal alfa).
             // Si el fondo es transparente (rgba: 0,0,0,0), la IA lo interpretará como negro sólido.
@@ -480,17 +480,17 @@
             blurCanvas.width = TARGET_SIZE;
             blurCanvas.height = TARGET_SIZE;
             const blurCtx = blurCanvas.getContext('2d');
-            
+
             // Aplicar desenfoque gaussiano amplio para "Claridad HDR"
             blurCtx.filter = 'blur(5px)';
             blurCtx.drawImage(canvas, 0, 0);
-            
+
             const blurredData = blurCtx.getImageData(0, 0, TARGET_SIZE, TARGET_SIZE).data;
             const originalData = ctx.getImageData(0, 0, TARGET_SIZE, TARGET_SIZE);
             const oData = originalData.data;
-            
+
             const usmAmount = 2.2; // Alta agresividad para el micro-contraste fotográfico
-            
+
             for (let i = 0; i < oData.length; i += 4) {
                 // Ignorar el fondo
                 if (oData[i] > 245 && oData[i+1] > 245 && oData[i+2] > 245) continue;
@@ -701,6 +701,63 @@
             let total = (mainImg ? 1 : 0) + galleryImgs.length;
             let current = 0;
 
+            async function aplicarPlantilla(imagenProcesadaFile, nombreProducto) {
+                return new Promise(async (resolve) => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    const imgPlantilla = new Image();
+                    imgPlantilla.crossOrigin = "Anonymous";
+                    imgPlantilla.src = '/img/plantilla-estado.jpg';
+
+                    const imgProd = new Image();
+                    imgProd.src = URL.createObjectURL(imagenProcesadaFile);
+
+                    await Promise.all([
+                        new Promise(r => { imgPlantilla.onload = r; imgPlantilla.onerror = r; }),
+                        new Promise(r => { imgProd.onload = r; imgProd.onerror = r; })
+                    ]);
+
+                    if (!imgPlantilla.width) {
+                        resolve(imagenProcesadaFile);
+                        return;
+                    }
+
+                    canvas.width = imgPlantilla.width;
+                    canvas.height = imgPlantilla.height;
+
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    ctx.drawImage(imgPlantilla, 0, 0);
+
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 38px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(nombreProducto.toUpperCase(), canvas.width / 2, 210);
+
+                    const maxProdWidth = 600;
+                    const maxProdHeight = 550;
+                    let pWidth = imgProd.width;
+                    let pHeight = imgProd.height;
+                    const ratio = Math.min(maxProdWidth / pWidth, maxProdHeight / pHeight);
+                    pWidth = pWidth * ratio;
+                    pHeight = pHeight * ratio;
+
+                    const xProd = (canvas.width - pWidth) / 2;
+                    const yProd = 400 + ((500 - pHeight) / 2);
+
+                    ctx.globalCompositeOperation = 'multiply';
+                    ctx.drawImage(imgProd, xProd, yProd, pWidth, pHeight);
+                    ctx.globalCompositeOperation = 'source-over';
+
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], 'flyer.jpg', { type: 'image/jpeg' }));
+                    }, 'image/jpeg', 0.95);
+                });
+            }
+
             async function processOne(url, type, id, statusEl) {
                 current++;
                 statusText.textContent = `Procesando imagen ${current} de ${total}...`;
@@ -729,13 +786,48 @@
                 });
 
                 const data = await uploadRes.json();
+
                 if (data.success) {
+                    if(statusEl) statusEl.textContent = 'Aplicando plantilla...';
+                    const productNameInput = document.querySelector('input[name="name"]');
+                    const productName = (productNameInput ? productNameInput.value : '') || 'PRODUCTO';
+                    const flyerFile = await aplicarPlantilla(result.file, productName);
+                    let finalPath = data.path;
+
+                    if (type === 'main') {
+                        // Para la principal, subimos el flyer aparte para mantener el catálogo limpio
+                        const flyerData = new FormData();
+                        flyerData.append('flyer', flyerFile);
+                        flyerData.append('_token', csrf);
+                        
+                        await fetch(`/productos/${id}/upload-flyer`, {
+                            method: 'POST',
+                            body: flyerData,
+                            headers: { 'Accept': 'application/json' }
+                        });
+                    } else {
+                        // Para la galería, reemplazamos la imagen física con el flyer
+                        const galleryData = new FormData();
+                        galleryData.append('image', flyerFile);
+                        galleryData.append('_token', csrf);
+                        
+                        const galleryRes = await fetch(`/productos/imagenes/${id}/replace`, {
+                            method: 'POST',
+                            body: galleryData,
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const galleryDataJson = await galleryRes.json();
+                        if (galleryDataJson.success) {
+                            finalPath = galleryDataJson.path;
+                        }
+                    }
+                    
                     if(statusEl) {
                         statusEl.classList.remove('text-primary');
                         statusEl.classList.add('text-success');
-                        statusEl.textContent = '¡Mejorada!';
+                        statusEl.textContent = '¡Mejorada con plantilla!';
                     }
-                    return data.path;
+                    return finalPath;
                 }
                 throw new Error('Error al guardar');
             }

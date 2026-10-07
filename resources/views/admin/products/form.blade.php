@@ -732,10 +732,79 @@
                     ctx.drawImage(imgPlantilla, 0, 0);
 
                     ctx.fillStyle = 'white';
-                    ctx.font = 'bold 38px Arial';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(nombreProducto.toUpperCase(), canvas.width / 2, 210);
+
+                    const text = nombreProducto.toUpperCase();
+                    // El área blanca segura entre las rayas diagonales rojas es de unos 540px
+                    const maxWidth = canvas.width - 280;
+                    let fontSize = 30; // Empezamos un poco más pequeño
+                    ctx.font = `bold ${fontSize}px Arial`;
+
+                    let words = text.split(' ');
+                    let lines = [];
+                    let currentLine = words[0] || '';
+
+                    for (let i = 1; i < words.length; i++) {
+                        let testLine = currentLine + ' ' + words[i];
+                        if (ctx.measureText(testLine).width > maxWidth) {
+                            lines.push(currentLine);
+                            currentLine = words[i];
+                        } else {
+                            currentLine = testLine;
+                        }
+                    }
+                    if (currentLine) lines.push(currentLine);
+
+                    // Si hay más de 2 líneas, reducimos el tamaño de fuente y recalculamos para que quepa en 2 líneas
+                    while (lines.length > 2 && fontSize > 18) {
+                        fontSize -= 2;
+                        ctx.font = `bold ${fontSize}px Arial`;
+                        lines = [];
+                        currentLine = words[0] || '';
+                        for (let i = 1; i < words.length; i++) {
+                            let testLine = currentLine + ' ' + words[i];
+                            if (ctx.measureText(testLine).width > maxWidth) {
+                                lines.push(currentLine);
+                                currentLine = words[i];
+                            } else {
+                                currentLine = testLine;
+                            }
+                        }
+                        if (currentLine) lines.push(currentLine);
+                    }
+
+                    // Si incluso achicando a 18px sigue ocupando más de 2 líneas, lo forzamos a 2 líneas y achicamos al máximo
+                    if (lines.length > 2) {
+                         // Partir en 2 líneas forzosamente por la mitad
+                         lines = ['', ''];
+                         for (let i=0; i<words.length; i++) {
+                             if (i < words.length/2) lines[0] += words[i] + ' ';
+                             else lines[1] += words[i] + ' ';
+                         }
+                         lines[0] = lines[0].trim();
+                         lines[1] = lines[1].trim();
+
+                         while ( (ctx.measureText(lines[0]).width > maxWidth || ctx.measureText(lines[1]).width > maxWidth) && fontSize > 12) {
+                             fontSize -= 1;
+                             ctx.font = `bold ${fontSize}px Arial`;
+                         }
+                    }
+
+                    const lineSpacing = fontSize * 1.2;
+                    let startY = 210 - ((lines.length - 1) * lineSpacing) / 2;
+
+                    for (let i = 0; i < lines.length; i++) {
+                        let line = lines[i];
+                        let currentFontSize = fontSize;
+                        ctx.font = `bold ${currentFontSize}px Arial`;
+                        while (ctx.measureText(line).width > maxWidth && currentFontSize > 10) {
+                            currentFontSize -= 1;
+                            ctx.font = `bold ${currentFontSize}px Arial`;
+                        }
+                        // Failsafe final: maxWidth como 4to parámetro para que el canvas lo comprima si es necesario
+                        ctx.fillText(line, canvas.width / 2, startY + (i * lineSpacing), maxWidth);
+                    }
 
                     const maxProdWidth = 600;
                     const maxProdHeight = 550;
@@ -799,7 +868,7 @@
                         const flyerData = new FormData();
                         flyerData.append('flyer', flyerFile);
                         flyerData.append('_token', csrf);
-                        
+
                         await fetch(`/productos/${id}/upload-flyer`, {
                             method: 'POST',
                             body: flyerData,
@@ -810,7 +879,7 @@
                         const galleryData = new FormData();
                         galleryData.append('image', flyerFile);
                         galleryData.append('_token', csrf);
-                        
+
                         const galleryRes = await fetch(`/productos/imagenes/${id}/replace`, {
                             method: 'POST',
                             body: galleryData,
@@ -821,7 +890,7 @@
                             finalPath = galleryDataJson.path;
                         }
                     }
-                    
+
                     if(statusEl) {
                         statusEl.classList.remove('text-primary');
                         statusEl.classList.add('text-success');

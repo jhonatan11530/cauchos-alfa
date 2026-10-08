@@ -806,19 +806,155 @@
                         ctx.fillText(line, canvas.width / 2, startY + (i * lineSpacing), maxWidth);
                     }
 
-                    const maxProdWidth = 600;
-                    const maxProdHeight = 550;
-                    let pWidth = imgProd.width;
-                    let pHeight = imgProd.height;
-                    const ratio = Math.min(maxProdWidth / pWidth, maxProdHeight / pHeight);
-                    pWidth = pWidth * ratio;
-                    pHeight = pHeight * ratio;
+                    // --- MABB y Auto-Crop Inteligente ---
+                    // Escalar a un lienzo pequeño para análisis rápido
+                    const scanSize = 200;
+                    const scanCanvas = document.createElement('canvas');
+                    const scanCtx = scanCanvas.getContext('2d');
+                    const scaleScan = Math.min(scanSize / imgProd.width, scanSize / imgProd.height);
+                    scanCanvas.width = imgProd.width * scaleScan;
+                    scanCanvas.height = imgProd.height * scaleScan;
+                    scanCtx.drawImage(imgProd, 0, 0, scanCanvas.width, scanCanvas.height);
+                    
+                    const imgData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height).data;
+                    
+                    let minX = scanCanvas.width, minY = scanCanvas.height, maxX = 0, maxY = 0;
+                    let pts = [];
 
-                    const xProd = (canvas.width - pWidth) / 2;
-                    const yProd = 400 + ((500 - pHeight) / 2);
+                    for (let y = 0; y < scanCanvas.height; y++) {
+                        for (let x = 0; x < scanCanvas.width; x++) {
+                            const alpha = imgData[(y * scanCanvas.width + x) * 4 + 3];
+                            if (alpha > 10) {
+                                pts.push({x: x, y: y});
+                                if (x < minX) minX = x;
+                                if (x > maxX) maxX = x;
+                                if (y < minY) minY = y;
+                                if (y > maxY) maxY = y;
+                            }
+                        }
+                    }
+
+                    let rotateAngle = 0;
+                    let cropBox = { x: 0, y: 0, w: imgProd.width, h: imgProd.height, cx: imgProd.width/2, cy: imgProd.height/2 };
+                    
+                    if (pts.length > 0) {
+                        // 1. Convex Hull (Monotone Chain)
+                        pts.sort((a, b) => a.x === b.x ? a.y - b.y : a.x - b.x);
+                        const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+                        
+                        let lower = [];
+                        for (let i = 0; i < pts.length; i++) {
+                            while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) {
+                                lower.pop();
+                            }
+                            lower.push(pts[i]);
+                        }
+                        
+                        let upper = [];
+                        for (let i = pts.length - 1; i >= 0; i--) {
+                            while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[i]) <= 0) {
+                                upper.pop();
+                            }
+                            upper.push(pts[i]);
+                        }
+                        
+                        upper.pop(); 
+                        lower.pop();
+                        let hull = lower.concat(upper);
+
+                        // 2. Minimum Area Bounding Box (MABB)
+                        let minArea = Infinity;
+                        let bestAngle = 0;
+                        
+                        for (let i = 0; i < hull.length; i++) {
+                            let p1 = hull[i];
+                            let p2 = hull[(i + 1) % hull.length];
+                            let edgeAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                            
+                            let tempMinX = Infinity, tempMaxX = -Infinity, tempMinY = Infinity, tempMaxY = -Infinity;
+                            for (let p of hull) {
+                                let rx = p.x * Math.cos(-edgeAngle) - p.y * Math.sin(-edgeAngle);
+                                let ry = p.x * Math.sin(-edgeAngle) + p.y * Math.cos(-edgeAngle);
+                                if (rx < tempMinX) tempMinX = rx;
+                                if (rx > tempMaxX) tempMaxX = rx;
+                                if (ry < tempMinY) tempMinY = ry;
+                                if (ry > tempMaxY) tempMaxY = ry;
+                            }
+                            
+                            let area = (tempMaxX - tempMinX) * (tempMaxY - tempMinY);
+                            if (area < minArea) {
+                                minArea = area;
+                                if ((tempMaxX - tempMinX) > (tempMaxY - tempMinY)) {
+                                    bestAngle = edgeAngle;
+                                } else {
+                                    bestAngle = edgeAngle + Math.PI / 2;
+                                }
+                            }
+                        }
+
+                        rotateAngle = Math.PI / 2 - bestAngle;
+                        
+                        while (rotateAngle > Math.PI / 2) rotateAngle -= Math.PI;
+                        while (rotateAngle <= -Math.PI / 2) rotateAngle += Math.PI;
+
+                        const cx = (minX + maxX) / 2;
+                        const cy = (minY + maxY) / 2;
+
+                        cropBox = {
+                            x: minX / scaleScan,
+                            y: minY / scaleScan,
+                            w: (maxX - minX) / scaleScan,
+                            h: (maxY - minY) / scaleScan,
+                            cx: cx / scaleScan,
+                            cy: cy / scaleScan
+                        };
+                    }
+
+                    // Calcular dimensiones finales del Bounding Box TRAS la rotación
+                    const corners = [
+                        {x: cropBox.x - cropBox.cx, y: cropBox.y - cropBox.cy},
+                        {x: cropBox.x + cropBox.w - cropBox.cx, y: cropBox.y - cropBox.cy},
+                        {x: cropBox.x - cropBox.cx, y: cropBox.y + cropBox.h - cropBox.cy},
+                        {x: cropBox.x + cropBox.w - cropBox.cx, y: cropBox.y + cropBox.h - cropBox.cy}
+                    ];
+
+                    let rotMinX = Infinity, rotMaxX = -Infinity, rotMinY = Infinity, rotMaxY = -Infinity;
+                    for (let c of corners) {
+                        const rx = c.x * Math.cos(rotateAngle) - c.y * Math.sin(rotateAngle);
+                        const ry = c.x * Math.sin(rotateAngle) + c.y * Math.cos(rotateAngle);
+                        if (rx < rotMinX) rotMinX = rx;
+                        if (rx > rotMaxX) rotMaxX = rx;
+                        if (ry < rotMinY) rotMinY = ry;
+                        if (ry > rotMaxY) rotMaxY = ry;
+                    }
+
+                    const rotW = rotMaxX - rotMinX;
+                    const rotH = rotMaxY - rotMinY;
+
+                    // Ajuste perfecto en la zona de la plantilla
+                    const maxProdWidth = 600;
+                    const maxProdHeight = 500; 
+                    
+                    const ratio = Math.min(maxProdWidth / rotW, maxProdHeight / rotH);
+
+                    const targetCenterX = canvas.width / 2;
+                    const targetCenterY = 400 + (maxProdHeight / 2); 
 
                     ctx.globalCompositeOperation = 'multiply';
-                    ctx.drawImage(imgProd, xProd, yProd, pWidth, pHeight);
+                    ctx.save();
+                    
+                    // Transformaciones matemáticas para centrar y rotar
+                    ctx.translate(targetCenterX, targetCenterY);
+                    ctx.scale(ratio, ratio);
+                    ctx.rotate(rotateAngle);
+
+                    // Dibujamos la imagen original, extrayendo solo el recorte, y centrando su centro de masa en el (0,0) del lienzo rotado
+                    ctx.drawImage(imgProd, 
+                        cropBox.x, cropBox.y, cropBox.w, cropBox.h,
+                        cropBox.x - cropBox.cx, cropBox.y - cropBox.cy, cropBox.w, cropBox.h
+                    );
+                    
+                    ctx.restore();
                     ctx.globalCompositeOperation = 'source-over';
 
                     canvas.toBlob((blob) => {

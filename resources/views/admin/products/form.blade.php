@@ -61,12 +61,21 @@
 
                         @if ($product->exists && ($product->images->isNotEmpty() || $product->image_path))
                         <div class="col-md-12 mb-3">
-                            <button type="button" id="btnEnhanceAll" class="btn btn-outline-primary font-weight-bold" onclick="enhanceAllImages()">
-                                <i class="fas fa-magic mr-1"></i> Estandarizar y Mejorar imágenes ya cargadas
-                            </button>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <button type="button" id="btnEnhanceAll" class="btn btn-outline-secondary font-weight-bold" onclick="enhanceAllImages()">
+                                    <i class="fas fa-laptop-code mr-1"></i> Mejorar imagen con IA LOCAL
+                                </button>
+                                <button type="button" id="btnGeminiExtension" class="btn btn-primary font-weight-bold ml-md-2" onclick="generateWithGeminiExtension()">
+                                    <i class="fab fa-google mr-1"></i> Generar todas con Gemini Pro (Automático)
+                                </button>
+                            </div>
                             <div id="enhanceAllStatus" class="mt-2 text-primary small d-none font-weight-bold">
                                 <span class="spinner-border spinner-border-sm mr-1"></span>
                                 <span id="enhanceAllStatusText">Iniciando proceso...</span>
+                            </div>
+                            <div id="geminiExtensionStatus" class="mt-2 text-primary small d-none font-weight-bold">
+                                <span class="spinner-border spinner-border-sm mr-1"></span>
+                                <span id="geminiExtensionStatusText">Conectando con Gemini Web Pro...</span>
                             </div>
                         </div>
                         @endif
@@ -161,11 +170,12 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/upscaler@1.0.0/dist/browser/umd/upscaler.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@upscalerjs/default-model@1.0.0/dist/umd/index.min.js"></script>
 <script type="module">
-    let removeBgModule = null;
+    import { AutoModel, AutoProcessor, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3';
+
+    // Configuración global del entorno de Transformers.js en el navegador
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
     let activeProcessCount = 0;
     let originalMainFile = null;
 
@@ -213,29 +223,245 @@
         }
     }
 
-    // Pre-carga inmediata del módulo de IA en WebAssembly por URL (CDN) y precalentamiento del modelo
-    let removeBgPromise = (async () => {
-        try {
-            const module = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm');
-            removeBgModule = module.removeBackground;
-            console.log('✅ @imgly/background-removal cargado exitosamente desde jsdelivr.');
+    // ============================================================================
+    // MOTOR DE SEGMENTACIÓN IA: TRANSFORMERS.JS v3 + BRIA RMBG-1.4
+    // WebGPU primario (fp32) con fallback automático a WebAssembly (q8)
+    // ============================================================================
+    let rmbgModelInstance = null;
+    let rmbgProcessorInstance = null;
+    let rmbgLoadingPromise = null;
+    let activeBackendName = 'Detectando...';
 
-            // Precalentar modelo ligero en segundo plano mientras el usuario llena el formulario
-            if (typeof module.preload === 'function') {
-                module.preload({ model: 'medium' }).then(() => {
-                    console.log('🚀 Modelo IA alta calidad (medium) precalentado en memoria.');
-                }).catch(() => {});
-            }
-            return removeBgModule;
-        } catch (e) {
-            console.error('❌ Error crítico al cargar @imgly/background-removal por URL:', e);
-            throw e;
+    async function getRMBGModelAndProcessor(onProgress) {
+        if (rmbgModelInstance && rmbgProcessorInstance) {
+            return { model: rmbgModelInstance, processor: rmbgProcessorInstance };
         }
-    })();
+        if (rmbgLoadingPromise) return await rmbgLoadingPromise;
 
-    async function getRemoveBgFunction() {
-        if (removeBgModule) return removeBgModule;
-        return await removeBgPromise;
+        rmbgLoadingPromise = (async () => {
+            const modelId = 'briaai/RMBG-1.4';
+            const isWebGPUSupported = typeof navigator !== 'undefined' && 'gpu' in navigator && Boolean(navigator.gpu);
+
+            const progressCallback = (info) => {
+                if (!onProgress) return;
+                if (info.status === 'progress' || info.status === 'download') {
+                    const fName = info.file ? info.file.split('/').pop() : 'pesos';
+                    const pct = typeof info.progress === 'number'
+                        ? Math.round(info.progress)
+                        : (info.total ? Math.round((info.loaded / info.total) * 100) : '');
+                    onProgress(`Cargando IA RMBG-1.4 (${fName} ${pct ? pct + '%' : ''})...`);
+                } else if (info.status === 'done') {
+                    onProgress('IA RMBG-1.4 compilada en memoria.');
+                }
+            };
+
+            let model = null;
+            let processor = null;
+
+            // 1. Aceleración por hardware primaria: WebGPU (fp32)
+            if (isWebGPUSupported) {
+                try {
+                    if (onProgress) onProgress('Iniciando aceleración WebGPU para RMBG-1.4...');
+                    model = await AutoModel.from_pretrained(modelId, {
+                        device: 'webgpu',
+                        dtype: 'fp32',
+                        progress_callback: progressCallback
+                    });
+                    processor = await AutoProcessor.from_pretrained(modelId);
+                    activeBackendName = 'WebGPU (Hardware GPU)';
+                    console.log('✅ Transformers.js ejecutando RMBG-1.4 en WebGPU.');
+                } catch (gpuErr) {
+                    console.warn('⚠️ WebGPU no disponible o rechazado. Activando fallback a WebAssembly (WASM):', gpuErr);
+                }
+            }
+
+            // 2. Fallback secundario: WebAssembly CPU con pesos cuantizados (q8, ~43MB)
+            if (!model) {
+                if (onProgress) onProgress('Iniciando motor WebAssembly CPU (q8 ligero)...');
+                try {
+                    model = await AutoModel.from_pretrained(modelId, {
+                        device: 'wasm',
+                        dtype: 'q8',
+                        progress_callback: progressCallback
+                    });
+                    processor = await AutoProcessor.from_pretrained(modelId);
+                    activeBackendName = 'WebAssembly CPU (q8)';
+                    console.log('✅ Transformers.js ejecutando RMBG-1.4 en WebAssembly.');
+                } catch (wasmErr) {
+                    console.error('❌ Error crítico al cargar RMBG-1.4 en WebAssembly:', wasmErr);
+                    throw wasmErr;
+                }
+            }
+
+            rmbgModelInstance = model;
+            rmbgProcessorInstance = processor;
+            return { model, processor };
+        })();
+
+        return await rmbgLoadingPromise;
+    }
+
+    // Pre-calentar modelo ligero en segundo plano tras carga inicial de la página
+    setTimeout(() => {
+        getRMBGModelAndProcessor().then(() => {
+            console.log('🚀 Pipeline RMBG-1.4 precalentado en memoria (' + activeBackendName + ').');
+        }).catch(() => {});
+    }, 1200);
+
+    // ============================================================================
+    // POST-PROCESAMIENTO SATINADO DE ESTUDIO (SATIN RUBBER STUDIO)
+    // Curva Softbox continua C^1, reducción de grano y fondo blanco puro (#FFFFFF)
+    // ============================================================================
+    // Curva de restauración profunda para caucho automotriz (Tire Shine / Deep Slate)
+    // Calibrada para igualar exactamente la muestra de catálogo (test_expected.jpg):
+    // Sombras ricas (p10 ~ 10), cuerpo satinado (p50 ~ 36-39) y brillos vivos (p95 ~ 125-135)
+    const softboxLUT = new Float32Array(256);
+    for (let i = 0; i < 256; i++) {
+        const u = i / 255.0;
+        let y_out = Math.pow(u, 1.52) * 255.0;
+        if (i > 75) {
+            const h = (i - 75) / (255 - 75);
+            y_out += Math.pow(h, 1.20) * 44.0;
+        }
+        softboxLUT[i] = Math.min(255.0, Math.max(0.0, y_out));
+    }
+    softboxLUT[255] = 255.0;
+
+    /**
+     * Aplica acabado satinado limpio sobre la imagen original aislada
+     * Suaviza el grano del sensor, realza sombras con Softbox sin quemar negros,
+     * mantiene matiz invariante (Delta H = 0) y compone sobre blanco puro #FFFFFF.
+     */
+    function processSatinRubberStudio(sourceCanvas, alphaMaskData) {
+        const W = sourceCanvas.width;
+        const H = sourceCanvas.height;
+        const ctx = sourceCanvas.getContext('2d');
+
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const data = imgData.data;
+
+        // Generar guía desenfocada (1.5px) para separación de frecuencias sin artefactos de borde
+        const guideCanvas = document.createElement('canvas');
+        guideCanvas.width = W;
+        guideCanvas.height = H;
+        const guideCtx = guideCanvas.getContext('2d');
+        guideCtx.filter = 'blur(1.5px)';
+        guideCtx.drawImage(sourceCanvas, 0, 0);
+        const guideData = guideCtx.getImageData(0, 0, W, H).data;
+
+        const THETA_NOISE = 14.0;
+        const K_SMOOTH = 0.80;
+        const THETA_EDGE = 22.0;
+        const K_LOGO = 0.20;
+        const totalPixels = W * H;
+
+        for (let i = 0; i < data.length; i += 4) {
+            const pixelIdx = i / 4;
+            let rawAlpha;
+            if (alphaMaskData.length === totalPixels) {
+                rawAlpha = alphaMaskData[pixelIdx];
+            } else if (alphaMaskData.length === totalPixels * 4) {
+                rawAlpha = alphaMaskData[i + 3];
+            } else if (alphaMaskData.length === totalPixels * 3) {
+                rawAlpha = alphaMaskData[pixelIdx * 3];
+            } else {
+                rawAlpha = alphaMaskData[pixelIdx];
+            }
+
+            // Puerta de ruido alfa (Alpha Noise Gate)
+            let alpha = 0.0;
+            if (rawAlpha >= 251) {
+                alpha = 1.0;
+            } else if (rawAlpha > 4) {
+                alpha = (rawAlpha - 4) / 247.0;
+            }
+
+            // Si es fondo absoluto (alpha <= 0.015), fijar blanco puro instantáneo (#FFFFFF)
+            if (alpha <= 0.0) {
+                data[i] = 255;
+                data[i + 1] = 255;
+                data[i + 2] = 255;
+                data[i + 3] = 255;
+                continue;
+            }
+
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            const rG = guideData[i];
+            const gG = guideData[i + 1];
+            const bG = guideData[i + 2];
+
+            const yOrig = 0.299 * r + 0.587 * g + 0.114 * b;
+            const yGuide = 0.299 * rG + 0.587 * gG + 0.114 * bG;
+
+            const diff = yOrig - yGuide;
+            const absDiff = Math.abs(diff);
+
+            // A) Definición de relieve y micro-contraste limpio:
+            let yClean = yOrig;
+            if (absDiff <= 8.0) {
+                // Suavizado ultrasutil de ruido fino de sensor ISO
+                const w = 1.0 - (absDiff / 8.0);
+                yClean = yOrig - (0.40 * diff * w);
+            } else if (absDiff > 18.0) {
+                // Realce de micro-contraste en aristas, nervios y costuras de molde
+                const boost = Math.sign(diff) * Math.min(absDiff - 18.0, 16.0) * 0.20;
+                yClean = yOrig + boost;
+            }
+
+            // B) Mapeo tonal Softbox continuo con LUT calibrada
+            const yIndex = Math.min(255, Math.max(0, Math.round(yClean)));
+            const yTarget = softboxLUT[yIndex];
+
+            // C) Preservación estricta de color o acabado hidratado para caucho
+            const scale = yTarget / (Math.max(yOrig, 0.001));
+            let rScaled = r * scale;
+            let gScaled = g * scale;
+            let bScaled = b * scale;
+
+            // Si es caucho neutro (baja saturación) y no una etiqueta de color:
+            // Aplicar graduación Tire Shine Slate por bandas de luminancia idéntica al target
+            const maxChOrig = Math.max(r, g, b);
+            const minChOrig = Math.min(r, g, b);
+            const origSat = maxChOrig > 0 ? (maxChOrig - minChOrig) / maxChOrig : 0;
+            if (origSat < 0.22 && yTarget < 225) {
+                const t = Math.min(1.0, yTarget / 130.0);
+                const rFactor = 0.74 + 0.14 * t; // 0.74 (sombras) -> 0.88 (reflejos)
+                const gFactor = 1.025;
+                const bFactor = 1.58 - 0.32 * t; // 1.58 (sombras) -> 1.26 (reflejos)
+                rScaled *= rFactor;
+                gScaled *= gFactor;
+                bScaled *= bFactor;
+            }
+
+            // Gamut mapping a matiz constante si algún canal satura > 255
+            const maxCh = Math.max(rScaled, gScaled, bScaled);
+            if (maxCh > 255.0) {
+                const factor = (255.0 - yTarget) / (maxCh - yTarget + 0.001);
+                rScaled = yTarget + (rScaled - yTarget) * factor;
+                gScaled = yTarget + (gScaled - yTarget) * factor;
+                bScaled = yTarget + (bScaled - yTarget) * factor;
+            }
+
+            // D) Descontaminación suave de borde
+            if (alpha < 0.95 && alpha > 0.05) {
+                const decontamFactor = 1.0 - alpha;
+                rScaled = rScaled * alpha + 18 * decontamFactor;
+                gScaled = gScaled * alpha + 18 * decontamFactor;
+                bScaled = bScaled * alpha + 18 * decontamFactor;
+            }
+
+            // E) Composición final Porter-Duff Over sobre Blanco Puro (#FFFFFF exacto)
+            data[i] = Math.min(255, Math.max(0, Math.round(rScaled * alpha + 255 * (1.0 - alpha))));
+            data[i + 1] = Math.min(255, Math.max(0, Math.round(gScaled * alpha + 255 * (1.0 - alpha))));
+            data[i + 2] = Math.min(255, Math.max(0, Math.round(bScaled * alpha + 255 * (1.0 - alpha))));
+            data[i + 3] = 255;
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        return sourceCanvas;
     }
 
     // Optimización: reduce fotos gigantes de celular (e.g. 4000x3000px, 8MB) a máx 1400px
@@ -279,10 +505,158 @@
         });
     }
 
+    // Extraer sombra de contacto y fusionar pieza original de Gemini sobre fondo blanco puro #FFFFFF
+    function extractAndBlendWithGroundShadow(sourceCanvas, finalMask, origW, origH) {
+        const outputCanvas = document.createElement('canvas');
+        outputCanvas.width = origW;
+        outputCanvas.height = origH;
+        const outCtx = outputCanvas.getContext('2d');
+        outCtx.fillStyle = '#ffffff';
+        outCtx.fillRect(0, 0, origW, origH);
+
+        const srcCtx = sourceCanvas.getContext('2d');
+        const srcImgData = srcCtx.getImageData(0, 0, origW, origH);
+        const sData = srcImgData.data;
+
+        const maskData = finalMask.data;
+        const maskChannels = finalMask.channels;
+
+        // 1. Muestrear fondo del estudio en las esquinas superiores (sin objeto ni sombra)
+        let bgR = 0, bgG = 0, bgB = 0, bgCount = 0;
+        const sampleHeight = Math.max(10, Math.round(origH * 0.08));
+        const sampleWidth = Math.max(20, Math.round(origW * 0.20));
+
+        for (let y = 0; y < sampleHeight; y++) {
+            for (let x = 0; x < sampleWidth; x++) {
+                // Esquina superior izquierda
+                let idx = (y * origW + x) * 4;
+                bgR += sData[idx];
+                bgG += sData[idx + 1];
+                bgB += sData[idx + 2];
+                bgCount++;
+
+                // Esquina superior derecha
+                idx = (y * origW + (origW - 1 - x)) * 4;
+                bgR += sData[idx];
+                bgG += sData[idx + 1];
+                bgB += sData[idx + 2];
+                bgCount++;
+            }
+        }
+
+        bgR = Math.max(210, Math.min(255, bgR / Math.max(1, bgCount)));
+        bgG = Math.max(210, Math.min(255, bgG / Math.max(1, bgCount)));
+        bgB = Math.max(210, Math.min(255, bgB / Math.max(1, bgCount)));
+        const bgLum = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB;
+
+        // 2. Encontrar caja del producto para acotar la sombra de contacto
+        let minX = origW, minY = origH, maxX = 0, maxY = 0;
+        let found = false;
+        for (let y = 0; y < origH; y++) {
+            for (let x = 0; x < origW; x++) {
+                const idx = y * origW + x;
+                const alphaVal = maskChannels === 1 ? maskData[idx] : maskData[idx * maskChannels];
+                if (alphaVal > 25) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                    found = true;
+                }
+            }
+        }
+
+        if (!found) {
+            minX = 0; maxX = origW - 1; minY = 0; maxY = origH - 1;
+        }
+
+        const objH = Math.max(1, maxY - minY);
+        const objW = Math.max(1, maxX - minX);
+
+        // La sombra de contacto se encuentra en el tercio inferior del objeto y el plano de apoyo
+        const shadowStartY = minY + objH * 0.25;
+        const shadowMaxY = Math.min(origH - 1, maxY + objH * 0.40);
+        const shadowMinX = Math.max(0, minX - objW * 0.25);
+        const shadowMaxX = Math.min(origW - 1, maxX + objW * 0.25);
+
+        const outImgData = outCtx.getImageData(0, 0, origW, origH);
+        const oData = outImgData.data;
+
+        for (let y = 0; y < origH; y++) {
+            for (let x = 0; x < origW; x++) {
+                const pIdx = (y * origW + x) * 4;
+                const mIdx = y * origW + x;
+                const alphaVal = maskChannels === 1 ? maskData[mIdx] : maskData[mIdx * maskChannels];
+                const objAlpha = alphaVal / 255.0;
+
+                const rOrig = sData[pIdx];
+                const gOrig = sData[pIdx + 1];
+                const bOrig = sData[pIdx + 2];
+
+                // Si el píxel pertenece al objeto (Gemini), se mantiene 100% original sin filtros
+                if (objAlpha >= 0.98) {
+                    oData[pIdx] = rOrig;
+                    oData[pIdx + 1] = gOrig;
+                    oData[pIdx + 2] = bOrig;
+                    oData[pIdx + 3] = 255;
+                    continue;
+                }
+
+                // Fuera o en el borde del objeto: calcular sombra de contacto
+                let shadowWeight = 0;
+                if (y >= shadowStartY && y <= shadowMaxY && x >= shadowMinX && x <= shadowMaxX) {
+                    let vertFactor = 1.0;
+                    if (y < maxY) {
+                        vertFactor = (y - shadowStartY) / (maxY - shadowStartY + 0.001);
+                    } else {
+                        vertFactor = Math.max(0, 1.0 - (y - maxY) / (shadowMaxY - maxY + 0.001));
+                    }
+
+                    let horizFactor = 1.0;
+                    if (x < minX) {
+                        horizFactor = Math.max(0, 1.0 - (minX - x) / (minX - shadowMinX + 0.001));
+                    } else if (x > maxX) {
+                        horizFactor = Math.max(0, 1.0 - (x - maxX) / (shadowMaxX - maxX + 0.001));
+                    }
+
+                    shadowWeight = Math.min(1.0, Math.max(0, vertFactor * horizFactor));
+                }
+
+                const pLum = 0.299 * rOrig + 0.587 * gOrig + 0.114 * bOrig;
+                let rShadow = 255;
+                let gShadow = 255;
+                let bShadow = 255;
+
+                if (shadowWeight > 0.01 && pLum < bgLum - 3.0) {
+                    // Ratio de absorción de la sombra original de Gemini sobre fondo blanco
+                    const rRatio = Math.min(1.0, rOrig / bgR);
+                    const gRatio = Math.min(1.0, gOrig / bgG);
+                    const bRatio = Math.min(1.0, bOrig / bgB);
+
+                    rShadow = Math.round(255 * (1.0 - (1.0 - rRatio) * shadowWeight));
+                    gShadow = Math.round(255 * (1.0 - (1.0 - gRatio) * shadowWeight));
+                    bShadow = Math.round(255 * (1.0 - (1.0 - bRatio) * shadowWeight));
+                }
+
+                // Fusión Porter-Duff Over: píxeles puros de Gemini sobre la sombra integrada
+                oData[pIdx] = Math.round(rOrig * objAlpha + rShadow * (1.0 - objAlpha));
+                oData[pIdx + 1] = Math.round(gOrig * objAlpha + gShadow * (1.0 - objAlpha));
+                oData[pIdx + 2] = Math.round(bOrig * objAlpha + bShadow * (1.0 - objAlpha));
+                oData[pIdx + 3] = 255;
+            }
+        }
+
+        outCtx.putImageData(outImgData, 0, 0);
+        return {
+            canvas: outputCanvas,
+            bbox: { minX, minY, maxX, maxY, objW, objH }
+        };
+    }
+
     // Procesar una imagen para aislar objeto y montarlo sobre fondo blanco puro (#ffffff)
     async function processImageToStudioWhite(file, onProgress, mode = 'creation') {
         const isAutoEnabled = autoSwitch ? autoSwitch.checked : true;
-        if (!isAutoEnabled) {
+        if (!isAutoEnabled && mode !== 'enhance' && mode !== 'gemini') {
             return {
                 file: file,
                 previewUrl: URL.createObjectURL(file),
@@ -291,76 +665,148 @@
         }
 
         const isEnhance = mode === 'enhance';
+        const isGemini = mode === 'gemini';
 
-        // 1. Reducir dimensiones ANTES de inferencia SOLO si es modo creacion rapido.
-        if (onProgress) onProgress(isEnhance ? 'Preparando imagen original...' : 'Optimizando resolucion...');
-        const optimizedFile = isEnhance ? file : await downscaleImageIfNeeded(file, 1400);
+        // 0. Detectar si la imagen ya es un flyer (corregir error heredado donde flyer sobreescribió image_path)
+        let finalFileToProcess = file;
+        try {
+            const tempImg = new Image();
+            await new Promise((res, rej) => {
+                tempImg.onload = res;
+                tempImg.onerror = rej;
+                tempImg.src = URL.createObjectURL(file);
+            });
+            URL.revokeObjectURL(tempImg.src);
 
-        if (onProgress) onProgress('Cargando motor de IA...');
-        const removeBg = await getRemoveBgFunction();
+            const ratio = tempImg.width / tempImg.height;
+            // Un flyer tiene proporcion ~0.8 (928x1150)
+            if (ratio > 0.7 && ratio < 0.9) {
+                const flyerCheckCanvas = document.createElement('canvas');
+                const flyerCheckCtx = flyerCheckCanvas.getContext('2d');
+                flyerCheckCanvas.width = tempImg.width;
+                flyerCheckCanvas.height = tempImg.height;
+                flyerCheckCtx.drawImage(tempImg, 0, 0);
 
-        const aiModel = isEnhance ? 'isnet' : 'isnet_quint8';
+                // Comprobar si los bordes superior e inferior son muy oscuros (barras negras del flyer)
+                const topPixel = flyerCheckCtx.getImageData(tempImg.width/2, 10, 1, 1).data;
+                const bottomPixel = flyerCheckCtx.getImageData(tempImg.width/2, tempImg.height - 10, 1, 1).data;
 
-        if (onProgress) onProgress('Aislando producto con IA (' + (isEnhance ? 'Alta Calidad' : 'Rapido') + ')...');
-        const transparentBlob = await removeBg(optimizedFile, {
-            debug: false,
-            model: aiModel,
-            progress: (key, current, total) => {
-                if (onProgress && total > 0) {
-                    const pct = Math.min(100, Math.round((current / total) * 100));
-                    onProgress('Segmentando objeto (' + pct + '%)...');
+                const isTopBlack = topPixel[0] < 50 && topPixel[1] < 50 && topPixel[2] < 50;
+                const isBottomBlack = bottomPixel[0] < 50 && bottomPixel[1] < 50 && bottomPixel[2] < 50;
+
+                if (isTopBlack && isBottomBlack) {
+                    if (onProgress) onProgress('Detectado flyer previo. Extrayendo imagen original...');
+                    // Es un flyer. Extraer la parte central (fondo blanco con el producto)
+                    const cropY = tempImg.height * 0.28;
+                    const cropH = tempImg.height * 0.60;
+                    const cropW = tempImg.width * 0.9;
+                    const cropX = tempImg.width * 0.05;
+
+                    const extractCanvas = document.createElement('canvas');
+                    extractCanvas.width = cropW;
+                    extractCanvas.height = cropH;
+                    const extractCtx = extractCanvas.getContext('2d');
+                    extractCtx.fillStyle = '#ffffff';
+                    extractCtx.fillRect(0, 0, cropW, cropH);
+                    extractCtx.drawImage(tempImg, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+                    const extractedBlob = await new Promise(res => extractCanvas.toBlob(res, 'image/jpeg', 1.0));
+                    finalFileToProcess = new File([extractedBlob], file.name, { type: 'image/jpeg' });
                 }
             }
-        });
+        } catch (e) {
+            console.warn("No se pudo analizar la imagen pre-procesamiento", e);
+        }
 
-        if (onProgress) onProgress('Aplicando fondo blanco de alta fidelidad...');
+        // 1. Optimizar resolución previa si excede 1600px para evitar saturación de memoria
+        if (onProgress) onProgress('Optimizando resolución para inferencia...');
+        const optimizedFile = await downscaleImageIfNeeded(finalFileToProcess, 1600);
 
-        const img = new Image();
-        const objectUrl = URL.createObjectURL(transparentBlob);
-        await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = objectUrl;
-        });
+        // 2. Obtener modelo y procesador Transformers.js RMBG-1.4
+        if (onProgress) onProgress('Cargando motor de IA RMBG-1.4...');
+        const { model, processor } = await getRMBGModelAndProcessor(onProgress);
 
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        if (onProgress) onProgress(`Aislando producto con RMBG-1.4 (${activeBackendName})...`);
 
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        // 3. Cargar RawImage
+        const rawInput = await RawImage.fromBlob(optimizedFile);
+        const origW = rawInput.width;
+        const origH = rawInput.height;
 
-        if (isEnhance) {
-            // 1. Dibujar en canvas temporal para recortar el espacio transparente
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCanvas.width = img.naturalWidth || img.width;
-            tempCanvas.height = img.naturalHeight || img.height;
-            tempCtx.drawImage(img, 0, 0);
+        // 4. Inferencia de segmentación directa (AutoProcessor + AutoModel)
+        const { pixel_values } = await processor(rawInput);
+        const { output } = await model({ input: pixel_values });
 
-            // 2. Encontrar los limites (Bounding Box) y limpiar blancos falsos
-            const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-            const data = imgData.data;
-            let minX = tempCanvas.width, minY = tempCanvas.height, maxX = 0, maxY = 0;
+        if (onProgress) onProgress('Restaurando antialiasing a resolución nativa...');
+
+        // 5. Extraer máscara alfa de alta resolución y reescalar a resolución original
+        const finalMask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(origW, origH);
+
+        // 6. Transferir a canvas de trabajo a resolución nativa
+        const sourceCanvas = document.createElement('canvas');
+        sourceCanvas.width = origW;
+        sourceCanvas.height = origH;
+        const sourceCtx = sourceCanvas.getContext('2d');
+
+        // Dibujar imagen original completa
+        try {
+            const imgBitmap = await createImageBitmap(optimizedFile);
+            sourceCtx.drawImage(imgBitmap, 0, 0);
+        } catch (e) {
+            await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    sourceCtx.drawImage(img, 0, 0);
+                    resolve();
+                };
+                img.onerror = reject;
+                img.src = URL.createObjectURL(optimizedFile);
+            });
+        }
+
+        let orientedCanvas = document.createElement('canvas');
+        let cropX = 0, cropY = 0, cropW = origW, cropH = origH;
+
+        if (isGemini) {
+            // EXCLUSIVO GEMINI: Omitir filtros locales destructivos, retener sombras de suelo y mantener orientación natural
+            if (onProgress) onProgress('Preservando sombras originales y fusionando con fondo blanco...');
+            const shadowResult = extractAndBlendWithGroundShadow(sourceCanvas, finalMask, origW, origH);
+            const shadowCanvas = shadowResult.canvas;
+            const bbox = shadowResult.bbox;
+
+            // Bounding box que incluye el objeto y su sombra de apoyo
+            const padX = Math.round(bbox.objW * 0.12);
+            const padYTop = Math.max(10, Math.round(bbox.objH * 0.06));
+            const padYBottom = Math.round(bbox.objH * 0.28);
+
+            cropX = Math.max(0, bbox.minX - padX);
+            cropY = Math.max(0, bbox.minY - padYTop);
+            cropW = Math.min(origW - cropX, (bbox.maxX - cropX) + padX);
+            cropH = Math.min(origH - cropY, (bbox.maxY - cropY) + padYBottom);
+
+            // Orientación natural: NO rotar 90°, mantener la gravedad y la posición física de la sombra
+            orientedCanvas.width = cropW;
+            orientedCanvas.height = cropH;
+            const oCtx = orientedCanvas.getContext('2d');
+            oCtx.fillStyle = '#ffffff';
+            oCtx.fillRect(0, 0, cropW, cropH);
+            oCtx.drawImage(shadowCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+        } else {
+            // 7. RUTA ESTÁNDAR (IA LOCAL / CREACIÓN): Aplicar post-procesamiento satinado de estudio
+            if (onProgress) onProgress('Aplicando acabado satinado de estudio y balance Softbox...');
+            const maskData = finalMask.data;
+            processSatinRubberStudio(sourceCanvas, maskData);
+
+            // 8. Calcular Bounding Box basado en la máscara alfa
+            let minX = origW, minY = origH, maxX = 0, maxY = 0;
             let found = false;
-
-            // Escaneo completo para borrar bolsas plasticas y encontrar limites
-            for (let y = 0; y < tempCanvas.height; y++) {
-                for (let x = 0; x < tempCanvas.width; x++) {
-                    const idx = (y * tempCanvas.width + x) * 4;
-                    const r = data[idx];
-                    const g = data[idx + 1];
-                    const b = data[idx + 2];
-                    let alpha = data[idx + 3];
-
-                    // FILTRO DE BLANCO FALSO (Bolsas plásticas, sombras claras)
-                    // Si el pixel es muy claro (brillo promedio > 215) lo hacemos transparente
-                    const brightness = (r + g + b) / 3;
-                    if (brightness > 215 && alpha > 0) {
-                        data[idx + 3] = 0; // Transparente total
-                        alpha = 0;
-                    }
-
-                    if (alpha > 10) { // Umbral de transparencia para los bordes
+            const maskChannels = finalMask.channels;
+            for (let y = 0; y < origH; y++) {
+                for (let x = 0; x < origW; x++) {
+                    const idx = y * origW + x;
+                    const alphaVal = maskChannels === 1 ? maskData[idx] : maskData[idx * maskChannels];
+                    if (alphaVal > 15) {
                         if (x < minX) minX = x;
                         if (x > maxX) maxX = x;
                         if (y < minY) minY = y;
@@ -370,151 +816,83 @@
                 }
             }
 
-            // Aplicar los pixeles corregidos (bolsas eliminadas) al canvas temporal
-            tempCtx.putImageData(imgData, 0, 0);
-
-            let cropX = 0, cropY = 0, cropW = tempCanvas.width, cropH = tempCanvas.height;
             if (found) {
-                cropX = minX;
-                cropY = minY;
-                cropW = maxX - minX + 1;
-                cropH = maxY - minY + 1;
+                cropX = Math.max(0, minX - 2);
+                cropY = Math.max(0, minY - 2);
+                cropW = Math.min(origW - cropX, (maxX - minX + 1) + 4);
+                cropH = Math.min(origH - cropY, (maxY - minY + 1) + 4);
             }
 
-            // --- NUEVO: RED NEURONAL (UPSCALERJS) ---
-
-            // 1. Crear un canvas temporal adaptado a la red neuronal (Máximo 500px para no saturar WebGL, ya que Upscaler x2 lo subirá a 1000px)
-            const maxAiSize = 500;
-            let aiScale = 1;
-            if (cropW > maxAiSize || cropH > maxAiSize) {
-                aiScale = Math.min(maxAiSize / cropW, maxAiSize / cropH);
-            }
-            const aiW = Math.round(cropW * aiScale);
-            const aiH = Math.round(cropH * aiScale);
-
-            const preAiCanvas = document.createElement('canvas');
-            preAiCanvas.width = aiW;
-            preAiCanvas.height = aiH;
-            const preAiCtx = preAiCanvas.getContext('2d');
-
-            // IMPORTANTE: Llenar el fondo de blanco ANTES de pasarlo a la IA.
-            // Los modelos ESRGAN descartan la transparencia (canal alfa).
-            // Si el fondo es transparente (rgba: 0,0,0,0), la IA lo interpretará como negro sólido.
-            preAiCtx.fillStyle = '#ffffff';
-            preAiCtx.fillRect(0, 0, aiW, aiH);
-
-            preAiCtx.drawImage(tempCanvas, cropX, cropY, cropW, cropH, 0, 0, aiW, aiH);
-
-            // 2. INFERENCIA DE LA RED NEURONAL (Super Resolución)
-            if (onProgress) onProgress('Mejorando texturas con IA Neuronal (UpscalerJS)...');
-            // Inicializar el modelo predeterminado de UpscalerJS (2x resolution) explícitamente
-            const upscaler = new window.Upscaler({
-                model: window.DefaultUpscalerJSModel
-            });
-            // El patchSize divide la imagen en fragmentos más pequeños para evitar quedarse sin memoria VRAM en WebGL.
-            const superResDataUrl = await upscaler.upscale(preAiCanvas, {
-                patchSize: 64,
-                padding: 4
-            });
-
-            // 3. Cargar la imagen ultra-nítida resultante
-            const superResImg = new Image();
-            await new Promise((res, rej) => {
-                superResImg.onload = res;
-                superResImg.onerror = rej;
-                superResImg.src = superResDataUrl;
-            });
-
-            // 4. Dibujar en el lienzo final estandarizado blanco (1500px)
-            const TARGET_SIZE = 1500;
-            const PADDING = 100; // Margen proporcional
-
-            canvas.width = TARGET_SIZE;
-            canvas.height = TARGET_SIZE;
-
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Liberar memoria de la IA para el siguiente ciclo
-            if (typeof upscaler.dispose === 'function') {
-                await upscaler.dispose();
-            }
-
-            const srW = superResImg.naturalWidth || superResImg.width;
-            const srH = superResImg.naturalHeight || superResImg.height;
-
-            const availableSize = TARGET_SIZE - (PADDING * 2);
-            const scale = Math.min(availableSize / srW, availableSize / srH);
-
-            const drawWidth = srW * scale;
-            const drawHeight = srH * scale;
-            const dx = (TARGET_SIZE - drawWidth) / 2;
-            const dy = (TARGET_SIZE - drawHeight) / 2;
-
-            ctx.drawImage(superResImg, 0, 0, srW, srH, dx, dy, drawWidth, drawHeight);
-
-            // 5. ALGORITMOS DE VISIÓN COMPUTACIONAL (Tone Mapping & Unsharp Mask)
-            // Para recuperar la textura fotográfica profunda y micro-contraste del estándar.
-            if (onProgress) onProgress('Aplicando fotometría avanzada HDR y texturas...');
-
-            // --- A) Corrección Gamma (Levantar Sombras) ---
-            // Levanta los medios tonos para revelar los detalles ocultos en las partes oscuras del caucho.
-            let finalImgData = ctx.getImageData(0, 0, TARGET_SIZE, TARGET_SIZE);
-            let finalData = finalImgData.data;
-            const gamma = 0.85; // Menor a 1.0 aclara las sombras
-
-            for (let i = 0; i < finalData.length; i += 4) {
-                // Ignorar el blanco puro del fondo
-                if (finalData[i] > 245 && finalData[i+1] > 245 && finalData[i+2] > 245) continue;
-                for(let c = 0; c < 3; c++) {
-                    let normalized = finalData[i+c] / 255.0;
-                    // Formula Gamma
-                    finalData[i+c] = Math.pow(normalized, gamma) * 255;
+            // 9. Auto-orientación inteligente para fotos normales de catálogo
+            if (cropW > cropH) {
+                let leftPixels = 0, rightPixels = 0;
+                const midX = cropX + cropW / 2;
+                for (let y = cropY; y < cropY + cropH; y++) {
+                    for (let x = cropX; x < cropX + cropW; x++) {
+                        const idx = y * origW + x;
+                        const alphaVal = maskChannels === 1 ? maskData[idx] : maskData[idx * maskChannels];
+                        if (alphaVal > 20) {
+                            if (x < midX) leftPixels++;
+                            else rightPixels++;
+                        }
+                    }
                 }
+                const rotAngle = leftPixels > rightPixels ? -Math.PI / 2 : Math.PI / 2;
+
+                orientedCanvas.width = cropH;
+                orientedCanvas.height = cropW;
+                const oCtx = orientedCanvas.getContext('2d');
+                oCtx.fillStyle = '#ffffff';
+                oCtx.fillRect(0, 0, cropH, cropW);
+                oCtx.translate(cropH / 2, cropW / 2);
+                oCtx.rotate(rotAngle);
+                oCtx.drawImage(sourceCanvas, cropX, cropY, cropW, cropH, -cropW / 2, -cropH / 2, cropW, cropH);
+            } else {
+                orientedCanvas.width = cropW;
+                orientedCanvas.height = cropH;
+                const oCtx = orientedCanvas.getContext('2d');
+                oCtx.fillStyle = '#ffffff';
+                oCtx.fillRect(0, 0, cropW, cropH);
+                oCtx.drawImage(sourceCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
             }
-            ctx.putImageData(finalImgData, 0, 0);
-
-            // --- B) Hardware-Accelerated Local Contrast (Clarity) ---
-            // Extrae diferencias de frecuencia amplia (volumen 3D del caucho) y los multiplica.
-            const blurCanvas = document.createElement('canvas');
-            blurCanvas.width = TARGET_SIZE;
-            blurCanvas.height = TARGET_SIZE;
-            const blurCtx = blurCanvas.getContext('2d');
-
-            // Aplicar desenfoque gaussiano amplio para "Claridad HDR"
-            blurCtx.filter = 'blur(5px)';
-            blurCtx.drawImage(canvas, 0, 0);
-
-            const blurredData = blurCtx.getImageData(0, 0, TARGET_SIZE, TARGET_SIZE).data;
-            const originalData = ctx.getImageData(0, 0, TARGET_SIZE, TARGET_SIZE);
-            const oData = originalData.data;
-
-            const usmAmount = 2.2; // Alta agresividad para el micro-contraste fotográfico
-
-            for (let i = 0; i < oData.length; i += 4) {
-                // Ignorar el fondo
-                if (oData[i] > 245 && oData[i+1] > 245 && oData[i+2] > 245) continue;
-                for(let c = 0; c < 3; c++) {
-                    let diff = oData[i+c] - blurredData[i+c];
-                    let sharpened = oData[i+c] + (diff * usmAmount);
-                    // Clamping
-                    oData[i+c] = Math.min(255, Math.max(0, Math.round(sharpened)));
-                }
-            }
-            ctx.putImageData(originalData, 0, 0);
-        } else {
-            canvas.width = img.naturalWidth || img.width;
-            canvas.height = img.naturalHeight || img.height;
-
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
         }
 
-        URL.revokeObjectURL(objectUrl);
+        // 10. Montar sobre canvas cuadrado de 1500x1500px con fondo blanco puro #FFFFFF
+        const TARGET_SIZE = 1500;
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = TARGET_SIZE;
+        finalCanvas.height = TARGET_SIZE;
+        const finalCtx = finalCanvas.getContext('2d');
+
+        finalCtx.fillStyle = '#ffffff';
+        finalCtx.fillRect(0, 0, TARGET_SIZE, TARGET_SIZE);
+        finalCtx.imageSmoothingEnabled = true;
+        finalCtx.imageSmoothingQuality = 'high';
+
+        const maxProductDim = 1300;
+        const scaleFactor = Math.min(maxProductDim / orientedCanvas.width, maxProductDim / orientedCanvas.height);
+        const finalW = Math.round(orientedCanvas.width * scaleFactor);
+        const finalH = Math.round(orientedCanvas.height * scaleFactor);
+        const destX = Math.round((TARGET_SIZE - finalW) / 2);
+        const destY = Math.round((TARGET_SIZE - finalH) / 2);
+
+        finalCtx.drawImage(orientedCanvas, 0, 0, orientedCanvas.width, orientedCanvas.height, destX, destY, finalW, finalH);
+
+        // Studio White Snapping puro: garantiza que el fondo sea estrictamente #FFFFFF (255, 255, 255)
+        const finalImgData = finalCtx.getImageData(0, 0, TARGET_SIZE, TARGET_SIZE);
+        const fData = finalImgData.data;
+        const snapThreshold = isGemini ? 253 : 252;
+        for (let i = 0; i < fData.length; i += 4) {
+            if (fData[i] >= snapThreshold && fData[i + 1] >= snapThreshold && fData[i + 2] >= snapThreshold) {
+                fData[i] = 255;
+                fData[i + 1] = 255;
+                fData[i + 2] = 255;
+            }
+        }
+        finalCtx.putImageData(finalImgData, 0, 0);
 
         return new Promise((resolve, reject) => {
-            canvas.toBlob((blob) => {
+            finalCanvas.toBlob((blob) => {
                 if (!blob) {
                     return reject(new Error('Fallo al exportar canvas a blob'));
                 }
@@ -522,10 +900,10 @@
                 const whiteBgFile = new File([blob], cleanName, { type: 'image/jpeg' });
                 resolve({
                     file: whiteBgFile,
-                    previewUrl: canvas.toDataURL('image/jpeg', 1.0),
+                    previewUrl: finalCanvas.toDataURL('image/jpeg', 0.94),
                     processed: true
                 });
-            }, 'image/jpeg', 1.0);
+            }, 'image/jpeg', 0.94);
         });
     }
 
@@ -641,6 +1019,7 @@
                                 galleryStatusText.textContent = `[${i + 1}/${originalFiles.length}] ${msg}`;
                             }
                         });
+
                         dt.items.add(result.file);
                         renderGalleryItem(result.previewUrl, true);
                     } catch (itemErr) {
@@ -680,6 +1059,152 @@
         galleryContainer.appendChild(div);
     }
 
+    async function aplicarPlantilla(imagenProcesadaFile, nombreProducto, refCodeCustom = null) {
+        return new Promise(async (resolve) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const imgPlantilla = new Image();
+            imgPlantilla.crossOrigin = "Anonymous";
+            imgPlantilla.src = '{{ asset("img/plantilla-estado.jpg") }}';
+
+            const imgProd = new Image();
+            imgProd.src = URL.createObjectURL(imagenProcesadaFile);
+
+            await Promise.all([
+                new Promise(r => { imgPlantilla.onload = r; imgPlantilla.onerror = r; }),
+                new Promise(r => { imgProd.onload = r; imgProd.onerror = r; })
+            ]);
+
+            if (!imgPlantilla.width) {
+                resolve(imagenProcesadaFile);
+                return;
+            }
+
+            canvas.width = imgPlantilla.width;
+            canvas.height = imgPlantilla.height;
+
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.drawImage(imgPlantilla, 0, 0);
+
+            // TITULO EN EL TOP BAR
+            const text = (nombreProducto || 'PRODUCTO').toUpperCase();
+            const topMaxWidth = 600; // Ancho maximo del contenedor negro superior
+            let fontSize = 42;
+            ctx.font = `italic 900 ${fontSize}px "Arial Black", Arial, sans-serif`;
+
+            // Auto-fit (1 linea)
+            while (ctx.measureText(text).width > topMaxWidth && fontSize > 16) {
+                fontSize -= 1;
+                ctx.font = `italic 900 ${fontSize}px "Arial Black", Arial, sans-serif`;
+            }
+
+            // Centrado en el contenedor superior negro
+            const topCenterX = 464;
+            const topCenterY = 214;
+
+            // Colores intercalados para parecerse al diseño original (blanco y rojo)
+            let words = text.split(' ');
+            let currentX = topCenterX - (ctx.measureText(text).width / 2);
+
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+
+            for (let i = 0; i < words.length; i++) {
+                let word = words[i] + (i < words.length - 1 ? ' ' : '');
+                ctx.fillStyle = (i === 1) ? '#e61b23' : 'white'; // Segunda palabra roja, resto blanco
+                ctx.fillText(word, currentX, topCenterY);
+                currentX += ctx.measureText(word).width;
+            }
+
+            // CODIGO DE REFERENCIA EN EL BOTTOM BAR
+            // Contenedor inferior: Center x = 464, y = 1025
+            const refInput = document.querySelector('input[name="reference"]');
+            const refVal = refCodeCustom || (refInput ? refInput.value.trim() : null) || '{{ $product->reference ?? $product->id ?? "0000" }}';
+            let refCode = 'REF: ' + refVal;
+
+            let refFontSize = 34;
+            ctx.font = `italic 900 ${refFontSize}px "Arial Black", Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'white';
+            ctx.fillText(refCode, 464, 1025);
+
+            // Ajuste perfecto en la zona de la plantilla
+            // imgProd ya es una imagen de 1500x1500 con el objeto rotado y centrado por processImageToStudioWhite
+            const imgSize = imgProd.width; // 1500
+            const maxProdWidth = 600;
+            const maxProdHeight = 500;
+
+            const ratio = Math.min(maxProdWidth / imgSize, maxProdHeight / imgSize);
+
+            const finalW = imgSize * ratio;
+            const finalH = imgSize * ratio;
+
+            const targetCenterX = canvas.width / 2;
+            const targetCenterY = 400 + (maxProdHeight / 2);
+
+            ctx.globalCompositeOperation = 'multiply';
+
+            // Dibujamos la imagen original centrada en el contenedor
+            ctx.drawImage(imgProd,
+                targetCenterX - (finalW / 2),
+                targetCenterY - (finalH / 2),
+                finalW,
+                finalH
+            );
+
+            ctx.globalCompositeOperation = 'source-over';
+
+            canvas.toBlob((blob) => {
+                resolve(new File([blob], 'flyer.jpg', { type: 'image/jpeg' }));
+            }, 'image/jpeg', 0.95);
+        });
+    }
+
+    window.aplicarPlantilla = aplicarPlantilla;
+
+    async function extractCleanProductIfFlyer(imgSource) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => {
+                const isFlyer = (img.naturalWidth === 928 && img.naturalHeight === 1150) ||
+                                (Math.abs((img.naturalWidth / img.naturalHeight) - (928 / 1150)) < 0.02 && img.naturalHeight >= 800);
+                if (!isFlyer) {
+                    resolve(imgSource);
+                    return;
+                }
+                const canvas = document.createElement('canvas');
+                const cropX = Math.round(img.naturalWidth * 0.10);
+                const cropY = Math.round(img.naturalHeight * 0.28);
+                const cropW = Math.round(img.naturalWidth * 0.80);
+                const cropH = Math.round(img.naturalHeight * 0.55);
+
+                canvas.width = cropW;
+                canvas.height = cropH;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = () => resolve(imgSource);
+                        reader.readAsDataURL(blob);
+                    } else {
+                        resolve(imgSource);
+                    }
+                }, 'image/jpeg', 0.95);
+            };
+            img.onerror = () => resolve(imgSource);
+            img.src = (typeof imgSource === 'string') ? imgSource : URL.createObjectURL(imgSource);
+        });
+    }
+
     window.enhanceAllImages = async function() {
         const btn = document.getElementById('btnEnhanceAll');
         const statusDiv = document.getElementById('enhanceAllStatus');
@@ -701,268 +1226,6 @@
             let total = (mainImg ? 1 : 0) + galleryImgs.length;
             let current = 0;
 
-            async function aplicarPlantilla(imagenProcesadaFile, nombreProducto) {
-                return new Promise(async (resolve) => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-
-                    const imgPlantilla = new Image();
-                    imgPlantilla.crossOrigin = "Anonymous";
-                    imgPlantilla.src = '/img/plantilla-estado.jpg';
-
-                    const imgProd = new Image();
-                    imgProd.src = URL.createObjectURL(imagenProcesadaFile);
-
-                    await Promise.all([
-                        new Promise(r => { imgPlantilla.onload = r; imgPlantilla.onerror = r; }),
-                        new Promise(r => { imgProd.onload = r; imgProd.onerror = r; })
-                    ]);
-
-                    if (!imgPlantilla.width) {
-                        resolve(imagenProcesadaFile);
-                        return;
-                    }
-
-                    canvas.width = imgPlantilla.width;
-                    canvas.height = imgPlantilla.height;
-
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                    ctx.drawImage(imgPlantilla, 0, 0);
-
-                    ctx.fillStyle = 'white';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-
-                    const text = nombreProducto.toUpperCase();
-                    // El área blanca segura entre las rayas diagonales rojas es de unos 540px
-                    const maxWidth = canvas.width - 280;
-                    let fontSize = 30; // Empezamos un poco más pequeño
-                    ctx.font = `bold ${fontSize}px Arial`;
-
-                    let words = text.split(' ');
-                    let lines = [];
-                    let currentLine = words[0] || '';
-
-                    for (let i = 1; i < words.length; i++) {
-                        let testLine = currentLine + ' ' + words[i];
-                        if (ctx.measureText(testLine).width > maxWidth) {
-                            lines.push(currentLine);
-                            currentLine = words[i];
-                        } else {
-                            currentLine = testLine;
-                        }
-                    }
-                    if (currentLine) lines.push(currentLine);
-
-                    // Si hay más de 2 líneas, reducimos el tamaño de fuente y recalculamos para que quepa en 2 líneas
-                    while (lines.length > 2 && fontSize > 18) {
-                        fontSize -= 2;
-                        ctx.font = `bold ${fontSize}px Arial`;
-                        lines = [];
-                        currentLine = words[0] || '';
-                        for (let i = 1; i < words.length; i++) {
-                            let testLine = currentLine + ' ' + words[i];
-                            if (ctx.measureText(testLine).width > maxWidth) {
-                                lines.push(currentLine);
-                                currentLine = words[i];
-                            } else {
-                                currentLine = testLine;
-                            }
-                        }
-                        if (currentLine) lines.push(currentLine);
-                    }
-
-                    // Si incluso achicando a 18px sigue ocupando más de 2 líneas, lo forzamos a 2 líneas y achicamos al máximo
-                    if (lines.length > 2) {
-                         // Partir en 2 líneas forzosamente por la mitad
-                         lines = ['', ''];
-                         for (let i=0; i<words.length; i++) {
-                             if (i < words.length/2) lines[0] += words[i] + ' ';
-                             else lines[1] += words[i] + ' ';
-                         }
-                         lines[0] = lines[0].trim();
-                         lines[1] = lines[1].trim();
-
-                         while ( (ctx.measureText(lines[0]).width > maxWidth || ctx.measureText(lines[1]).width > maxWidth) && fontSize > 12) {
-                             fontSize -= 1;
-                             ctx.font = `bold ${fontSize}px Arial`;
-                         }
-                    }
-
-                    const lineSpacing = fontSize * 1.2;
-                    let startY = 210 - ((lines.length - 1) * lineSpacing) / 2;
-
-                    for (let i = 0; i < lines.length; i++) {
-                        let line = lines[i];
-                        let currentFontSize = fontSize;
-                        ctx.font = `bold ${currentFontSize}px Arial`;
-                        while (ctx.measureText(line).width > maxWidth && currentFontSize > 10) {
-                            currentFontSize -= 1;
-                            ctx.font = `bold ${currentFontSize}px Arial`;
-                        }
-                        // Failsafe final: maxWidth como 4to parámetro para que el canvas lo comprima si es necesario
-                        ctx.fillText(line, canvas.width / 2, startY + (i * lineSpacing), maxWidth);
-                    }
-
-                    // --- MABB y Auto-Crop Inteligente ---
-                    // Escalar a un lienzo pequeño para análisis rápido
-                    const scanSize = 200;
-                    const scanCanvas = document.createElement('canvas');
-                    const scanCtx = scanCanvas.getContext('2d');
-                    const scaleScan = Math.min(scanSize / imgProd.width, scanSize / imgProd.height);
-                    scanCanvas.width = imgProd.width * scaleScan;
-                    scanCanvas.height = imgProd.height * scaleScan;
-                    scanCtx.drawImage(imgProd, 0, 0, scanCanvas.width, scanCanvas.height);
-                    
-                    const imgData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height).data;
-                    
-                    let minX = scanCanvas.width, minY = scanCanvas.height, maxX = 0, maxY = 0;
-                    let pts = [];
-
-                    for (let y = 0; y < scanCanvas.height; y++) {
-                        for (let x = 0; x < scanCanvas.width; x++) {
-                            const alpha = imgData[(y * scanCanvas.width + x) * 4 + 3];
-                            if (alpha > 10) {
-                                pts.push({x: x, y: y});
-                                if (x < minX) minX = x;
-                                if (x > maxX) maxX = x;
-                                if (y < minY) minY = y;
-                                if (y > maxY) maxY = y;
-                            }
-                        }
-                    }
-
-                    let rotateAngle = 0;
-                    let cropBox = { x: 0, y: 0, w: imgProd.width, h: imgProd.height, cx: imgProd.width/2, cy: imgProd.height/2 };
-                    
-                    if (pts.length > 0) {
-                        // 1. Convex Hull (Monotone Chain)
-                        pts.sort((a, b) => a.x === b.x ? a.y - b.y : a.x - b.x);
-                        const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-                        
-                        let lower = [];
-                        for (let i = 0; i < pts.length; i++) {
-                            while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) {
-                                lower.pop();
-                            }
-                            lower.push(pts[i]);
-                        }
-                        
-                        let upper = [];
-                        for (let i = pts.length - 1; i >= 0; i--) {
-                            while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[i]) <= 0) {
-                                upper.pop();
-                            }
-                            upper.push(pts[i]);
-                        }
-                        
-                        upper.pop(); 
-                        lower.pop();
-                        let hull = lower.concat(upper);
-
-                        // 2. Minimum Area Bounding Box (MABB)
-                        let minArea = Infinity;
-                        let bestAngle = 0;
-                        
-                        for (let i = 0; i < hull.length; i++) {
-                            let p1 = hull[i];
-                            let p2 = hull[(i + 1) % hull.length];
-                            let edgeAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-                            
-                            let tempMinX = Infinity, tempMaxX = -Infinity, tempMinY = Infinity, tempMaxY = -Infinity;
-                            for (let p of hull) {
-                                let rx = p.x * Math.cos(-edgeAngle) - p.y * Math.sin(-edgeAngle);
-                                let ry = p.x * Math.sin(-edgeAngle) + p.y * Math.cos(-edgeAngle);
-                                if (rx < tempMinX) tempMinX = rx;
-                                if (rx > tempMaxX) tempMaxX = rx;
-                                if (ry < tempMinY) tempMinY = ry;
-                                if (ry > tempMaxY) tempMaxY = ry;
-                            }
-                            
-                            let area = (tempMaxX - tempMinX) * (tempMaxY - tempMinY);
-                            if (area < minArea) {
-                                minArea = area;
-                                if ((tempMaxX - tempMinX) > (tempMaxY - tempMinY)) {
-                                    bestAngle = edgeAngle;
-                                } else {
-                                    bestAngle = edgeAngle + Math.PI / 2;
-                                }
-                            }
-                        }
-
-                        rotateAngle = Math.PI / 2 - bestAngle;
-                        
-                        while (rotateAngle > Math.PI / 2) rotateAngle -= Math.PI;
-                        while (rotateAngle <= -Math.PI / 2) rotateAngle += Math.PI;
-
-                        const cx = (minX + maxX) / 2;
-                        const cy = (minY + maxY) / 2;
-
-                        cropBox = {
-                            x: minX / scaleScan,
-                            y: minY / scaleScan,
-                            w: (maxX - minX) / scaleScan,
-                            h: (maxY - minY) / scaleScan,
-                            cx: cx / scaleScan,
-                            cy: cy / scaleScan
-                        };
-                    }
-
-                    // Calcular dimensiones finales del Bounding Box TRAS la rotación
-                    const corners = [
-                        {x: cropBox.x - cropBox.cx, y: cropBox.y - cropBox.cy},
-                        {x: cropBox.x + cropBox.w - cropBox.cx, y: cropBox.y - cropBox.cy},
-                        {x: cropBox.x - cropBox.cx, y: cropBox.y + cropBox.h - cropBox.cy},
-                        {x: cropBox.x + cropBox.w - cropBox.cx, y: cropBox.y + cropBox.h - cropBox.cy}
-                    ];
-
-                    let rotMinX = Infinity, rotMaxX = -Infinity, rotMinY = Infinity, rotMaxY = -Infinity;
-                    for (let c of corners) {
-                        const rx = c.x * Math.cos(rotateAngle) - c.y * Math.sin(rotateAngle);
-                        const ry = c.x * Math.sin(rotateAngle) + c.y * Math.cos(rotateAngle);
-                        if (rx < rotMinX) rotMinX = rx;
-                        if (rx > rotMaxX) rotMaxX = rx;
-                        if (ry < rotMinY) rotMinY = ry;
-                        if (ry > rotMaxY) rotMaxY = ry;
-                    }
-
-                    const rotW = rotMaxX - rotMinX;
-                    const rotH = rotMaxY - rotMinY;
-
-                    // Ajuste perfecto en la zona de la plantilla
-                    const maxProdWidth = 600;
-                    const maxProdHeight = 500; 
-                    
-                    const ratio = Math.min(maxProdWidth / rotW, maxProdHeight / rotH);
-
-                    const targetCenterX = canvas.width / 2;
-                    const targetCenterY = 400 + (maxProdHeight / 2); 
-
-                    ctx.globalCompositeOperation = 'multiply';
-                    ctx.save();
-                    
-                    // Transformaciones matemáticas para centrar y rotar
-                    ctx.translate(targetCenterX, targetCenterY);
-                    ctx.scale(ratio, ratio);
-                    ctx.rotate(rotateAngle);
-
-                    // Dibujamos la imagen original, extrayendo solo el recorte, y centrando su centro de masa en el (0,0) del lienzo rotado
-                    ctx.drawImage(imgProd, 
-                        cropBox.x, cropBox.y, cropBox.w, cropBox.h,
-                        cropBox.x - cropBox.cx, cropBox.y - cropBox.cy, cropBox.w, cropBox.h
-                    );
-                    
-                    ctx.restore();
-                    ctx.globalCompositeOperation = 'source-over';
-
-                    canvas.toBlob((blob) => {
-                        resolve(new File([blob], 'flyer.jpg', { type: 'image/jpeg' }));
-                    }, 'image/jpeg', 0.95);
-                });
-            }
-
             async function processOne(url, type, id, statusEl) {
                 current++;
                 statusText.textContent = `Procesando imagen ${current} de ${total}...`;
@@ -970,19 +1233,33 @@
 
                 const response = await fetch(url);
                 const blob = await response.blob();
-                const file = new File([blob], `image_${id}.jpg`, { type: blob.type || 'image/jpeg' });
+
+                // Si la imagen ya tiene marco de plantilla/flyer, recortamos la pieza de caucho del centro
+                const cleanSource = await extractCleanProductIfFlyer(blob);
+                const cleanBlob = (cleanSource === blob) ? blob : await (await fetch(cleanSource)).blob();
+                const file = new File([cleanBlob], `image_${id}.jpg`, { type: cleanBlob.type || 'image/jpeg' });
 
                 const result = await processImageToStudioWhite(file, (msg) => {
                     if(statusEl) statusEl.textContent = msg;
                 }, 'enhance');
 
+                const productNameInput = document.querySelector('input[name="name"]');
+                const productName = (productNameInput ? productNameInput.value : '') || 'PRODUCTO';
+
+                // Para imágenes de galería, generamos el flyer con la plantilla y lo subimos directamente
+                let fileToUpload = result.file;
+                if (type === 'gallery') {
+                    if(statusEl) statusEl.textContent = 'Aplicando plantilla...';
+                    fileToUpload = await aplicarPlantilla(result.file, productName);
+                }
+
                 const formData = new FormData();
-                formData.append('image', result.file);
+                formData.append('image', fileToUpload);
                 formData.append('_token', csrf);
 
                 let endpoint = type === 'main'
-                    ? `/productos/${id}/replace-main-image`
-                    : `/productos/imagenes/${id}/replace`;
+                    ? `{{ url('/productos') }}/${id}/replace-main-image`
+                    : `{{ url('/productos/imagenes') }}/${id}/replace`;
 
                 const uploadRes = await fetch(endpoint, {
                     method: 'POST',
@@ -993,37 +1270,26 @@
                 const data = await uploadRes.json();
 
                 if (data.success) {
-                    if(statusEl) statusEl.textContent = 'Aplicando plantilla...';
-                    const productNameInput = document.querySelector('input[name="name"]');
-                    const productName = (productNameInput ? productNameInput.value : '') || 'PRODUCTO';
-                    const flyerFile = await aplicarPlantilla(result.file, productName);
                     let finalPath = data.path;
 
                     if (type === 'main') {
-                        // Para la principal, subimos el flyer aparte para mantener el catálogo limpio
+                        if(statusEl) statusEl.textContent = 'Aplicando plantilla...';
+                        const flyerFile = await aplicarPlantilla(result.file, productName);
+
                         const flyerData = new FormData();
                         flyerData.append('flyer', flyerFile);
                         flyerData.append('_token', csrf);
 
-                        await fetch(`/productos/${id}/upload-flyer`, {
+                        const flyerRes = await fetch(`{{ url('/productos') }}/${id}/upload-flyer`, {
                             method: 'POST',
                             body: flyerData,
                             headers: { 'Accept': 'application/json' }
                         });
-                    } else {
-                        // Para la galería, reemplazamos la imagen física con el flyer
-                        const galleryData = new FormData();
-                        galleryData.append('image', flyerFile);
-                        galleryData.append('_token', csrf);
 
-                        const galleryRes = await fetch(`/productos/imagenes/${id}/replace`, {
-                            method: 'POST',
-                            body: galleryData,
-                            headers: { 'Accept': 'application/json' }
-                        });
-                        const galleryDataJson = await galleryRes.json();
-                        if (galleryDataJson.success) {
-                            finalPath = galleryDataJson.path;
+                        const flyerDataJson = await flyerRes.json();
+                        if (flyerDataJson.success) {
+                            // Actualizamos finalPath para que el UI muestre el flyer generado
+                            finalPath = flyerDataJson.path;
                         }
                     }
 
@@ -1032,16 +1298,16 @@
                         statusEl.classList.add('text-success');
                         statusEl.textContent = '¡Mejorada con plantilla!';
                     }
-                    return finalPath;
+                    return { display: finalPath, source: data.path };
                 }
                 throw new Error('Error al guardar');
             }
 
             if (mainImg) {
                 const url = mainImg.getAttribute('data-url');
-                const newPath = await processOne(url, 'main', productId, document.getElementById('status_existing_main'));
-                mainImg.src = newPath + '?t=' + new Date().getTime();
-                mainImg.setAttribute('data-url', newPath);
+                const result = await processOne(url, 'main', productId, document.getElementById('status_existing_main'));
+                mainImg.src = result.display + '?t=' + new Date().getTime();
+                mainImg.setAttribute('data-url', result.source);
             }
 
             for (let i = 0; i < galleryImgs.length; i++) {
@@ -1049,9 +1315,9 @@
                 const url = img.getAttribute('data-url');
                 const id = img.getAttribute('data-id');
                 const statusEl = document.getElementById('status_existing_gallery_' + id);
-                const newPath = await processOne(url, 'gallery', id, statusEl);
-                img.src = newPath + '?t=' + new Date().getTime();
-                img.setAttribute('data-url', newPath);
+                const result = await processOne(url, 'gallery', id, statusEl);
+                img.src = result.display + '?t=' + new Date().getTime();
+                img.setAttribute('data-url', result.source);
             }
 
             statusText.textContent = '¡Todas las imágenes mejoradas!';
@@ -1064,6 +1330,408 @@
             if (window.toastr) toastr.error('Error: ' + error.message);
             statusText.textContent = 'Ocurrió un error.';
         } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    };
+
+    function isGeminiExtensionInstalled() {
+        return !!document.getElementById('__cauchos_gemini_bridge_installed__');
+    }
+
+    function collectAllProductImages() {
+        const items = [];
+
+        // 1. Imagen principal
+        const mainFileInput = document.getElementById('mainImageInput');
+        const existingMain = document.getElementById('existing_main_img');
+
+        if (mainFileInput && mainFileInput.files && mainFileInput.files[0]) {
+            items.push({
+                type: 'main',
+                id: '{{ $product->id ?? "" }}',
+                jobId: 'main',
+                label: 'Imagen Principal (Nueva)',
+                file: mainFileInput.files[0],
+                url: null,
+                statusEl: document.getElementById('status_existing_main') || document.getElementById('mainImageStatusText')
+            });
+        } else if (existingMain) {
+            const url = existingMain.getAttribute('data-url') || existingMain.src;
+            if (url) {
+                items.push({
+                    type: 'main',
+                    id: '{{ $product->id ?? "" }}',
+                    jobId: 'main',
+                    label: 'Imagen Principal',
+                    file: null,
+                    url: url,
+                    statusEl: document.getElementById('status_existing_main')
+                });
+            }
+        }
+
+        // 2. Imágenes de galería existentes
+        const galleryImgs = document.querySelectorAll('.existing_gallery_img');
+        galleryImgs.forEach((img, idx) => {
+            const id = img.getAttribute('data-id');
+            const url = img.getAttribute('data-url') || img.src;
+            if (url && id) {
+                items.push({
+                    type: 'gallery',
+                    id: id,
+                    jobId: 'gallery_' + id,
+                    label: `Galería #${idx + 1}`,
+                    file: null,
+                    url: url,
+                    imgEl: img,
+                    statusEl: document.getElementById('status_existing_gallery_' + id)
+                });
+            }
+        });
+
+        return items;
+    }
+
+    async function getImageBase64ForItem(item) {
+        let base64 = null;
+        if (item.file) {
+            base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(item.file);
+            });
+        } else if (item.url) {
+            try {
+                const res = await fetch(item.url);
+                const blob = await res.blob();
+                base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (e) {
+                console.warn("Fetch de item url falló, intentando canvas...", e);
+                if (item.imgEl) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = item.imgEl.naturalWidth || 600;
+                    canvas.height = item.imgEl.naturalHeight || 600;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(item.imgEl, 0, 0);
+                    base64 = canvas.toDataURL('image/jpeg', 0.95);
+                }
+            }
+        }
+
+        if (!base64) {
+            throw new Error('No se pudo obtener datos de la imagen: ' + item.label);
+        }
+
+        // Si la imagen ya tiene la plantilla de flyer aplicada, extraemos el producto central limpio
+        return await extractCleanProductIfFlyer(base64);
+    }
+
+    function buildGeminiStudioPrompt() {
+        return "mejora la imagen y aplica Fotografía de estudio, en primer plano y de alta calidad, sobre un fondo blanco continuo. El objeto está es aplicar un realismo al objecto. Iluminación natural de estudio con enfoque nítido y sombras suaves en la base para asentar el objeto de forma realista.";
+    }
+
+    function runGeminiGenerationBridge(promptText, productId, imageBase64, jobId, isLast, onStepStatus) {
+        return new Promise((resolve, reject) => {
+            let settled = false;
+
+            const onMsg = (event) => {
+                if (event.source !== window || !event.data || typeof event.data !== 'object') return;
+
+                if (event.data.productId == productId && event.data.jobId == jobId) {
+                    if (event.data.type === 'CAUCHOS_GEMINI_STATUS') {
+                        if (onStepStatus) onStepStatus(event.data.status);
+                    } else if (event.data.type === 'CAUCHOS_GEMINI_SUCCESS') {
+                        if (settled) return;
+                        settled = true;
+                        window.removeEventListener('message', onMsg);
+                        resolve(event.data.imageBase64);
+                    } else if (event.data.type === 'CAUCHOS_GEMINI_ERROR') {
+                        if (settled) return;
+                        settled = true;
+                        window.removeEventListener('message', onMsg);
+                        reject(new Error(event.data.error || 'Fallo en Gemini Web'));
+                    }
+                }
+            };
+
+            window.addEventListener('message', onMsg);
+
+            window.postMessage({
+                type: 'CAUCHOS_START_GEMINI_AUTOMATION',
+                prompt: promptText,
+                productId: productId,
+                jobId: jobId,
+                imageBase64: imageBase64,
+                isLast: isLast
+            }, '*');
+
+            // Timeout por imagen individual: 140s
+            setTimeout(() => {
+                if (!settled) {
+                    settled = true;
+                    window.removeEventListener('message', onMsg);
+                    reject(new Error('Tiempo de espera agotado (140s) en Gemini Web'));
+                }
+            }, 140000);
+        });
+    }
+
+    window.generateWithGeminiExtension = async function() {
+        const btn = document.getElementById('btnGeminiExtension');
+        const statusDiv = document.getElementById('geminiExtensionStatus');
+        const statusText = document.getElementById('geminiExtensionStatusText');
+        const productId = '{{ $product->id ?? "" }}';
+        const csrf = '{{ csrf_token() }}';
+
+        if (!productId) {
+            if (window.toastr) toastr.warning('Debes guardar el producto primero antes de generar con Gemini.');
+            return;
+        }
+
+        // 1. Verificar si la extensión de Chrome está instalada
+        if (!isGeminiExtensionInstalled()) {
+            const extensionPath = "e:\\xampp\\htdocs\\cauchos-alfa\\extension-gemini-bridge";
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Extensión de Chrome Requerida',
+                    html: `Para conectar automáticamente con tu cuenta <b>Google Gemini Pro</b> sin pagar APIs, carga la extensión:<br><br>
+                    <ol style="text-align: left; font-size: 13px;">
+                        <li>Abre <b>chrome://extensions/</b> en una pestaña.</li>
+                        <li>Activa <b>Modo de desarrollador</b> (arriba a la derecha).</li>
+                        <li>Haz clic en <b>"Cargar descomprimida"</b>.</li>
+                        <li>Selecciona la carpeta: <br><code style="font-size: 11px; background:#eee; padding:2px 4px; border-radius:3px;">${extensionPath}</code></li>
+                    </ol>
+                    <small class="text-muted">¡Solo se hace una vez y queda 100% automático para siempre!</small>`,
+                    confirmButtonText: 'Entendido'
+                });
+            } else if (window.toastr) {
+                toastr.info('Carga la extensión desde ' + extensionPath, 'Extensión Requerida', { timeOut: 15000 });
+            }
+            return;
+        }
+
+        const items = collectAllProductImages();
+        if (items.length === 0) {
+            if (window.toastr) toastr.warning('No se encontraron imágenes en el producto para procesar.');
+            return;
+        }
+
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm mr-1"></span> Procesando con Gemini Pro...`;
+
+        if (statusDiv) {
+            statusDiv.classList.remove('d-none', 'text-danger', 'text-success');
+            statusDiv.classList.add('text-primary');
+            statusText.textContent = `Preparando ${items.length} ${items.length === 1 ? 'imagen' : 'imágenes'} para Gemini Pro...`;
+        }
+
+        const promptText = buildGeminiStudioPrompt();
+        let successCount = 0;
+        let failCount = 0;
+
+        try {
+            setProcessingState(true, 'Procesando con Gemini Pro e IA Local...');
+
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                const isLast = (i === items.length - 1);
+                const prefix = `[${i + 1}/${items.length} - ${item.label}]`;
+
+                statusText.textContent = `${prefix} Extrayendo imagen de referencia...`;
+                if (item.statusEl) {
+                    item.statusEl.classList.remove('text-success', 'text-danger');
+                    item.statusEl.classList.add('text-primary');
+                    item.statusEl.textContent = 'Iniciando Gemini...';
+                }
+
+                let imageBase64 = null;
+                try {
+                    imageBase64 = await getImageBase64ForItem(item);
+                } catch (e) {
+                    console.error(`${prefix} Error obteniendo base64:`, e);
+                    if (item.statusEl) {
+                        item.statusEl.classList.remove('text-primary');
+                        item.statusEl.classList.add('text-danger');
+                        item.statusEl.textContent = 'Error al leer imagen';
+                    }
+                    failCount++;
+                    continue;
+                }
+
+                statusText.textContent = `${prefix} Enviando a Gemini Pro en Chrome...`;
+
+                try {
+                    // Generar en Gemini Web
+                    const geminiBase64 = await runGeminiGenerationBridge(
+                        promptText,
+                        productId,
+                        imageBase64,
+                        item.jobId,
+                        isLast,
+                        (stepStatus) => {
+                            statusText.textContent = `${prefix} ${stepStatus}`;
+                            if (item.statusEl) item.statusEl.textContent = stepStatus;
+                        }
+                    );
+
+                    // Aislar objeto con IA local (Transformers.js RMBG-1.4)
+                    statusText.textContent = `${prefix} Foto recibida de Gemini. Recortando con IA local...`;
+                    if (item.statusEl) item.statusEl.textContent = 'IA Local recortando...';
+
+                    const resBlob = await (await fetch(geminiBase64)).blob();
+                    const rawGeminiFile = new File([resBlob], `gemini_${item.type}_${item.id}.jpg`, { type: 'image/jpeg' });
+
+                    const localResult = await processImageToStudioWhite(rawGeminiFile, (msg) => {
+                        statusText.textContent = `${prefix} [IA Local] ${msg}`;
+                    }, 'gemini');
+
+                    const isolatedFile = localResult.file;
+
+                    if (item.type === 'main') {
+                        statusText.textContent = `${prefix} Guardando imagen principal limpia en el catálogo...`;
+                        const mainFormData = new FormData();
+                        mainFormData.append('image', isolatedFile);
+                        mainFormData.append('_token', csrf);
+
+                        const uploadRes = await fetch(`{{ url('/productos') }}/${productId}/replace-main-image`, {
+                            method: 'POST',
+                            body: mainFormData,
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const uploadJson = await uploadRes.json();
+
+                        // Generar flyer publicitario institucional oficial
+                        statusText.textContent = `${prefix} Generando y aplicando plantilla de flyer oficial...`;
+                        const productNameInput = document.querySelector('input[name="name"]');
+                        const productName = (productNameInput ? productNameInput.value : '') || 'PRODUCTO';
+                        const flyerFile = await aplicarPlantilla(isolatedFile, productName);
+
+                        const flyerData = new FormData();
+                        flyerData.append('flyer', flyerFile);
+                        flyerData.append('_token', csrf);
+
+                        const flyerRes = await fetch(`{{ url('/productos') }}/${productId}/upload-flyer`, {
+                            method: 'POST',
+                            body: flyerData,
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const flyerJson = await flyerRes.json();
+
+                        // Actualizar visiblemente la sección Imagen Principal
+                        if (mainPreviewImg) mainPreviewImg.src = localResult.previewUrl;
+                        if (mainFileName) mainFileName.textContent = 'gemini_enhanced.jpg (Guardada en catálogo)';
+                        if (mainBadge) {
+                            mainBadge.className = 'badge badge-success mb-1';
+                            mainBadge.innerHTML = '<i class="fab fa-google mr-1"></i> Mejorada con Gemini Pro (Fondo Blanco)';
+                        }
+                        if (mainPreviewArea) {
+                            mainPreviewArea.classList.remove('d-none');
+                            mainPreviewArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                        if (mainInput) mainInput.value = '';
+
+                        // Actualizar miniatura del catálogo
+                        const mainImg = document.getElementById('existing_main_img');
+                        if (mainImg) {
+                            if (flyerJson.success && flyerJson.path) {
+                                mainImg.src = flyerJson.path + '?t=' + new Date().getTime();
+                            } else if (uploadJson.path) {
+                                mainImg.src = uploadJson.path + '?t=' + new Date().getTime();
+                            }
+                            if (uploadJson.path) mainImg.setAttribute('data-url', uploadJson.path);
+                        }
+
+                        if (item.statusEl) {
+                            item.statusEl.classList.remove('text-primary');
+                            item.statusEl.classList.add('text-success');
+                            item.statusEl.textContent = '¡Mejorada con Gemini + Flyer!';
+                        }
+                    } else {
+                        // Galería: Aplicar plantilla institucional al igual que en la imagen principal
+                        statusText.textContent = `${prefix} Generando y aplicando plantilla de flyer oficial...`;
+                        const productNameInput = document.querySelector('input[name="name"]');
+                        const productName = (productNameInput ? productNameInput.value : '') || 'PRODUCTO';
+                        const galleryFlyerFile = await aplicarPlantilla(isolatedFile, productName);
+
+                        statusText.textContent = `${prefix} Guardando imagen de galería con plantilla en el catálogo...`;
+                        const galleryFormData = new FormData();
+                        galleryFormData.append('image', galleryFlyerFile);
+                        galleryFormData.append('_token', csrf);
+
+                        const galleryRes = await fetch(`{{ url('/productos/imagenes') }}/${item.id}/replace`, {
+                            method: 'POST',
+                            body: galleryFormData,
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const galleryJson = await galleryRes.json();
+
+                        if (item.imgEl && galleryJson.path) {
+                            item.imgEl.src = galleryJson.path + '?t=' + new Date().getTime();
+                            item.imgEl.setAttribute('data-url', galleryJson.path);
+                        }
+
+                        if (item.statusEl) {
+                            item.statusEl.classList.remove('text-primary');
+                            item.statusEl.classList.add('text-success');
+                            item.statusEl.textContent = '¡Mejorada con Gemini + Plantilla!';
+                        }
+                    }
+
+                    successCount++;
+
+                    // Pequeña pausa antes de procesar la siguiente imagen para que Gemini Web esté completamente listo
+                    if (!isLast) {
+                        statusText.textContent = `${prefix} ¡Completada! Preparando siguiente imagen en 2.5 segundos...`;
+                        await new Promise(r => setTimeout(r, 2500));
+                    }
+
+                } catch (err) {
+                    console.error(`${prefix} Error:`, err);
+                    if (item.statusEl) {
+                        item.statusEl.classList.remove('text-primary');
+                        item.statusEl.classList.add('text-danger');
+                        item.statusEl.textContent = 'Error: ' + err.message;
+                    }
+                    failCount++;
+                    if (window.toastr) {
+                        toastr.warning(`Error en ${item.label}: ${err.message}`);
+                    }
+                    if (!isLast) {
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+                }
+            }
+
+            if (successCount > 0) {
+                statusText.textContent = `¡Listo! Se mejoraron ${successCount} de ${items.length} imágenes con Gemini Pro e IA Local.`;
+                statusDiv.classList.remove('text-primary', 'text-danger');
+                statusDiv.classList.add('text-success');
+                if (window.toastr) {
+                    toastr.success(`¡Éxito! ${successCount} imágenes procesadas con Gemini Pro y recortadas con fondo blanco puro.`);
+                }
+            } else {
+                statusText.textContent = 'No se pudo completar el procesamiento de las imágenes.';
+                statusDiv.classList.remove('text-primary', 'text-success');
+                statusDiv.classList.add('text-danger');
+            }
+
+        } catch (globalErr) {
+            console.error('Error general en generateWithGeminiExtension:', globalErr);
+            statusDiv.classList.remove('text-primary');
+            statusDiv.classList.add('text-danger');
+            statusText.textContent = 'Error: ' + globalErr.message;
+            if (window.toastr) toastr.error('Error: ' + globalErr.message);
+        } finally {
+            setProcessingState(false);
             btn.innerHTML = originalText;
             btn.disabled = false;
         }

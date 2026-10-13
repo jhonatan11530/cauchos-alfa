@@ -14,16 +14,25 @@ class ProductController extends Controller
 {
     public function index(Request $request): View
     {
+        $categories = Category::orderBy('name')->get();
+
         $products = Product::with(['category', 'images'])
+            ->when($request->filled('category_id'), function ($query) use ($request) {
+                $query->where('category_id', $request->input('category_id'));
+            })
             ->when($request->filled('q'), function ($query) use ($request) {
                 $term = '%' . $request->string('q') . '%';
                 $query->where(fn ($q) => $q->where('name', 'like', $term)
                     ->orWhere('reference', 'like', $term)
-                    ->orWhere('description', 'like', $term));
+                    ->orWhere('description', 'like', $term)
+                    ->orWhereHas('category', fn ($c) => $c->where('name', 'like', $term)));
             })
             ->latest();
 
-        return view('admin.products.index', ['products' => $products->paginate(10)->withQueryString()]);
+        return view('admin.products.index', [
+            'products' => $products->paginate(10)->withQueryString(),
+            'categories' => $categories,
+        ]);
     }
 
     public function create(): View

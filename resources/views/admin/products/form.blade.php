@@ -679,28 +679,42 @@
             URL.revokeObjectURL(tempImg.src);
 
             const ratio = tempImg.width / tempImg.height;
-            // Un flyer tiene proporcion ~0.8 (928x1150)
-            if (ratio > 0.7 && ratio < 0.9) {
+            const isSquareRatio = Math.abs(ratio - 1.0) < 0.06;
+            const isLegacyRatio = ratio > 0.70 && ratio < 0.88;
+
+            if (isSquareRatio || isLegacyRatio) {
                 const flyerCheckCanvas = document.createElement('canvas');
                 const flyerCheckCtx = flyerCheckCanvas.getContext('2d');
                 flyerCheckCanvas.width = tempImg.width;
                 flyerCheckCanvas.height = tempImg.height;
                 flyerCheckCtx.drawImage(tempImg, 0, 0);
 
-                // Comprobar si los bordes superior e inferior son muy oscuros (barras negras del flyer)
-                const topPixel = flyerCheckCtx.getImageData(tempImg.width/2, 10, 1, 1).data;
-                const bottomPixel = flyerCheckCtx.getImageData(tempImg.width/2, tempImg.height - 10, 1, 1).data;
+                // Comprobar si la barra superior y contenedor inferior son oscuros
+                const sampleTopY = isSquareRatio ? Math.round(tempImg.height * 0.09) : Math.round(tempImg.height * 0.087);
+                const sampleBottomY = isSquareRatio ? Math.round(tempImg.height * 0.93) : Math.round(tempImg.height * 0.89);
+                const sampleX = Math.round(tempImg.width / 2);
 
-                const isTopBlack = topPixel[0] < 50 && topPixel[1] < 50 && topPixel[2] < 50;
-                const isBottomBlack = bottomPixel[0] < 50 && bottomPixel[1] < 50 && bottomPixel[2] < 50;
+                const topPixel = flyerCheckCtx.getImageData(sampleX, sampleTopY, 1, 1).data;
+                const bottomPixel = flyerCheckCtx.getImageData(sampleX, sampleBottomY, 1, 1).data;
+
+                const isTopBlack = topPixel[0] < 60 && topPixel[1] < 60 && topPixel[2] < 60;
+                const isBottomBlack = bottomPixel[0] < 60 && bottomPixel[1] < 60 && bottomPixel[2] < 60;
 
                 if (isTopBlack && isBottomBlack) {
                     if (onProgress) onProgress('Detectado flyer previo. Extrayendo imagen original...');
-                    // Es un flyer. Extraer la parte central (fondo blanco con el producto)
-                    const cropY = tempImg.height * 0.28;
-                    const cropH = tempImg.height * 0.60;
-                    const cropW = tempImg.width * 0.9;
-                    const cropX = tempImg.width * 0.05;
+                    // Es un flyer. Extraer la parte central blanca libre de insignias ni elementos graficos
+                    let cropX, cropY, cropW, cropH;
+                    if (isSquareRatio) {
+                        cropX = Math.round(tempImg.width * 0.15);
+                        cropY = Math.round(tempImg.height * 0.26);
+                        cropW = Math.round(tempImg.width * 0.70);
+                        cropH = Math.round(tempImg.height * 0.48);
+                    } else {
+                        cropX = Math.round(tempImg.width * 0.14);
+                        cropY = Math.round(tempImg.height * 0.33);
+                        cropW = Math.round(tempImg.width * 0.72);
+                        cropH = Math.round(tempImg.height * 0.47);
+                    }
 
                     const extractCanvas = document.createElement('canvas');
                     extractCanvas.width = cropW;
@@ -823,38 +837,13 @@
                 cropH = Math.min(origH - cropY, (maxY - minY + 1) + 4);
             }
 
-            // 9. Auto-orientación inteligente para fotos normales de catálogo
-            if (cropW > cropH) {
-                let leftPixels = 0, rightPixels = 0;
-                const midX = cropX + cropW / 2;
-                for (let y = cropY; y < cropY + cropH; y++) {
-                    for (let x = cropX; x < cropX + cropW; x++) {
-                        const idx = y * origW + x;
-                        const alphaVal = maskChannels === 1 ? maskData[idx] : maskData[idx * maskChannels];
-                        if (alphaVal > 20) {
-                            if (x < midX) leftPixels++;
-                            else rightPixels++;
-                        }
-                    }
-                }
-                const rotAngle = leftPixels > rightPixels ? -Math.PI / 2 : Math.PI / 2;
-
-                orientedCanvas.width = cropH;
-                orientedCanvas.height = cropW;
-                const oCtx = orientedCanvas.getContext('2d');
-                oCtx.fillStyle = '#ffffff';
-                oCtx.fillRect(0, 0, cropH, cropW);
-                oCtx.translate(cropH / 2, cropW / 2);
-                oCtx.rotate(rotAngle);
-                oCtx.drawImage(sourceCanvas, cropX, cropY, cropW, cropH, -cropW / 2, -cropH / 2, cropW, cropH);
-            } else {
-                orientedCanvas.width = cropW;
-                orientedCanvas.height = cropH;
-                const oCtx = orientedCanvas.getContext('2d');
-                oCtx.fillStyle = '#ffffff';
-                oCtx.fillRect(0, 0, cropW, cropH);
-                oCtx.drawImage(sourceCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-            }
+            // 9. Orientación natural fiel (rotación = 0°): conserva la orientación, inclinación y postura original del producto
+            orientedCanvas.width = cropW;
+            orientedCanvas.height = cropH;
+            const oCtx = orientedCanvas.getContext('2d');
+            oCtx.fillStyle = '#ffffff';
+            oCtx.fillRect(0, 0, cropW, cropH);
+            oCtx.drawImage(sourceCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
         }
 
         // 10. Montar sobre canvas cuadrado de 1500x1500px con fondo blanco puro #FFFFFF
@@ -1059,6 +1048,125 @@
         galleryContainer.appendChild(div);
     }
 
+    // ==========================================
+    // DICCIONARIO Y RENDERIZADO DE TITULO EN CANVAS
+    // ==========================================
+    const MOTORCYCLE_BRANDS = new Set([
+        // Marcas colombianas y latinoamericanas principales
+        'YAMAHA', 'HONDA', 'SUZUKI', 'BAJAJ', 'AKT', 'AUTECO', 'KAWASAKI',
+        'HERO', 'KTM', 'TVS', 'KYMCO', 'VICTORY', 'SIGMA', 'SYM',
+        // Marcas internacionales y regionales adicionales
+        'BENELLI', 'BMW', 'DUCATI', 'ROYAL ENFIELD', 'ROYAL', 'ENFIELD',
+        'HARLEY-DAVIDSON', 'HARLEY', 'DAVIDSON', 'HUSQVARNA', 'APRILIA',
+        'PIAGGIO', 'VESPA', 'KEEWAY', 'UM', 'AYCO', 'CERONTE', 'ZONTES',
+        'CFMOTO', 'VOGE', 'LIFAN', 'LONCIN', 'JIALING', 'SHINERAY',
+        'STARK', 'FRATELLI', 'ITALIKA',
+        // Marcas automotrices comunes (bujes / soportes caucho)
+        'CHEVROLET', 'RENAULT', 'MAZDA', 'TOYOTA', 'NISSAN', 'KIA',
+        'HYUNDAI', 'FORD', 'VOLKSWAGEN'
+    ]);
+
+    function isBrandToken(str) {
+        if (!str) return false;
+        const clean = str.replace(/^[^A-Z0-9]+|[^A-Z0-9]+$/gi, '').toUpperCase();
+        return clean.length > 0 && MOTORCYCLE_BRANDS.has(clean);
+    }
+
+    function tokenizeLineForCanvas(lineStr) {
+        const rawWords = lineStr.trim().split(/\s+/);
+        const tokens = [];
+        const wCount = rawWords.length;
+
+        for (let w = 0; w < wCount; w++) {
+            const rawWord = rawWords[w];
+            const isLastWord = (w === wCount - 1);
+
+            // Separar subpartes si contiene delimitadores como / , ( ) [ ]
+            const parts = rawWord.split(/([\/,()\[\]])/).filter(Boolean);
+            const pCount = parts.length;
+
+            for (let p = 0; p < pCount; p++) {
+                const part = parts[p];
+
+                // Si contiene guión, verificar si alguna subparte es marca (ej. AUTECO-BAJAJ)
+                if (part.includes('-') && !MOTORCYCLE_BRANDS.has(part.toUpperCase())) {
+                    const subHyphen = part.split(/(-)/).filter(Boolean);
+                    const hasBrand = subHyphen.some(sh => isBrandToken(sh));
+                    if (hasBrand) {
+                        const shCount = subHyphen.length;
+                        for (let h = 0; h < shCount; h++) {
+                            const hPart = subHyphen[h];
+                            const isLastSub = (p === pCount - 1 && h === shCount - 1);
+                            tokens.push({
+                                text: hPart + (isLastSub && !isLastWord ? ' ' : ''),
+                                color: isBrandToken(hPart) ? '#e61b23' : '#111111'
+                            });
+                        }
+                        continue;
+                    }
+                }
+
+                const isLastPart = (p === pCount - 1);
+                tokens.push({
+                    text: part + (isLastPart && !isLastWord ? ' ' : ''),
+                    color: isBrandToken(part) ? '#e61b23' : '#111111'
+                });
+            }
+        }
+        return tokens;
+    }
+
+    function splitTitleIntoBalancedLines(fullTitle, maxPxWidth, ctx) {
+        const words = fullTitle.trim().split(/\s+/);
+        if (words.length <= 1) return [fullTitle, ''];
+
+        let bestSplit = [fullTitle, ''];
+        let bestScore = Infinity;
+
+        for (let k = 1; k < words.length; k++) {
+            const p1 = words.slice(0, k);
+            const p2 = words.slice(k);
+            const line1 = p1.join(' ');
+            const line2 = p2.join(' ');
+
+            const w1 = ctx.measureText(line1).width;
+            const w2 = ctx.measureText(line2).width;
+
+            let score = Math.abs(w1 - w2);
+            if (w1 > maxPxWidth) score += 2000;
+            if (w2 > maxPxWidth) score += 2000;
+
+            const lastWord1 = p1[p1.length - 1];
+            const firstWord2 = p2[0];
+
+            // Penalizaciones para evitar que la segunda linea empiece con puntuacion
+            if (/^[\/,\-\–]/.test(firstWord2)) score += 600;
+            if (/^[\)\]]/.test(firstWord2)) score += 1000;
+            if (/[\(\[]$/.test(lastWord1)) score += 1000;
+
+            // Penalizar separar numero de sufijo de modelo (ej. "160" y "NS")
+            if (/^\d+$/.test(lastWord1) && /^[A-Z]{1,4}$/.test(firstWord2)) {
+                score += 350;
+            }
+
+            // Bonificacion por corte despues de '/' como separador de lista de modelos
+            if (lastWord1 === '/') {
+                score -= 60;
+            }
+
+            // Bonificacion semantica por corte inmediatamente despues de la marca
+            if (isBrandToken(lastWord1)) {
+                score -= 60;
+            }
+
+            if (score < bestScore) {
+                bestScore = score;
+                bestSplit = [line1, line2];
+            }
+        }
+        return bestSplit;
+    }
+
     async function aplicarPlantilla(imagenProcesadaFile, nombreProducto, refCodeCustom = null) {
         return new Promise(async (resolve) => {
             const canvas = document.createElement('canvas');
@@ -1089,65 +1197,105 @@
 
             ctx.drawImage(imgPlantilla, 0, 0);
 
-            // TITULO EN EL TOP BAR
+            // TITULO EN LA ZONA SUPERIOR BLANCA
             const text = (nombreProducto || 'PRODUCTO').toUpperCase();
-            const topMaxWidth = 600; // Ancho maximo del contenedor negro superior
-            let fontSize = 42;
-            ctx.font = `italic 900 ${fontSize}px "Arial Black", Arial, sans-serif`;
+            const topMaxWidth = 1650; // Ancho maximo en zona blanca superior (2048x2048)
+            const topCenterX = 1024;
+            const topCenterY = 410;
 
-            // Auto-fit (1 linea)
-            while (ctx.measureText(text).width > topMaxWidth && fontSize > 16) {
-                fontSize -= 1;
-                ctx.font = `italic 900 ${fontSize}px "Arial Black", Arial, sans-serif`;
+            // Auto-fit 1 linea: probar si cabe a tamano grande (75px hasta 50px)
+            let singleLineFs = 75;
+            ctx.font = `italic 900 ${singleLineFs}px "Arial Black", Arial, sans-serif`;
+            while (ctx.measureText(text).width > topMaxWidth && singleLineFs > 20) {
+                singleLineFs -= 1;
+                ctx.font = `italic 900 ${singleLineFs}px "Arial Black", Arial, sans-serif`;
             }
 
-            // Centrado en el contenedor superior negro
-            const topCenterX = 464;
-            const topCenterY = 214;
+            let linesToDraw = [];
+            let finalFontSize = singleLineFs;
 
-            // Colores intercalados para parecerse al diseño original (blanco y rojo)
-            let words = text.split(' ');
-            let currentX = topCenterX - (ctx.measureText(text).width / 2);
+            if (singleLineFs >= 50) {
+                // Titulo corto: 1 sola linea centrada
+                linesToDraw = [{ text: text, y: topCenterY }];
+                finalFontSize = singleLineFs;
+            } else {
+                // Titulo largo: dividir inteligentemente en 2 lineas balanceadas
+                ctx.font = `italic 900 60px "Arial Black", Arial, sans-serif`;
+                const [line1, line2] = splitTitleIntoBalancedLines(text, topMaxWidth, ctx);
 
+                let twoLineFs = 64;
+                ctx.font = `italic 900 ${twoLineFs}px "Arial Black", Arial, sans-serif`;
+                while ((ctx.measureText(line1).width > topMaxWidth || (line2 && ctx.measureText(line2).width > topMaxWidth)) && twoLineFs > 36) {
+                    twoLineFs -= 1;
+                    ctx.font = `italic 900 ${twoLineFs}px "Arial Black", Arial, sans-serif`;
+                }
+
+                finalFontSize = twoLineFs;
+                if (!line2) {
+                    linesToDraw = [{ text: line1, y: topCenterY }];
+                } else {
+                    const lineGap = Math.round(twoLineFs * 1.22);
+                    linesToDraw = [
+                        { text: line1, y: topCenterY - Math.round(lineGap / 2) },
+                        { text: line2, y: topCenterY + Math.round(lineGap / 2) }
+                    ];
+                }
+            }
+
+            // Dibujo multi-color token por token
+            ctx.font = `italic 900 ${finalFontSize}px "Arial Black", Arial, sans-serif`;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
 
-            for (let i = 0; i < words.length; i++) {
-                let word = words[i] + (i < words.length - 1 ? ' ' : '');
-                ctx.fillStyle = (i === 1) ? '#e61b23' : 'white'; // Segunda palabra roja, resto blanco
-                ctx.fillText(word, currentX, topCenterY);
-                currentX += ctx.measureText(word).width;
+            for (const lineObj of linesToDraw) {
+                const tokens = tokenizeLineForCanvas(lineObj.text);
+                let totalLineWidth = 0;
+                for (const t of tokens) {
+                    totalLineWidth += ctx.measureText(t.text).width;
+                }
+
+                let currentX = topCenterX - (totalLineWidth / 2);
+                for (const t of tokens) {
+                    ctx.fillStyle = t.color;
+                    ctx.fillText(t.text, currentX, lineObj.y);
+                    currentX += ctx.measureText(t.text).width;
+                }
             }
 
-            // CODIGO DE REFERENCIA EN EL BOTTOM BAR
-            // Contenedor inferior: Center x = 464, y = 1025
+            // CODIGO DE REFERENCIA EN EL CONTENEDOR TRAPEZOIDAL INFERIOR
+            // Contenedor inferior negro: Center x = 1024, y = 1905
             const refInput = document.querySelector('input[name="reference"]');
             const refVal = refCodeCustom || (refInput ? refInput.value.trim() : null) || '{{ $product->reference ?? $product->id ?? "0000" }}';
             let refCode = 'REF: ' + refVal;
 
-            let refFontSize = 34;
+            const refMaxWidth = 780;
+            let refFontSize = 58;
             ctx.font = `italic 900 ${refFontSize}px "Arial Black", Arial, sans-serif`;
+            while (ctx.measureText(refCode).width > refMaxWidth && refFontSize > 32) {
+                refFontSize -= 1;
+                ctx.font = `italic 900 ${refFontSize}px "Arial Black", Arial, sans-serif`;
+            }
+
             ctx.textAlign = 'center';
-            ctx.fillStyle = 'white';
-            ctx.fillText(refCode, 464, 1025);
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(refCode, 1024, 1905);
 
-            // Ajuste perfecto en la zona de la plantilla
-            // imgProd ya es una imagen de 1500x1500 con el objeto rotado y centrado por processImageToStudioWhite
-            const imgSize = imgProd.width; // 1500
-            const maxProdWidth = 600;
-            const maxProdHeight = 500;
+            // Ajuste proporcional de la imagen del producto en el area central blanca
+            const maxProdWidth = 1350;
+            const maxProdHeight = 950;
+            const prodW = imgProd.naturalWidth || imgProd.width || 1500;
+            const prodH = imgProd.naturalHeight || imgProd.height || 1500;
+            const ratio = Math.min(maxProdWidth / prodW, maxProdHeight / prodH);
+            const finalW = prodW * ratio;
+            const finalH = prodH * ratio;
 
-            const ratio = Math.min(maxProdWidth / imgSize, maxProdHeight / imgSize);
-
-            const finalW = imgSize * ratio;
-            const finalH = imgSize * ratio;
-
-            const targetCenterX = canvas.width / 2;
-            const targetCenterY = 400 + (maxProdHeight / 2);
+            const targetCenterX = 1024;
+            const targetCenterY = 1010;
 
             ctx.globalCompositeOperation = 'multiply';
 
-            // Dibujamos la imagen original centrada en el contenedor
+            // Dibujamos la imagen del producto centrada en el contenedor
             ctx.drawImage(imgProd,
                 targetCenterX - (finalW / 2),
                 targetCenterY - (finalH / 2),
@@ -1164,24 +1312,40 @@
     }
 
     window.aplicarPlantilla = aplicarPlantilla;
+    window.MOTORCYCLE_BRANDS = MOTORCYCLE_BRANDS;
+    window.isBrandToken = isBrandToken;
+    window.tokenizeLineForCanvas = tokenizeLineForCanvas;
+    window.splitTitleIntoBalancedLines = splitTitleIntoBalancedLines;
 
     async function extractCleanProductIfFlyer(imgSource) {
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = 'Anonymous';
             img.onload = () => {
-                const isFlyer = (img.naturalWidth === 928 && img.naturalHeight === 1150) ||
-                                (Math.abs((img.naturalWidth / img.naturalHeight) - (928 / 1150)) < 0.02 && img.naturalHeight >= 800);
-                if (!isFlyer) {
+                const isSquareFlyer = (img.naturalWidth === 2048 && img.naturalHeight === 2048) ||
+                                (Math.abs((img.naturalWidth / img.naturalHeight) - 1.0) < 0.05 && img.naturalHeight >= 800);
+                const isLegacyFlyer = (img.naturalWidth === 928 && img.naturalHeight === 1150) ||
+                                (Math.abs((img.naturalWidth / img.naturalHeight) - (928 / 1150)) < 0.05 && img.naturalHeight >= 800);
+
+                if (!isSquareFlyer && !isLegacyFlyer) {
                     resolve(imgSource);
                     return;
                 }
-                const canvas = document.createElement('canvas');
-                const cropX = Math.round(img.naturalWidth * 0.10);
-                const cropY = Math.round(img.naturalHeight * 0.28);
-                const cropW = Math.round(img.naturalWidth * 0.80);
-                const cropH = Math.round(img.naturalHeight * 0.55);
 
+                let cropX, cropY, cropW, cropH;
+                if (isSquareFlyer) {
+                    cropX = Math.round(img.naturalWidth * 0.15);
+                    cropY = Math.round(img.naturalHeight * 0.26);
+                    cropW = Math.round(img.naturalWidth * 0.70);
+                    cropH = Math.round(img.naturalHeight * 0.48);
+                } else {
+                    cropX = Math.round(img.naturalWidth * 0.14);
+                    cropY = Math.round(img.naturalHeight * 0.33);
+                    cropW = Math.round(img.naturalWidth * 0.72);
+                    cropH = Math.round(img.naturalHeight * 0.47);
+                }
+
+                const canvas = document.createElement('canvas');
                 canvas.width = cropW;
                 canvas.height = cropH;
                 const ctx = canvas.getContext('2d');
@@ -1204,6 +1368,8 @@
             img.src = (typeof imgSource === 'string') ? imgSource : URL.createObjectURL(imgSource);
         });
     }
+
+    window.extractCleanProductIfFlyer = extractCleanProductIfFlyer;
 
     window.enhanceAllImages = async function() {
         const btn = document.getElementById('btnEnhanceAll');
@@ -1434,8 +1600,10 @@
     }
 
     function buildGeminiStudioPrompt() {
-        return "mejora la imagen y aplica Fotografía de estudio, en primer plano y de alta calidad, sobre un fondo blanco continuo. El objeto está es aplicar un realismo al objecto. Iluminación natural de estudio con enfoque nítido y sombras suaves en la base para asentar el objeto de forma realista.";
+        return @json(env('PROMPT_GEMINI') ?: config('services.gemini.prompt'), JSON_UNESCAPED_UNICODE);
     }
+
+    window.buildGeminiStudioPrompt = buildGeminiStudioPrompt;
 
     function runGeminiGenerationBridge(promptText, productId, imageBase64, jobId, isLast, onStepStatus) {
         return new Promise((resolve, reject) => {
@@ -1497,7 +1665,7 @@
 
         // 1. Verificar si la extensión de Chrome está instalada
         if (!isGeminiExtensionInstalled()) {
-            const extensionPath = "e:\\xampp\\htdocs\\cauchos-alfa\\extension-gemini-bridge";
+            const extensionPath = "e:\\xampp\\htdocs\\extension-gemini-bridge";
             if (window.Swal) {
                 Swal.fire({
                     icon: 'info',

@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'gemini' => [
+        'prompt' => env('PROMPT_GEMINI'),
+    ],
+
 ];

@@ -47,8 +47,8 @@ class ProductTest extends TestCase
         $urls = $product->imageUrls();
 
         $this->assertCount(2, $urls);
-        $this->assertStringContainsString('products/gallery.jpg', $urls[0]);
-        $this->assertStringContainsString('products/main.jpg', $urls[1]);
+        $this->assertStringContainsString('products/main.jpg', $urls[0]);
+        $this->assertStringContainsString('products/gallery.jpg', $urls[1]);
     }
 
     public function test_image_urls_sin_imagenes_devuelve_arreglo_vacio(): void

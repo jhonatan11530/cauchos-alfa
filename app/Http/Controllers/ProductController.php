@@ -114,9 +114,9 @@ class ProductController extends Controller
             'category_id' => ['nullable', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:255'],
             'reference' => ['nullable', 'string', 'max:100'],
-            'image' => ['nullable', 'image', 'max:2048'],
+            'image' => ['nullable', 'image', 'max:20480'],
             'images' => ['nullable', 'array', 'max:10'],
-            'images.*' => ['image', 'max:2048'],
+            'images.*' => ['image', 'max:20480'],
             'description' => ['nullable', 'string'],
             'features' => ['nullable', 'string'],
             'availability' => ['required', 'string', 'max:50'],
@@ -162,7 +162,7 @@ class ProductController extends Controller
 
     public function replaceMainImage(Request $request, Product $producto)
     {
-        $request->validate(['image' => ['required', 'image', 'max:2048']]);
+        $request->validate(['image' => ['required', 'image', 'max:20480']]);
         
         if ($producto->image_path) {
             Storage::disk('public')->delete($producto->image_path);
@@ -186,7 +186,7 @@ class ProductController extends Controller
 
     public function uploadFlyer(Request $request, Product $producto)
     {
-        $request->validate(['flyer' => ['required', 'image', 'max:2048']]);
+        $request->validate(['flyer' => ['required', 'image', 'max:20480']]);
         
         if ($producto->flyer_path) {
             Storage::disk('public')->delete($producto->flyer_path);
@@ -219,7 +219,7 @@ class ProductController extends Controller
 
     public function replaceGalleryImage(Request $request, ProductImage $imagen)
     {
-        $request->validate(['image' => ['required', 'image', 'max:2048']]);
+        $request->validate(['image' => ['required', 'image', 'max:20480']]);
         
         Storage::disk('public')->delete($imagen->path);
         

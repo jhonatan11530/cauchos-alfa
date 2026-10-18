@@ -59,7 +59,7 @@
                             </div>
                         </div>
 
-                        @if ($product->exists && ($product->images->isNotEmpty() || $product->image_path))
+                        @if ($product->exists)
                         <div class="col-md-12 mb-3">
                             <div class="d-flex flex-wrap align-items-center gap-2">
                                 <button type="button" id="btnEnhanceAll" class="btn btn-outline-secondary font-weight-bold" onclick="enhanceAllImages()">
@@ -171,11 +171,48 @@
 
 @push('scripts')
 <script type="module">
-    import { AutoModel, AutoProcessor, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3';
+    let AutoModel = null;
+    let AutoProcessor = null;
+    let RawImage = null;
+    let transformersEnv = null;
+    let transformersModulePromise = null;
 
-    // Configuración global del entorno de Transformers.js en el navegador
-    env.allowLocalModels = false;
-    env.useBrowserCache = true;
+    async function ensureTransformersLoaded() {
+        if (AutoModel && AutoProcessor && RawImage) {
+            return { AutoModel, AutoProcessor, RawImage, env: transformersEnv };
+        }
+        if (transformersModulePromise) return await transformersModulePromise;
+
+        transformersModulePromise = (async () => {
+            const cdnUrls = [
+                'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3',
+                'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/+esm'
+            ];
+            let lastErr = null;
+            for (const url of cdnUrls) {
+                try {
+                    const mod = await import(url);
+                    AutoModel = mod.AutoModel;
+                    AutoProcessor = mod.AutoProcessor;
+                    RawImage = mod.RawImage;
+                    transformersEnv = mod.env;
+                    if (transformersEnv) {
+                        transformersEnv.allowLocalModels = false;
+                        transformersEnv.useBrowserCache = true;
+                    }
+                    return { AutoModel, AutoProcessor, RawImage, env: transformersEnv };
+                } catch (err) {
+                    console.warn('⚠️ Fallo cargando Transformers.js desde ' + url + ':', err);
+                    lastErr = err;
+                }
+            }
+            transformersModulePromise = null;
+            throw lastErr || new Error('No se pudo cargar @huggingface/transformers desde CDN');
+        })();
+
+        return await transformersModulePromise;
+    }
+
     let activeProcessCount = 0;
     let originalMainFile = null;
 
@@ -239,6 +276,7 @@
         if (rmbgLoadingPromise) return await rmbgLoadingPromise;
 
         rmbgLoadingPromise = (async () => {
+            await ensureTransformersLoaded();
             const modelId = 'briaai/RMBG-1.4';
             const isWebGPUSupported = typeof navigator !== 'undefined' && 'gpu' in navigator && Boolean(navigator.gpu);
 
@@ -309,29 +347,9 @@
     }, 1200);
 
     // ============================================================================
-    // POST-PROCESAMIENTO SATINADO DE ESTUDIO (SATIN RUBBER STUDIO)
-    // Curva Softbox continua C^1, reducción de grano y fondo blanco puro (#FFFFFF)
+    // COMPOSICIÓN PURA SOBRE FONDO BLANCO (#FFFFFF) SIN FILTROS DE COLOR NI BRILLO
+    // Conserva el 100% de los colores, brillo y textura originales del producto
     // ============================================================================
-    // Curva de restauración profunda para caucho automotriz (Tire Shine / Deep Slate)
-    // Calibrada para igualar exactamente la muestra de catálogo (test_expected.jpg):
-    // Sombras ricas (p10 ~ 10), cuerpo satinado (p50 ~ 36-39) y brillos vivos (p95 ~ 125-135)
-    const softboxLUT = new Float32Array(256);
-    for (let i = 0; i < 256; i++) {
-        const u = i / 255.0;
-        let y_out = Math.pow(u, 1.52) * 255.0;
-        if (i > 75) {
-            const h = (i - 75) / (255 - 75);
-            y_out += Math.pow(h, 1.20) * 44.0;
-        }
-        softboxLUT[i] = Math.min(255.0, Math.max(0.0, y_out));
-    }
-    softboxLUT[255] = 255.0;
-
-    /**
-     * Aplica acabado satinado limpio sobre la imagen original aislada
-     * Suaviza el grano del sensor, realza sombras con Softbox sin quemar negros,
-     * mantiene matiz invariante (Delta H = 0) y compone sobre blanco puro #FFFFFF.
-     */
     function processSatinRubberStudio(sourceCanvas, alphaMaskData) {
         const W = sourceCanvas.width;
         const H = sourceCanvas.height;
@@ -339,20 +357,6 @@
 
         const imgData = ctx.getImageData(0, 0, W, H);
         const data = imgData.data;
-
-        // Generar guía desenfocada (1.5px) para separación de frecuencias sin artefactos de borde
-        const guideCanvas = document.createElement('canvas');
-        guideCanvas.width = W;
-        guideCanvas.height = H;
-        const guideCtx = guideCanvas.getContext('2d');
-        guideCtx.filter = 'blur(1.5px)';
-        guideCtx.drawImage(sourceCanvas, 0, 0);
-        const guideData = guideCtx.getImageData(0, 0, W, H).data;
-
-        const THETA_NOISE = 14.0;
-        const K_SMOOTH = 0.80;
-        const THETA_EDGE = 22.0;
-        const K_LOGO = 0.20;
         const totalPixels = W * H;
 
         for (let i = 0; i < data.length; i += 4) {
@@ -368,7 +372,7 @@
                 rawAlpha = alphaMaskData[pixelIdx];
             }
 
-            // Puerta de ruido alfa (Alpha Noise Gate)
+            // Puerta de ruido alfa (Alpha Noise Gate) para limpiar fondo residual
             let alpha = 0.0;
             if (rawAlpha >= 251) {
                 alpha = 1.0;
@@ -376,7 +380,7 @@
                 alpha = (rawAlpha - 4) / 247.0;
             }
 
-            // Si es fondo absoluto (alpha <= 0.015), fijar blanco puro instantáneo (#FFFFFF)
+            // Si es fondo (alpha <= 0), fijar blanco puro (#FFFFFF)
             if (alpha <= 0.0) {
                 data[i] = 255;
                 data[i + 1] = 255;
@@ -385,84 +389,23 @@
                 continue;
             }
 
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-
-            const rG = guideData[i];
-            const gG = guideData[i + 1];
-            const bG = guideData[i + 2];
-
-            const yOrig = 0.299 * r + 0.587 * g + 0.114 * b;
-            const yGuide = 0.299 * rG + 0.587 * gG + 0.114 * bG;
-
-            const diff = yOrig - yGuide;
-            const absDiff = Math.abs(diff);
-
-            // A) Definición de relieve y micro-contraste limpio:
-            let yClean = yOrig;
-            if (absDiff <= 8.0) {
-                // Suavizado ultrasutil de ruido fino de sensor ISO
-                const w = 1.0 - (absDiff / 8.0);
-                yClean = yOrig - (0.40 * diff * w);
-            } else if (absDiff > 18.0) {
-                // Realce de micro-contraste en aristas, nervios y costuras de molde
-                const boost = Math.sign(diff) * Math.min(absDiff - 18.0, 16.0) * 0.20;
-                yClean = yOrig + boost;
+            // Si es el interior del objeto (alpha === 1), mantener píxeles 100% originales intactos
+            if (alpha >= 1.0) {
+                data[i + 3] = 255;
+                continue;
             }
 
-            // B) Mapeo tonal Softbox continuo con LUT calibrada
-            const yIndex = Math.min(255, Math.max(0, Math.round(yClean)));
-            const yTarget = softboxLUT[yIndex];
-
-            // C) Preservación estricta de color o acabado hidratado para caucho
-            const scale = yTarget / (Math.max(yOrig, 0.001));
-            let rScaled = r * scale;
-            let gScaled = g * scale;
-            let bScaled = b * scale;
-
-            // Si es caucho neutro (baja saturación) y no una etiqueta de color:
-            // Aplicar graduación Tire Shine Slate por bandas de luminancia idéntica al target
-            const maxChOrig = Math.max(r, g, b);
-            const minChOrig = Math.min(r, g, b);
-            const origSat = maxChOrig > 0 ? (maxChOrig - minChOrig) / maxChOrig : 0;
-            if (origSat < 0.22 && yTarget < 225) {
-                const t = Math.min(1.0, yTarget / 130.0);
-                const rFactor = 0.74 + 0.14 * t; // 0.74 (sombras) -> 0.88 (reflejos)
-                const gFactor = 1.025;
-                const bFactor = 1.58 - 0.32 * t; // 1.58 (sombras) -> 1.26 (reflejos)
-                rScaled *= rFactor;
-                gScaled *= gFactor;
-                bScaled *= bFactor;
-            }
-
-            // Gamut mapping a matiz constante si algún canal satura > 255
-            const maxCh = Math.max(rScaled, gScaled, bScaled);
-            if (maxCh > 255.0) {
-                const factor = (255.0 - yTarget) / (maxCh - yTarget + 0.001);
-                rScaled = yTarget + (rScaled - yTarget) * factor;
-                gScaled = yTarget + (gScaled - yTarget) * factor;
-                bScaled = yTarget + (bScaled - yTarget) * factor;
-            }
-
-            // D) Descontaminación suave de borde
-            if (alpha < 0.95 && alpha > 0.05) {
-                const decontamFactor = 1.0 - alpha;
-                rScaled = rScaled * alpha + 18 * decontamFactor;
-                gScaled = gScaled * alpha + 18 * decontamFactor;
-                bScaled = bScaled * alpha + 18 * decontamFactor;
-            }
-
-            // E) Composición final Porter-Duff Over sobre Blanco Puro (#FFFFFF exacto)
-            data[i] = Math.min(255, Math.max(0, Math.round(rScaled * alpha + 255 * (1.0 - alpha))));
-            data[i + 1] = Math.min(255, Math.max(0, Math.round(gScaled * alpha + 255 * (1.0 - alpha))));
-            data[i + 2] = Math.min(255, Math.max(0, Math.round(bScaled * alpha + 255 * (1.0 - alpha))));
+            // En el borde antialiasing (0 < alpha < 1), mezclar píxel original directamente con blanco puro #FFFFFF
+            data[i] = Math.round(data[i] * alpha + 255 * (1.0 - alpha));
+            data[i + 1] = Math.round(data[i + 1] * alpha + 255 * (1.0 - alpha));
+            data[i + 2] = Math.round(data[i + 2] * alpha + 255 * (1.0 - alpha));
             data[i + 3] = 255;
         }
 
         ctx.putImageData(imgData, 0, 0);
         return sourceCanvas;
     }
+
 
     // Optimización: reduce fotos gigantes de celular (e.g. 4000x3000px, 8MB) a máx 1400px
     // antes de enviarlas a la red neuronal, acelerando el recorte hasta 5 veces
@@ -788,10 +731,10 @@
             const shadowCanvas = shadowResult.canvas;
             const bbox = shadowResult.bbox;
 
-            // Bounding box que incluye el objeto y su sombra de apoyo
-            const padX = Math.round(bbox.objW * 0.12);
-            const padYTop = Math.max(10, Math.round(bbox.objH * 0.06));
-            const padYBottom = Math.round(bbox.objH * 0.28);
+            // Bounding box ajustado al objeto y su sombra de apoyo inmediata sin margen vacío excesivo
+            const padX = Math.max(8, Math.round(bbox.objW * 0.04));
+            const padYTop = Math.max(8, Math.round(bbox.objH * 0.03));
+            const padYBottom = Math.max(12, Math.round(bbox.objH * 0.10));
 
             cropX = Math.max(0, bbox.minX - padX);
             cropY = Math.max(0, bbox.minY - padYTop);
@@ -807,8 +750,8 @@
             oCtx.drawImage(shadowCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
         } else {
-            // 7. RUTA ESTÁNDAR (IA LOCAL / CREACIÓN): Aplicar post-procesamiento satinado de estudio
-            if (onProgress) onProgress('Aplicando acabado satinado de estudio y balance Softbox...');
+            // 7. RUTA ESTÁNDAR (IA LOCAL / CREACIÓN): Aislar sobre fondo blanco puro sin alterar colores ni brillo
+            if (onProgress) onProgress('Aplicando fondo blanco puro al producto...');
             const maskData = finalMask.data;
             processSatinRubberStudio(sourceCanvas, maskData);
 
@@ -1281,22 +1224,94 @@
             ctx.fillStyle = '#FFFFFF';
             ctx.fillText(refCode, 1024, 1905);
 
-            // Ajuste proporcional de la imagen del producto en el area central blanca
+            // Ajuste proporcional y uniforme de la imagen del producto en el area central blanca:
+            // 1. Detectar el bounding box real del objeto dentro de imgProd (eliminando las bandas blancas vacías del lienzo cuadrado 1500x1500)
+            const rawW = imgProd.naturalWidth || imgProd.width || 1500;
+            const rawH = imgProd.naturalHeight || imgProd.height || 1500;
+            const trimCanvas = document.createElement('canvas');
+            trimCanvas.width = rawW;
+            trimCanvas.height = rawH;
+            const trimCtx = trimCanvas.getContext('2d');
+            trimCtx.fillStyle = '#FFFFFF';
+            trimCtx.fillRect(0, 0, rawW, rawH);
+            trimCtx.drawImage(imgProd, 0, 0, rawW, rawH);
+
+            let srcX = 0, srcY = 0, prodW = rawW, prodH = rawH;
+            try {
+                const pData = trimCtx.getImageData(0, 0, rawW, rawH).data;
+                let minX = rawW, minY = rawH, maxX = 0, maxY = 0;
+                let foundCore = false;
+
+                // Fase A: medir el cuerpo sólido del producto (luminancia < 215, ignorando sombras suaves y fondo blanco)
+                for (let y = 0; y < rawH; y++) {
+                    for (let x = 0; x < rawW; x++) {
+                        const i = (y * rawW + x) * 4;
+                        const lum = 0.299 * pData[i] + 0.587 * pData[i + 1] + 0.114 * pData[i + 2];
+                        if (lum < 215) {
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                            foundCore = true;
+                        }
+                    }
+                }
+
+                // Fase B: fallback para objetos muy claros (luminancia < 246)
+                if (!foundCore) {
+                    for (let y = 0; y < rawH; y++) {
+                        for (let x = 0; x < rawW; x++) {
+                            const i = (y * rawW + x) * 4;
+                            if (pData[i] < 246 || pData[i + 1] < 246 || pData[i + 2] < 246) {
+                                if (x < minX) minX = x;
+                                if (x > maxX) maxX = x;
+                                if (y < minY) minY = y;
+                                if (y > maxY) maxY = y;
+                                foundCore = true;
+                            }
+                        }
+                    }
+                }
+
+                if (foundCore && maxX > minX && maxY > minY) {
+                    const coreW = maxX - minX + 1;
+                    const coreH = maxY - minY + 1;
+                    // Conservar un margen mínimo para no cortar la sombra de contacto inmediata
+                    const padSide = Math.max(6, Math.round(coreW * 0.03));
+                    const padTop = Math.max(6, Math.round(coreH * 0.02));
+                    const padBottom = Math.max(10, Math.round(coreH * 0.08));
+
+                    srcX = Math.max(0, minX - padSide);
+                    srcY = Math.max(0, minY - padTop);
+                    prodW = Math.min(rawW - srcX, coreW + padSide * 2);
+                    prodH = Math.min(rawH - srcY, coreH + padTop + padBottom);
+                }
+            } catch (e) {
+                console.warn('No se pudo recortar el bounding box en aplicarPlantilla:', e);
+            }
+
             const maxProdWidth = 1350;
             const maxProdHeight = 950;
-            const prodW = imgProd.naturalWidth || imgProd.width || 1500;
-            const prodH = imgProd.naturalHeight || imgProd.height || 1500;
-            const ratio = Math.min(maxProdWidth / prodW, maxProdHeight / prodH);
-            const finalW = prodW * ratio;
-            const finalH = prodH * ratio;
+            const TARGET_VISUAL_AREA = 820000;
+            const ratio = Math.min(
+                maxProdWidth / prodW,
+                maxProdHeight / prodH,
+                Math.sqrt(TARGET_VISUAL_AREA / Math.max(1, prodW * prodH))
+            );
+            const finalW = Math.round(prodW * ratio);
+            const finalH = Math.round(prodH * ratio);
 
             const targetCenterX = 1024;
             const targetCenterY = 1010;
 
             ctx.globalCompositeOperation = 'multiply';
 
-            // Dibujamos la imagen del producto centrada en el contenedor
-            ctx.drawImage(imgProd,
+            // Dibujamos el recorte real del producto centrado y con escala visual uniforme en el contenedor
+            ctx.drawImage(trimCanvas,
+                srcX,
+                srcY,
+                prodW,
+                prodH,
                 targetCenterX - (finalW / 2),
                 targetCenterY - (finalH / 2),
                 finalW,
@@ -1532,6 +1547,7 @@
                     label: 'Imagen Principal',
                     file: null,
                     url: url,
+                    imgEl: existingMain,
                     statusEl: document.getElementById('status_existing_main')
                 });
             }
@@ -1595,8 +1611,8 @@
             throw new Error('No se pudo obtener datos de la imagen: ' + item.label);
         }
 
-        // Si la imagen ya tiene la plantilla de flyer aplicada, extraemos el producto central limpio
-        return await extractCleanProductIfFlyer(base64);
+        // Enviar la imagen 100% completa a Gemini sin ningún recorte
+        return base64;
     }
 
     function buildGeminiStudioPrompt() {
@@ -1665,7 +1681,7 @@
 
         // 1. Verificar si la extensión de Chrome está instalada
         if (!isGeminiExtensionInstalled()) {
-            const extensionPath = "e:\\xampp\\htdocs\\extension-gemini-bridge";
+            const extensionPath = "e:\\xampp\\htdocs\\cauchos-alfa\\extension-gemini-bridge";
             if (window.Swal) {
                 Swal.fire({
                     icon: 'info',
@@ -1758,9 +1774,19 @@
                     const resBlob = await (await fetch(geminiBase64)).blob();
                     const rawGeminiFile = new File([resBlob], `gemini_${item.type}_${item.id}.jpg`, { type: 'image/jpeg' });
 
-                    const localResult = await processImageToStudioWhite(rawGeminiFile, (msg) => {
-                        statusText.textContent = `${prefix} [IA Local] ${msg}`;
-                    }, 'gemini');
+                    let localResult = null;
+                    try {
+                        localResult = await processImageToStudioWhite(rawGeminiFile, (msg) => {
+                            statusText.textContent = `${prefix} [IA Local] ${msg}`;
+                        }, 'gemini');
+                    } catch (rmbgErr) {
+                        console.warn(`${prefix} RMBG-1.4 local no disponible, usando imagen directa de Gemini:`, rmbgErr);
+                        localResult = {
+                            file: rawGeminiFile,
+                            previewUrl: geminiBase64,
+                            processed: false
+                        };
+                    }
 
                     const isolatedFile = localResult.file;
 
@@ -1775,7 +1801,10 @@
                             body: mainFormData,
                             headers: { 'Accept': 'application/json' }
                         });
-                        const uploadJson = await uploadRes.json();
+                        const uploadJson = await uploadRes.json().catch(() => ({}));
+                        if (!uploadRes.ok || !uploadJson.success) {
+                            throw new Error(uploadJson.message || `Error HTTP ${uploadRes.status} al guardar imagen principal`);
+                        }
 
                         // Generar flyer publicitario institucional oficial
                         statusText.textContent = `${prefix} Generando y aplicando plantilla de flyer oficial...`;
@@ -1792,7 +1821,10 @@
                             body: flyerData,
                             headers: { 'Accept': 'application/json' }
                         });
-                        const flyerJson = await flyerRes.json();
+                        const flyerJson = await flyerRes.json().catch(() => ({}));
+                        if (!flyerRes.ok || !flyerJson.success) {
+                            throw new Error(flyerJson.message || `Error HTTP ${flyerRes.status} al guardar flyer`);
+                        }
 
                         // Actualizar visiblemente la sección Imagen Principal
                         if (mainPreviewImg) mainPreviewImg.src = localResult.previewUrl;
@@ -1840,7 +1872,10 @@
                             body: galleryFormData,
                             headers: { 'Accept': 'application/json' }
                         });
-                        const galleryJson = await galleryRes.json();
+                        const galleryJson = await galleryRes.json().catch(() => ({}));
+                        if (!galleryRes.ok || !galleryJson.success) {
+                            throw new Error(galleryJson.message || `Error HTTP ${galleryRes.status} al guardar imagen de galería`);
+                        }
 
                         if (item.imgEl && galleryJson.path) {
                             item.imgEl.src = galleryJson.path + '?t=' + new Date().getTime();

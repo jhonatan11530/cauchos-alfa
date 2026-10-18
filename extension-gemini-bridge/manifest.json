@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Cauchos Alfa - Gemini Pro Bridge",
+  "version": "1.0.0",
+  "description": "Automatiza la generación de fotos de catálogo en Gemini Pro para Cauchos Alfa.",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://gemini.google.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "*://*/*"
+      ],
+      "js": ["content_cauchos.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": ["content_gemini.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Cauchos Alfa - Gemini Pro Bridge",
+    "default_popup": "popup.html"
+  }
+}
+

@@ -20,8 +20,8 @@
 /storage/*.key
 /storage/pail
 /vendor
+/extension-gemini-bridge
 Homestead.json
 Homestead.yaml
 Thumbs.db
 composer.lock
-/extension-gemini-bridge

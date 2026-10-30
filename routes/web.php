@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VendedorController;
@@ -92,6 +93,9 @@ Route::middleware('auth')->group(function () {
             Route::resource('vendedores', VendedorController::class)
                 ->except('show')
                 ->parameters(['vendedores' => 'vendedor']);
+            Route::get('configuracion', [SettingController::class, 'index'])->name('settings.index');
+            Route::put('configuracion', [SettingController::class, 'update'])->name('settings.update');
+            Route::post('configuracion/reset', [SettingController::class, 'resetPrompt'])->name('settings.reset');
         });
     });
 

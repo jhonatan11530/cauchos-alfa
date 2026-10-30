@@ -80,14 +80,14 @@ class CatalogTemplateGeometryTest extends TestCase
     }
 
     /**
-     * 4. Assert reference code at (1024, 1905) inside lower trapezoid in white font
+     * 4. Assert reference code at (1024, 1905) in dark font (#111111) on white template background
      */
     public function test_reference_code_position_and_color(): void
     {
         $this->assertMatchesRegularExpression('/fillText\(\s*refCode\s*,\s*1024\s*,\s*1905\s*\)/', $this->bladeContent);
         $this->assertMatchesRegularExpression('/refMaxWidth\s*=\s*780;/', $this->bladeContent);
         $this->assertMatchesRegularExpression('/refFontSize\s*=\s*58;/', $this->bladeContent);
-        $this->assertStringContainsString("ctx.fillStyle = '#FFFFFF';", $this->bladeContent);
+        $this->assertStringContainsString("ctx.fillStyle = '#111111';", $this->bladeContent);
         $this->assertStringContainsString("ctx.textAlign = 'center';", $this->bladeContent);
         $this->assertStringContainsString("ctx.textBaseline = 'middle';", $this->bladeContent);
     }

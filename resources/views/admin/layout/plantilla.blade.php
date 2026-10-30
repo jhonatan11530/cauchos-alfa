@@ -106,6 +106,12 @@
                                     <p>Estados</p>
                                 </a>
                             </li>
+                            <li class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                                <a href="{{ route('settings.index') }}">
+                                    <i class="fas fa-cogs"></i>
+                                    <p>Configuración</p>
+                                </a>
+                            </li>
                         @endif
                         <li class="nav-item {{ request()->routeIs('clientes.*') ? 'active' : '' }}">
                             <a href="{{ route('clientes.index') }}">

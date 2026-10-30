@@ -30,13 +30,13 @@ class ChallengerGeminiPromptVerificationTest extends TestCase
         );
 
         $compiledSnippet = \Illuminate\Support\Facades\Blade::render(
-            'function buildGeminiStudioPrompt() { return @json(env(\'PROMPT_GEMINI\') ?: config(\'services.gemini.prompt\'), JSON_UNESCAPED_UNICODE); }'
+            'function buildGeminiStudioPrompt() { return @json(\App\Services\GeminiPromptService::get(\'PROMPT_GEMINI\'), JSON_UNESCAPED_UNICODE); }'
         );
         $matched = preg_match('/return\s+(["\'].*?["\']);/s', $compiledSnippet, $matches);
         $this->assertSame(1, $matched);
         $this->extractedPrompt = json_decode($matches[1], true);
 
-        $this->expectedPrompt = (string)(env('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
+        $this->expectedPrompt = (string)(\App\Services\GeminiPromptService::get('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
     }
 
     /**
@@ -99,9 +99,9 @@ class ChallengerGeminiPromptVerificationTest extends TestCase
      */
     public function test_studio_photography_clauses_content(): void
     {
-        $this->assertStringContainsString('Fotografía de estudio', $this->extractedPrompt);
-        $this->assertStringContainsString('fondo blanco continuo', $this->extractedPrompt);
-        $this->assertStringContainsString('Corrección de orientación y perspectiva', $this->extractedPrompt);
+        $this->assertStringContainsString('fotografía de estudio', $this->extractedPrompt);
+        $this->assertStringContainsString('fondo blanco puro y continuo', $this->extractedPrompt);
+        $this->assertStringContainsString('corrección de perspectiva', $this->extractedPrompt);
     }
 
     /**
@@ -109,7 +109,7 @@ class ChallengerGeminiPromptVerificationTest extends TestCase
      */
     public function test_adversarial_mutation_in_prompt_clause(): void
     {
-        $mutated = str_replace('Fotografía de estudio', 'Foto simple', $this->extractedPrompt);
+        $mutated = str_replace('fotografía de estudio', 'Foto simple', $this->extractedPrompt);
         $this->assertNotSame(hash('sha256', $this->extractedPrompt), hash('sha256', $mutated));
         $this->assertNotSame(mb_strlen($this->extractedPrompt, 'UTF-8'), mb_strlen($mutated, 'UTF-8'));
     }

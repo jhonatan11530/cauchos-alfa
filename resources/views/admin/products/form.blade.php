@@ -632,18 +632,21 @@
                 flyerCheckCanvas.height = tempImg.height;
                 flyerCheckCtx.drawImage(tempImg, 0, 0);
 
-                // Comprobar si la barra superior y contenedor inferior son oscuros
+                // Comprobar si la barra superior y elementos inferiores corresponden a un flyer oficial
                 const sampleTopY = isSquareRatio ? Math.round(tempImg.height * 0.09) : Math.round(tempImg.height * 0.087);
                 const sampleBottomY = isSquareRatio ? Math.round(tempImg.height * 0.93) : Math.round(tempImg.height * 0.89);
+                const sampleBadgeY = Math.round(tempImg.height * 0.80);
                 const sampleX = Math.round(tempImg.width / 2);
 
                 const topPixel = flyerCheckCtx.getImageData(sampleX, sampleTopY, 1, 1).data;
                 const bottomPixel = flyerCheckCtx.getImageData(sampleX, sampleBottomY, 1, 1).data;
+                const badgePixel = flyerCheckCtx.getImageData(Math.round(tempImg.width * 0.35), sampleBadgeY, 1, 1).data;
 
                 const isTopBlack = topPixel[0] < 60 && topPixel[1] < 60 && topPixel[2] < 60;
                 const isBottomBlack = bottomPixel[0] < 60 && bottomPixel[1] < 60 && bottomPixel[2] < 60;
+                const hasBadgeGraphic = (badgePixel[0] < 220 || badgePixel[1] < 220 || badgePixel[2] < 220);
 
-                if (isTopBlack && isBottomBlack) {
+                if (isTopBlack && (isBottomBlack || hasBadgeGraphic)) {
                     if (onProgress) onProgress('Detectado flyer previo. Extrayendo imagen original...');
                     // Es un flyer. Extraer la parte central blanca libre de insignias ni elementos graficos
                     let cropX, cropY, cropW, cropH;
@@ -1205,8 +1208,8 @@
                 }
             }
 
-            // CODIGO DE REFERENCIA EN EL CONTENEDOR TRAPEZOIDAL INFERIOR
-            // Contenedor inferior negro: Center x = 1024, y = 1905
+            // CODIGO DE REFERENCIA INFERIOR EN NEGRO OSCURO (#111111)
+            // Center x = 1024, y = 1905
             const refInput = document.querySelector('input[name="reference"]');
             const refVal = refCodeCustom || (refInput ? refInput.value.trim() : null) || '{{ $product->reference ?? $product->id ?? "0000" }}';
             let refCode = 'REF: ' + refVal;
@@ -1221,7 +1224,7 @@
 
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = '#111111';
             ctx.fillText(refCode, 1024, 1905);
 
             // Ajuste proporcional y uniforme de la imagen del producto en el area central blanca:
@@ -1616,7 +1619,7 @@
     }
 
     function buildGeminiStudioPrompt() {
-        return @json(env('PROMPT_GEMINI') ?: config('services.gemini.prompt'), JSON_UNESCAPED_UNICODE);
+        return @json(\App\Services\GeminiPromptService::get('PROMPT_GEMINI'), JSON_UNESCAPED_UNICODE);
     }
 
     window.buildGeminiStudioPrompt = buildGeminiStudioPrompt;

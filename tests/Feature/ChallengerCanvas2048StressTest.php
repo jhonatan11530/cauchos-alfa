@@ -309,15 +309,16 @@ class ChallengerCanvas2048StressTest extends TestCase
         $botB = $botRgb & 0xFF;
 
         // In form.blade.php:
-        // const isTopBlack = topPixel[0] < 60 && topPixel[1] < 60 && topPixel[2] < 60;
-        // const isBottomBlack = bottomPixel[0] < 60 && bottomPixel[1] < 60 && bottomPixel[2] < 60;
+        // Top banner has dark pixels (< 60)
+        // Bottom reference zone on new template asset has clean white background (> 240) for #111111 text
         $this->assertLessThan(60, $topR, "Top sample point at (1024, 184) R ({$topR}) must be < 60 (dark banner)");
         $this->assertLessThan(60, $topG, "Top sample point at (1024, 184) G ({$topG}) must be < 60 (dark banner)");
         $this->assertLessThan(60, $topB, "Top sample point at (1024, 184) B ({$topB}) must be < 60 (dark banner)");
 
-        $this->assertLessThan(60, $botR, "Bottom sample point at (1024, 1905) R ({$botR}) must be < 60 (dark trapezoid)");
-        $this->assertLessThan(60, $botG, "Bottom sample point at (1024, 1905) G ({$botG}) must be < 60 (dark trapezoid)");
-        $this->assertLessThan(60, $botB, "Bottom sample point at (1024, 1905) B ({$botB}) must be < 60 (dark trapezoid)");
+        // Bottom area is clean white background for #111111 reference text
+        $this->assertGreaterThan(240, $botR, "Bottom sample point at (1024, 1905) R ({$botR}) must be > 240 (clean white)");
+        $this->assertGreaterThan(240, $botG, "Bottom sample point at (1024, 1905) G ({$botG}) must be > 240 (clean white)");
+        $this->assertGreaterThan(240, $botB, "Bottom sample point at (1024, 1905) B ({$botB}) must be > 240 (clean white)");
 
         imagedestroy($im);
     }
@@ -422,15 +423,14 @@ class ChallengerCanvas2048StressTest extends TestCase
         $refMaxWidth = 780;
         $refFontSize = 58;
 
-        // Container bounds check on actual image:
-        // Midpoint should be dark trapezoid
+        // On new template asset without black container, the reference zone is clean white (> 240) for #111111 text
         $rgbCenter = imagecolorat($im, $refX, $refY);
         $rC = ($rgbCenter >> 16) & 0xFF;
         $gC = ($rgbCenter >> 8) & 0xFF;
         $bC = $rgbCenter & 0xFF;
-        $this->assertLessThan(60, $rC, 'Trapezoid center must be dark container');
-        $this->assertLessThan(60, $gC, 'Trapezoid center must be dark container');
-        $this->assertLessThan(60, $bC, 'Trapezoid center must be dark container');
+        $this->assertGreaterThan(240, $rC, 'Reference center must be clean white background');
+        $this->assertGreaterThan(240, $gC, 'Reference center must be clean white background');
+        $this->assertGreaterThan(240, $bC, 'Reference center must be clean white background');
 
         // Verify vertical headroom: font size 58 means text extends ~30px above and below 1905
         $yTop = $refY - 30; // 1875
@@ -440,25 +440,25 @@ class ChallengerCanvas2048StressTest extends TestCase
         $rT = ($rgbTop >> 16) & 0xFF;
         $gT = ($rgbTop >> 8) & 0xFF;
         $bT = $rgbTop & 0xFF;
-        $this->assertLessThan(60, $rT, "Top headroom at y={$yTop} must be inside dark container");
+        $this->assertGreaterThan(240, $rT, "Top headroom at y={$yTop} must be clean white background");
 
         $rgbBot = imagecolorat($im, $refX, $yBottom);
         $rB = ($rgbBot >> 16) & 0xFF;
         $gB = ($rgbBot >> 8) & 0xFF;
         $bB = $rgbBot & 0xFF;
-        $this->assertLessThan(60, $rB, "Bottom headroom at y={$yBottom} must be inside dark container");
+        $this->assertGreaterThan(240, $rB, "Bottom headroom at y={$yBottom} must be clean white background");
 
-        // Verify horizontal container span: 780px wide centered at 1024 -> [634, 1414]
+        // Verify horizontal span: 780px wide centered at 1024 -> [634, 1414]
         $xLeft = $refX - (int) round($refMaxWidth / 2) + 20; // 654
         $xRight = $refX + (int) round($refMaxWidth / 2) - 20; // 1394
 
         $rgbLeft = imagecolorat($im, $xLeft, $refY);
         $rL = ($rgbLeft >> 16) & 0xFF;
-        $this->assertLessThan(60, $rL, "Left interior at x={$xLeft} must be inside dark container");
+        $this->assertGreaterThan(240, $rL, "Left interior at x={$xLeft} must be clean white background");
 
         $rgbRight = imagecolorat($im, $xRight, $refY);
         $rR = ($rgbRight >> 16) & 0xFF;
-        $this->assertLessThan(60, $rR, "Right interior at x={$xRight} must be inside dark container");
+        $this->assertGreaterThan(240, $rR, "Right interior at x={$xRight} must be clean white background");
 
         imagedestroy($im);
     }

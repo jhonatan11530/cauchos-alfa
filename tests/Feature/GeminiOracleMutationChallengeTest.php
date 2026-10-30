@@ -204,8 +204,8 @@ class GeminiOracleMutationChallengeTest extends TestCase
      */
     public function test_oracle_detects_multibyte_accent_degradation(): void
     {
-        // Replace 'í' with ASCII 'i' in "Fotografía" -> "Fotografia"
-        $mutant = str_replace('Fotografía', 'Fotografia', $this->canonicalPrompt);
+        // Replace 'í' with ASCII 'i' in "fotografía" -> "fotografia"
+        $mutant = str_replace('fotografía', 'fotografia', $this->canonicalPrompt);
         $this->assertSame(mb_strlen($this->canonicalPrompt, 'UTF-8'), mb_strlen($mutant, 'UTF-8'), 'Char length is deceptively identical');
         $this->assertLessThan(strlen($this->canonicalPrompt), strlen($mutant), 'Byte length is altered (lost 1 byte from UTF-8 2-byte char)');
 
@@ -312,7 +312,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
         );
 
         $rendered = \Illuminate\Support\Facades\Blade::render(
-            'function buildGeminiStudioPrompt() { return @json(env(\'PROMPT_GEMINI\') ?: config(\'services.gemini.prompt\'), JSON_UNESCAPED_UNICODE); }'
+            'function buildGeminiStudioPrompt() { return @json(\App\Services\GeminiPromptService::get(\'PROMPT_GEMINI\'), JSON_UNESCAPED_UNICODE); }'
         );
         $matched = preg_match('/return\s+(["\'].*?["\']);/s', $rendered, $matches);
         $this->assertSame(1, $matched);

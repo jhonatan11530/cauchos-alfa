@@ -71,11 +71,11 @@
                             </div>
                             <div id="enhanceAllStatus" class="mt-2 text-primary small d-none font-weight-bold">
                                 <span class="spinner-border spinner-border-sm mr-1"></span>
-                                <span id="enhanceAllStatusText">Iniciando proceso...</span>
+                                <span id="enhanceAllStatusText">Procesando imágenes...</span>
                             </div>
                             <div id="geminiExtensionStatus" class="mt-2 text-primary small d-none font-weight-bold">
                                 <span class="spinner-border spinner-border-sm mr-1"></span>
-                                <span id="geminiExtensionStatusText">Conectando con Gemini Web Pro...</span>
+                                <span id="geminiExtensionStatusText">Procesando imágenes...</span>
                             </div>
                         </div>
                         @endif
@@ -1412,8 +1412,12 @@
 
             async function processOne(url, type, id, statusEl) {
                 current++;
-                statusText.textContent = `Procesando imagen ${current} de ${total}...`;
-                if(statusEl) statusEl.textContent = 'Procesando...';
+                statusText.textContent = `Procesando imágenes ${current} de ${total}...`;
+                if(statusEl) {
+                    statusEl.classList.remove('text-success', 'text-danger');
+                    statusEl.classList.add('text-primary');
+                    statusEl.textContent = 'Procesando...';
+                }
 
                 const response = await fetch(url);
                 const blob = await response.blob();
@@ -1423,9 +1427,7 @@
                 const cleanBlob = (cleanSource === blob) ? blob : await (await fetch(cleanSource)).blob();
                 const file = new File([cleanBlob], `image_${id}.jpg`, { type: cleanBlob.type || 'image/jpeg' });
 
-                const result = await processImageToStudioWhite(file, (msg) => {
-                    if(statusEl) statusEl.textContent = msg;
-                }, 'enhance');
+                const result = await processImageToStudioWhite(file, null, 'enhance');
 
                 const productNameInput = document.querySelector('input[name="name"]');
                 const productName = (productNameInput ? productNameInput.value : '') || 'PRODUCTO';
@@ -1433,7 +1435,6 @@
                 // Para imágenes de galería, generamos el flyer con la plantilla y lo subimos directamente
                 let fileToUpload = result.file;
                 if (type === 'gallery') {
-                    if(statusEl) statusEl.textContent = 'Aplicando plantilla...';
                     fileToUpload = await aplicarPlantilla(result.file, productName);
                 }
 
@@ -1457,7 +1458,6 @@
                     let finalPath = data.path;
 
                     if (type === 'main') {
-                        if(statusEl) statusEl.textContent = 'Aplicando plantilla...';
                         const flyerFile = await aplicarPlantilla(result.file, productName);
 
                         const flyerData = new FormData();
@@ -1480,7 +1480,7 @@
                     if(statusEl) {
                         statusEl.classList.remove('text-primary');
                         statusEl.classList.add('text-success');
-                        statusEl.textContent = '¡Mejorada con plantilla!';
+                        statusEl.textContent = '¡Actualizada!';
                     }
                     return { display: finalPath, source: data.path };
                 }
@@ -1504,10 +1504,10 @@
                 img.setAttribute('data-url', result.source);
             }
 
-            statusText.textContent = '¡Todas las imágenes mejoradas!';
+            statusText.textContent = '¡Imágenes actualizadas!';
             statusDiv.classList.remove('text-primary');
             statusDiv.classList.add('text-success');
-            if (window.toastr) toastr.success('Todas las imágenes fueron estandarizadas con IA.');
+            if (window.toastr) toastr.success('¡Imágenes actualizadas!');
 
         } catch (error) {
             console.error('Error al mejorar imagenes:', error);
@@ -1713,12 +1713,12 @@
 
         const originalText = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm mr-1"></span> Procesando con Gemini Pro...`;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm mr-1"></span> Procesando...`;
 
         if (statusDiv) {
             statusDiv.classList.remove('d-none', 'text-danger', 'text-success');
             statusDiv.classList.add('text-primary');
-            statusText.textContent = `Preparando ${items.length} ${items.length === 1 ? 'imagen' : 'imágenes'} para Gemini Pro...`;
+            statusText.textContent = `Procesando imágenes 1 de ${items.length}...`;
         }
 
         const promptText = buildGeminiStudioPrompt();
@@ -1726,18 +1726,18 @@
         let failCount = 0;
 
         try {
-            setProcessingState(true, 'Procesando con Gemini Pro e IA Local...');
+            setProcessingState(true, 'Procesando imágenes...');
 
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 const isLast = (i === items.length - 1);
                 const prefix = `[${i + 1}/${items.length} - ${item.label}]`;
 
-                statusText.textContent = `${prefix} Extrayendo imagen de referencia...`;
+                statusText.textContent = `Procesando imágenes ${i + 1} de ${items.length}...`;
                 if (item.statusEl) {
                     item.statusEl.classList.remove('text-success', 'text-danger');
                     item.statusEl.classList.add('text-primary');
-                    item.statusEl.textContent = 'Iniciando Gemini...';
+                    item.statusEl.textContent = 'Procesando...';
                 }
 
                 let imageBase64 = null;
@@ -1754,8 +1754,6 @@
                     continue;
                 }
 
-                statusText.textContent = `${prefix} Enviando a Gemini Pro en Chrome...`;
-
                 try {
                     // Generar en Gemini Web
                     const geminiBase64 = await runGeminiGenerationBridge(
@@ -1764,24 +1762,19 @@
                         imageBase64,
                         item.jobId,
                         isLast,
-                        (stepStatus) => {
-                            statusText.textContent = `${prefix} ${stepStatus}`;
-                            if (item.statusEl) item.statusEl.textContent = stepStatus;
+                        () => {
+                            statusText.textContent = `Procesando imágenes ${i + 1} de ${items.length}...`;
+                            if (item.statusEl) item.statusEl.textContent = 'Procesando...';
                         }
                     );
 
                     // Aislar objeto con IA local (Transformers.js RMBG-1.4)
-                    statusText.textContent = `${prefix} Foto recibida de Gemini. Recortando con IA local...`;
-                    if (item.statusEl) item.statusEl.textContent = 'IA Local recortando...';
-
                     const resBlob = await (await fetch(geminiBase64)).blob();
                     const rawGeminiFile = new File([resBlob], `gemini_${item.type}_${item.id}.jpg`, { type: 'image/jpeg' });
 
                     let localResult = null;
                     try {
-                        localResult = await processImageToStudioWhite(rawGeminiFile, (msg) => {
-                            statusText.textContent = `${prefix} [IA Local] ${msg}`;
-                        }, 'gemini');
+                        localResult = await processImageToStudioWhite(rawGeminiFile, null, 'gemini');
                     } catch (rmbgErr) {
                         console.warn(`${prefix} RMBG-1.4 local no disponible, usando imagen directa de Gemini:`, rmbgErr);
                         localResult = {
@@ -1794,7 +1787,6 @@
                     const isolatedFile = localResult.file;
 
                     if (item.type === 'main') {
-                        statusText.textContent = `${prefix} Guardando imagen principal limpia en el catálogo...`;
                         const mainFormData = new FormData();
                         mainFormData.append('image', isolatedFile);
                         mainFormData.append('_token', csrf);
@@ -1810,7 +1802,6 @@
                         }
 
                         // Generar flyer publicitario institucional oficial
-                        statusText.textContent = `${prefix} Generando y aplicando plantilla de flyer oficial...`;
                         const productNameInput = document.querySelector('input[name="name"]');
                         const productName = (productNameInput ? productNameInput.value : '') || 'PRODUCTO';
                         const flyerFile = await aplicarPlantilla(isolatedFile, productName);
@@ -1856,16 +1847,14 @@
                         if (item.statusEl) {
                             item.statusEl.classList.remove('text-primary');
                             item.statusEl.classList.add('text-success');
-                            item.statusEl.textContent = '¡Mejorada con Gemini + Flyer!';
+                            item.statusEl.textContent = '¡Actualizada!';
                         }
                     } else {
                         // Galería: Aplicar plantilla institucional al igual que en la imagen principal
-                        statusText.textContent = `${prefix} Generando y aplicando plantilla de flyer oficial...`;
                         const productNameInput = document.querySelector('input[name="name"]');
                         const productName = (productNameInput ? productNameInput.value : '') || 'PRODUCTO';
                         const galleryFlyerFile = await aplicarPlantilla(isolatedFile, productName);
 
-                        statusText.textContent = `${prefix} Guardando imagen de galería con plantilla en el catálogo...`;
                         const galleryFormData = new FormData();
                         galleryFormData.append('image', galleryFlyerFile);
                         galleryFormData.append('_token', csrf);
@@ -1888,7 +1877,7 @@
                         if (item.statusEl) {
                             item.statusEl.classList.remove('text-primary');
                             item.statusEl.classList.add('text-success');
-                            item.statusEl.textContent = '¡Mejorada con Gemini + Plantilla!';
+                            item.statusEl.textContent = '¡Actualizada!';
                         }
                     }
 
@@ -1896,7 +1885,6 @@
 
                     // Pequeña pausa antes de procesar la siguiente imagen para que Gemini Web esté completamente listo
                     if (!isLast) {
-                        statusText.textContent = `${prefix} ¡Completada! Preparando siguiente imagen en 2.5 segundos...`;
                         await new Promise(r => setTimeout(r, 2500));
                     }
 
@@ -1918,11 +1906,11 @@
             }
 
             if (successCount > 0) {
-                statusText.textContent = `¡Listo! Se mejoraron ${successCount} de ${items.length} imágenes con Gemini Pro e IA Local.`;
+                statusText.textContent = '¡Imágenes actualizadas!';
                 statusDiv.classList.remove('text-primary', 'text-danger');
                 statusDiv.classList.add('text-success');
                 if (window.toastr) {
-                    toastr.success(`¡Éxito! ${successCount} imágenes procesadas con Gemini Pro y recortadas con fondo blanco puro.`);
+                    toastr.success('¡Imágenes actualizadas!');
                 }
             } else {
                 statusText.textContent = 'No se pudo completar el procesamiento de las imágenes.';

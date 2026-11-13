@@ -119,5 +119,68 @@ class SiteCatalogTest extends TestCase
 
         $this->get(route('site.catalog', ['categoria' => 9999]))->assertOk();
     }
+
+    /** Caso positivo: todas las etiquetas <img> en las vistas de la página web pública tienen loading="lazy" */
+    public function test_todas_las_imagenes_de_la_pagina_web_publica_tienen_loading_lazy(): void
+    {
+        $category = $this->createCategory(['name' => 'Llantas']);
+
+        // Producto con 1 sola imagen (cubre rama @elseif (count($urls) === 1))
+        $singleImgProduct = $this->createProduct($category, [
+            'name' => 'Producto Una Imagen',
+            'image_path' => 'products/single.jpg',
+        ]);
+
+        // Producto con múltiples imágenes (cubre rama @if (count($urls) > 1))
+        $multiImgProduct = $this->createProduct($category, [
+            'name' => 'Producto Galeria',
+            'image_path' => 'products/main.jpg',
+        ]);
+        $multiImgProduct->images()->createMany([
+            ['path' => 'products/gal1.jpg', 'sort_order' => 1],
+            ['path' => 'products/gal2.jpg', 'sort_order' => 2],
+        ]);
+
+        $publicUrls = [
+            route('site.home'),
+            route('site.catalog'),
+            route('site.product', ['id' => $singleImgProduct->id, 'slug' => 'producto-una-imagen']),
+            route('site.product', ['id' => $multiImgProduct->id, 'slug' => 'producto-galeria']),
+        ];
+
+        foreach ($publicUrls as $url) {
+            $response = $this->get($url);
+            $response->assertOk();
+            $this->assertAllImagesHaveLazyLoading($response->getContent(), $url);
+        }
+
+        // Vista pública de pedido de vendedor (/vendedor/pedido)
+        $seller = $this->createSeller();
+        $this->actingAs($seller)
+            ->withSession(['seller_cart' => [$singleImgProduct->id => 2]])
+            ->get(route('site.seller.order'))
+            ->assertOk()
+            ->tap(fn ($res) => $this->assertAllImagesHaveLazyLoading($res->getContent(), route('site.seller.order')));
+    }
+
+    private function assertAllImagesHaveLazyLoading(string $html, string $contextUrl): void
+    {
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+        $images = $xpath->query('//img');
+
+        $this->assertGreaterThan(0, $images->length, "Se esperaba al menos una etiqueta <img> en {$contextUrl}");
+
+        foreach ($images as $img) {
+            /** @var \DOMElement $img */
+            $src = $img->getAttribute('src');
+            $this->assertSame(
+                'lazy',
+                $img->getAttribute('loading'),
+                "La imagen con src '{$src}' en {$contextUrl} no tiene loading=\"lazy\"."
+            );
+        }
+    }
 }
 

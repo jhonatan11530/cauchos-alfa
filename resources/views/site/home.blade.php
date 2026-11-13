@@ -75,6 +75,7 @@
                 <div class="col-lg-6">
                     <div class="p-2" style="border: 2px solid var(--bike-red); border-radius: 28px; overflow: hidden;">
                         <img src="{{ asset('img/bike-mountain.png') }}" alt="Venta de Cauchos y Neumáticos de Alto Rendimiento en Cali" class="img-fluid rounded"
+                            loading="lazy"
                             style="filter: grayscale(0.5); transition: 0.3s;" onmouseover="this.style.filter='grayscale(0)'"
                             onmouseout="this.style.filter='grayscale(0.5)'">
                     </div>
@@ -142,6 +143,7 @@
                                                     <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
                                                         <img src="{{ $url }}" class="d-block w-100 card-img-top"
                                                             alt="{{ $product->name }} - imagen {{ $i + 1 }}"
+                                                            loading="lazy"
                                                             style="aspect-ratio: 4 / 3; object-fit: cover;">
                                                     </div>
                                                 @endforeach
@@ -177,7 +179,7 @@
                                         </div>
                                     @elseif (count($urls) === 1)
                                         <img src="{{ $urls[0] }}" class="card-img-top w-100"
-                                            alt="{{ $product->name }}" style="aspect-ratio: 4 / 3; object-fit: cover;">
+                                            alt="{{ $product->name }}" loading="lazy" style="aspect-ratio: 4 / 3; object-fit: cover;">
                                     @else
                                         <svg class="card-img-top w-100"
                                             style="aspect-ratio: 4 / 3; background-color: #2b3035;"

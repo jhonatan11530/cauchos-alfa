@@ -43,6 +43,45 @@ class SiteCatalogTest extends TestCase
         $response->assertViewHas('selectedCategory', fn($c) => $c && $c->id === $llantas->id);
     }
 
+    /** Caso positivo: filtra por ruta SEO de categoría y marca visualmente la categoría seleccionada en lugar de Todos */
+    public function test_filtra_por_ruta_seo_de_categoria_y_selecciona_la_categoria_activa(): void
+    {
+        $llantas = $this->createCategory(['name' => 'Llantas de Moto']);
+        $aceites = $this->createCategory(['name' => 'Aceites']);
+
+        $llanta = $this->createProduct($llantas, ['name' => 'Llanta A']);
+        $this->createProduct($aceites, ['name' => 'Aceite B']);
+
+        $response = $this->get(route('site.catalog.category', [
+            'categoriaId' => $llantas->id,
+            'slug' => \Illuminate\Support\Str::slug($llantas->name),
+        ]));
+
+        $response->assertOk();
+        $response->assertViewHas('products', fn ($products) => $products->contains('id', $llanta->id) && ! $products->contains('name', 'Aceite B'));
+        $response->assertViewHas('selectedCategory', fn ($c) => $c && $c->id === $llantas->id);
+
+        $html = $response->getContent();
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+
+        // La tarjeta "Todos" no debe tener la clase border-danger cuando hay una categoría seleccionada
+        $todosCard = $xpath->query("//h5[normalize-space()='Todos']/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' card ')][1]")->item(0);
+        $this->assertNotNull($todosCard);
+        $this->assertStringNotContainsString('border-danger', $todosCard->getAttribute('class'));
+
+        // La tarjeta de la categoría seleccionada sí debe tener border-danger
+        $selectedCard = $xpath->query("//h5[normalize-space()='Llantas de Moto']/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' card ')][1]")->item(0);
+        $this->assertNotNull($selectedCard);
+        $this->assertStringContainsString('border-danger', $selectedCard->getAttribute('class'));
+
+        // Otra categoría no seleccionada no debe tener border-danger
+        $otherCard = $xpath->query("//h5[normalize-space()='Aceites']/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' card ')][1]")->item(0);
+        $this->assertNotNull($otherCard);
+        $this->assertStringNotContainsString('border-danger', $otherCard->getAttribute('class'));
+    }
+
     /** Caso positivo: página de inicio con productos destacados */
     public function test_la_pagina_de_inicio_muestra_productos_destacados(): void
     {

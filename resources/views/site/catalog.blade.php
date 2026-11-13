@@ -50,7 +50,7 @@
         <div class="row mb-5">
             <div class="col-6 col-md-4 col-lg-3 mb-3">
                 <a href="{{ route('site.catalog') }}" style="text-decoration: none;">
-                    <div class="card h-100 shadow-sm text-center {{ empty(request('categoria')) ? 'border-danger' : '' }}"
+                    <div class="card h-100 shadow-sm text-center {{ !$selectedCategory ? 'border-danger' : '' }}"
                         style="background: var(--bike-charcoal); border-width: 2px; transition: 0.3s; border-radius: 20px; color: white;">
                         <div class="card-body">
                             <div class="text-red mb-2"><i class="bi bi-grid-3x3-gap-fill display-4"></i></div>
@@ -62,7 +62,7 @@
             @foreach ($categories as $category)
                 <div class="col-6 col-md-4 col-lg-3 mb-3">
                     <a href="{{ route('site.catalog.category', ['slug' => \Illuminate\Support\Str::slug($category->name), 'categoriaId' => $category->id]) }}" style="text-decoration: none;">
-                        <div class="card h-100 shadow-sm text-center {{ request('categoria') == $category->id ? 'border-danger' : '' }}"
+                        <div class="card h-100 shadow-sm text-center {{ $selectedCategory && $selectedCategory->id == $category->id ? 'border-danger' : '' }}"
                             style="background: var(--bike-charcoal); border-width: 2px; transition: 0.3s; border-radius: 20px; color: white;">
                             <div class="card-body">
                                 <div class="text-red mb-2"><i class="bi bi-tag-fill display-4"></i></div>

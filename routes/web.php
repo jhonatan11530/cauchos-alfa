@@ -27,6 +27,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/vendedor/pedido/agregar', [SiteController::class, 'addToCart'])->name('site.seller.add');
     Route::post('/vendedor/pedido/quitar', [SiteController::class, 'removeCartItem'])->name('site.seller.remove');
     Route::get('/vendedor/pedido', [SiteController::class, 'showSellerOrder'])->name('site.seller.order');
+    Route::get('/vendedor/pedidos', [SiteController::class, 'sellerOrders'])->name('site.seller.orders');
+    Route::get('/vendedor/pedidos-despachados', [SiteController::class, 'sellerOrders'])->name('site.seller.deliveries');
+    Route::match(['post', 'patch'], '/vendedor/pedidos/{pedido}/entregar', [SiteController::class, 'deliverOrder'])->name('site.seller.orders.deliver');
+    Route::match(['post', 'patch'], '/vendedor/pedidos/{pedido}/entrega', [SiteController::class, 'deliverOrder'])->name('site.seller.deliver');
+    Route::get('/vendedor/catalogo/descargar-ultimo', [SiteController::class, 'downloadLatestCatalog'])->name('site.seller.catalog.latest');
 });
 
 // Acceso de vendedores desde la web publica
@@ -41,6 +46,10 @@ Route::get('catalogos/{catalogo}/public-pdf', [CatalogController::class, 'public
     ->name('catalogos.public-pdf');
 
 Route::middleware('auth')->group(function () {
+    // Creacion de pedidos: permitida tambien para vendedores (debe ir antes de pedidos/{pedido})
+    Route::get('pedidos/create', [OrderController::class, 'create'])->name('pedidos.create');
+    Route::post('pedidos', [OrderController::class, 'store'])->name('pedidos.store');
+
     // Zona administrativa (los vendedores son redirigidos al catalogo)
     Route::middleware('no-seller')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -98,8 +107,4 @@ Route::middleware('auth')->group(function () {
             Route::post('configuracion/reset', [SettingController::class, 'resetPrompt'])->name('settings.reset');
         });
     });
-
-    // Creacion de pedidos: permitida tambien para vendedores (misma logica del dashboard)
-    Route::get('pedidos/create', [OrderController::class, 'create'])->name('pedidos.create');
-    Route::post('pedidos', [OrderController::class, 'store'])->name('pedidos.store');
 });

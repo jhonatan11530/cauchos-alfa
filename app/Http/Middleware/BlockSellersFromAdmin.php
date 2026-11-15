@@ -14,6 +14,10 @@ class BlockSellersFromAdmin
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user() && $request->user()->isSeller()) {
+            if ($request->routeIs('pedidos.estado')) {
+                return $next($request);
+            }
+
             return redirect()->route('site.catalog')
                 ->with('success', 'Los vendedores gestionan sus pedidos desde el catálogo de la página web.');
         }

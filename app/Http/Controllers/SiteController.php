@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Catalog;
 use App\Models\Category;
+use App\Models\Order;
+use App\Models\OrderStatus;
+use App\Models\OrderStatusHistory;
 use App\Models\Product;
 use App\Models\User;
 use App\Support\SellerCart;
@@ -13,6 +16,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
 use Illuminate\View\View;
 
@@ -174,5 +178,224 @@ class SiteController extends Controller
             'cartProducts' => $cartProducts,
             'clients' => \App\Models\Client::where('is_active', true)->orderBy('name')->get(),
         ]);
+    }
+
+    public function sellerOrders(Request $request): View|RedirectResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
+        $despachadoStatus = OrderStatus::whereIn('slug', [OrderStatus::SLUG_DESPACHADO, 'despachado', 'pedido-despachado'])->first();
+        $entregadoStatus = OrderStatus::whereIn('slug', [OrderStatus::SLUG_ENTREGADO, 'entregado', 'pedido-entregado'])->first();
+
+        $query = Order::query();
+
+        if ($user->isSeller()) {
+            $query->where('created_by', $user->id);
+        }
+
+        $filter = $request->query('status', 'despachado');
+
+        if ($filter === 'despachado' || ! $request->has('status')) {
+            if ($despachadoStatus) {
+                $query->where('order_status_id', $despachadoStatus->id);
+            }
+        } elseif ($filter === 'entregado') {
+            if ($entregadoStatus) {
+                $query->where('order_status_id', $entregadoStatus->id);
+            }
+        } elseif ($filter !== 'all') {
+            $status = OrderStatus::where('slug', $filter)->first();
+            if ($status) {
+                $query->where('order_status_id', $status->id);
+            }
+        }
+
+        $orders = $query->with(['status', 'client', 'items.product'])
+            ->latest('ordered_at')
+            ->latest('id')
+            ->paginate(15)
+            ->withQueryString();
+
+        $dispatchedCount = $user->isSeller()
+            ? Order::where('created_by', $user->id)->where('order_status_id', $despachadoStatus?->id)->count()
+            : Order::where('order_status_id', $despachadoStatus?->id)->count();
+
+        return view('site.seller-orders', [
+            'orders' => $orders,
+            'currentFilter' => $filter,
+            'dispatchedCount' => $dispatchedCount,
+            'despachadoStatus' => $despachadoStatus,
+        ]);
+    }
+
+    public function deliverOrder(Request $request, Order $pedido): RedirectResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
+        // Authorization check: Only assigned seller or admin can deliver
+        if ($user->isSeller()) {
+            if ((int) $pedido->created_by !== (int) $user->id) {
+                abort(403, 'No tienes autorización para gestionar este pedido.');
+            }
+
+            $currentSlug = $pedido->status?->slug;
+            if (! in_array($currentSlug, [OrderStatus::SLUG_DESPACHADO, 'despachado', 'pedido-despachado'])) {
+                $validator = Validator::make([], []);
+                $validator->errors()->add('order', 'El pedido no se encuentra en estado despachado para registrar su entrega.');
+                throw new ValidationException($validator);
+            }
+        }
+
+        $validator = Validator::make([], []);
+
+        // Photo validation
+        $photo = $request->file('delivery_photo') ?? $request->file('photo') ?? $request->file('delivery_photo_file');
+        if (! $photo) {
+            $validator->errors()->add('delivery_photo', 'La fotografía de entrega es obligatoria.');
+            $validator->errors()->add('photo', 'La fotografía de entrega es obligatoria.');
+        } else {
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+            $ext = strtolower($photo->getClientOriginalExtension() ?: '');
+            $mime = strtolower($photo->getMimeType() ?: $photo->getClientMimeType() ?: '');
+            $size = $photo->getSize();
+
+            $isImageMime = str_starts_with($mime, 'image/') || in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true);
+            $isAllowedExt = in_array($ext, $allowedExtensions, true);
+            $isUnderSize = $size !== false && $size <= (10 * 1024 * 1024);
+
+            if (! $photo->isValid() || ! $isImageMime || ! $isAllowedExt || ! $isUnderSize) {
+                $validator->errors()->add('delivery_photo', 'El archivo adjunto debe ser una imagen válida (JPG, JPEG, PNG, WEBP).');
+                $validator->errors()->add('photo', 'El archivo adjunto debe ser una imagen válida (JPG, JPEG, PNG, WEBP).');
+            }
+        }
+
+        // Coordinates validation
+        $lat = $request->input('delivery_latitude') ?? $request->input('latitude');
+        $lng = $request->input('delivery_longitude') ?? $request->input('longitude');
+        $location = $request->input('client_location') ?? $request->input('delivery_location');
+
+        $latitude = null;
+        $longitude = null;
+        $latNumeric = ($lat !== null && is_numeric($lat));
+        $lngNumeric = ($lng !== null && is_numeric($lng));
+
+        if ($latNumeric && $lngNumeric) {
+            $latitude = (float) $lat;
+            $longitude = (float) $lng;
+            if (empty($location)) {
+                $location = "{$latitude}, {$longitude}";
+            }
+        } elseif (! empty($location) && is_string($location)) {
+            if (preg_match('/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/', $location, $matches)) {
+                $latitude = (float) $matches[1];
+                $longitude = (float) $matches[2];
+            }
+        }
+
+        if ($latitude === null || $longitude === null) {
+            $validator->errors()->add('delivery_latitude', 'Las coordenadas de latitud son obligatorias.');
+            $validator->errors()->add('delivery_longitude', 'Las coordenadas de longitud son obligatorias.');
+            $validator->errors()->add('delivery_location', 'Las coordenadas o ubicación de entrega son obligatorias.');
+            $validator->errors()->add('client_location', 'Las coordenadas o ubicación de entrega son obligatorias.');
+        }
+
+        $latToCheck = $latitude ?? ($latNumeric ? (float) $lat : null);
+        $lngToCheck = $longitude ?? ($lngNumeric ? (float) $lng : null);
+
+        if (($latToCheck !== null && ($latToCheck < -90.0 || $latToCheck > 90.0)) ||
+            ($lngToCheck !== null && ($lngToCheck < -180.0 || $lngToCheck > 180.0))) {
+            $rangeMsg = 'Las coordenadas geográficas están fuera del rango válido (-90 a 90 para latitud, -180 a 180 para longitud).';
+            if ($latToCheck !== null && ($latToCheck < -90.0 || $latToCheck > 90.0)) {
+                $validator->errors()->add('delivery_latitude', $rangeMsg);
+                $validator->errors()->add('latitude', $rangeMsg);
+            }
+            if ($lngToCheck !== null && ($lngToCheck < -180.0 || $lngToCheck > 180.0)) {
+                $validator->errors()->add('delivery_longitude', $rangeMsg);
+                $validator->errors()->add('longitude', $rangeMsg);
+            }
+            $validator->errors()->add('delivery_location', $rangeMsg);
+            $validator->errors()->add('client_location', $rangeMsg);
+        }
+
+        if ($validator->errors()->isNotEmpty()) {
+            throw new ValidationException($validator);
+        }
+
+        // Store photo
+        $photoPath = $photo->store('orders/deliveries', 'public');
+
+        // Resolve delivered status
+        $entregadoStatus = OrderStatus::whereIn('slug', [OrderStatus::SLUG_ENTREGADO, 'entregado', 'pedido-entregado'])->firstOrFail();
+
+        $previousStatusId = $pedido->order_status_id;
+        $pedido->delivery_photo_path = $photoPath;
+        $pedido->delivery_latitude = $latitude;
+        $pedido->delivery_longitude = $longitude;
+        $pedido->client_location = $location ?: "{$latitude}, {$longitude}";
+        $pedido->order_status_id = $entregadoStatus->id;
+
+        $term = $request->input('payment_term') ?? $request->input('payment_method') ?? $request->input('payment_modality');
+        if (! empty($term)) {
+            $pedido->payment_term = $term;
+        }
+
+        $pedido->save();
+
+        $observation = $request->input('observation') ?? $request->input('notes') ?? 'Entrega registrada por el vendedor con foto y coordenadas GPS.';
+
+        OrderStatusHistory::create([
+            'order_id' => $pedido->id,
+            'previous_status_id' => $previousStatusId,
+            'new_status_id' => $entregadoStatus->id,
+            'user_id' => $user->id,
+            'observation' => $observation,
+            'changed_at' => now(),
+        ]);
+
+        return redirect()->route('site.seller.orders')
+            ->with('success', "Entrega del pedido {$pedido->code} registrada correctamente.");
+    }
+
+    /**
+     * Descarga el último catálogo de productos disponible en formato PDF para vendedores.
+     */
+    public function downloadLatestCatalog(Request $request)
+    {
+        $user = $request->user();
+        if (! $user || (! $user->isSeller() && ! $user->isAdmin())) {
+            abort(403, 'Solo los vendedores autorizados tienen acceso a esta descarga.');
+        }
+
+        $catalog = Catalog::where('is_active', true)->latest('id')->first()
+            ?? Catalog::latest('id')->first();
+
+        if (! $catalog) {
+            return redirect()->route('site.catalog')
+                ->with('warning', 'No hay ningún catálogo de productos disponible para descargar.');
+        }
+
+        $catalog->load(['products.category', 'products.images']);
+
+        $productsByCategory = $catalog->products->groupBy(function ($product) {
+            return $product->category?->name ?? 'Otros Productos';
+        });
+
+        $template = $catalog->template ?: 'default';
+        $viewName = view()->exists('admin.catalogs.templates.' . $template)
+            ? 'admin.catalogs.templates.' . $template
+            : 'admin.catalogs.templates.default';
+
+        $pdf = app('dompdf.wrapper')->loadView($viewName, [
+            'catalog' => $catalog,
+            'productsByCategory' => $productsByCategory,
+        ]);
+
+        return $pdf->download('catalogo-' . $catalog->id . '.pdf');
     }
 }

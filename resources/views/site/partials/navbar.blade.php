@@ -15,10 +15,18 @@
                 <li class="nav-item"><a class="nav-link" href="{{ route('site.catalog') }}">Catálogo</a></li>
                 @auth
                     @if (auth()->user()->isSeller())
+                        <li class="nav-item"><a class="nav-link" href="{{ route('site.seller.orders') }}"><i
+                                    class="bi bi-truck"></i> Mis Pedidos
+                            </a></li>
                         <li class="nav-item"><a class="nav-link" href="{{ route('site.seller.order') }}"><i
                                     class="bi bi-cart"></i> Mi pedido
                                 ({{ count(session('seller_cart', [])) }})
                             </a></li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('site.seller.catalog.latest') }}">
+                                <i class="bi bi-file-earmark-pdf"></i> Catálogo PDF
+                            </a>
+                        </li>
                         <li class="nav-item ms-lg-2">
                             <form method="POST" action="{{ route('site.seller.logout') }}">@csrf
                                 <button class="nav-link btn btn-red">Salir ({{ auth()->user()->name }})</button>

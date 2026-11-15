@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Client;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatus;
 use App\Models\Product;
@@ -295,5 +296,182 @@ class OrderControllerTest extends TestCase
             ->get(route('site.seller.order'))
             ->assertRedirect(route('site.catalog'))
             ->assertSessionHas('warning');
+    }
+
+    public function test_orders_index_displays_create_order_button_for_admin(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->get(route('pedidos.index'));
+
+        $response->assertOk()
+            ->assertSee('Crear pedido')
+            ->assertSee(route('pedidos.create'), false);
+    }
+
+    public function test_admin_can_access_create_order_page(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->get(route('pedidos.create'));
+
+        $response->assertOk()
+            ->assertSee('Crear pedido');
+    }
+
+    public function test_store_respects_custom_code_and_ordered_at_when_provided(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->post(route('pedidos.store'), $this->validPayload([
+                'code' => 'PED-MANUAL-100',
+                'ordered_at' => '2026-10-15',
+            ]));
+
+        $response->assertRedirect(route('pedidos.index'))
+            ->assertSessionHas('success');
+
+        $order = \App\Models\Order::where('code', 'PED-MANUAL-100')->first();
+        $this->assertNotNull($order);
+        $this->assertSame('2026-10-15', $order->ordered_at->format('Y-m-d'));
+    }
+
+    public function test_create_order_form_renders_single_product_search_with_code_and_name(): void
+    {
+        $this->client->update(['document' => '900123456']);
+        $productWithCode = Product::create([
+            'name' => 'Soporte de Motor',
+            'reference' => 'REF-CA-001',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('pedidos.create'));
+
+        $response->assertOk()
+            ->assertSee('id="product-search-select"', false)
+            ->assertSee('[REF-CA-001] Soporte de Motor')
+            ->assertSee($productWithCode->reference)
+            ->assertSee('900123456');
+    }
+
+    public function test_edit_order_form_preloads_existing_items_into_table_with_single_search(): void
+    {
+        $productB = Product::create([
+            'name' => 'Buje de Tijera',
+            'reference' => 'REF-CA-002',
+            'is_active' => true,
+        ]);
+
+        $order = \App\Models\Order::create([
+            'code' => 'PED-EDIT-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $this->status->id,
+            'ordered_at' => now()->toDateString(),
+        ]);
+
+        $order->items()->create(['product_id' => $this->product->id, 'quantity' => 3]);
+        $order->items()->create(['product_id' => $productB->id, 'quantity' => 4]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('pedidos.edit', $order));
+
+        $response->assertOk()
+            ->assertSee('id="product-search-select"', false)
+            ->assertSee('name="items[0][product_id]"', false)
+            ->assertSee('name="items[1][product_id]"', false)
+            ->assertSee('Buje de Tijera')
+            ->assertSee('REF-CA-002');
+    }
+
+    public function test_admin_can_view_order_details_and_table_header_contains_reference_column(): void
+    {
+        $order = Order::create([
+            'code' => 'PED-SHOW-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $this->status->id,
+            'ordered_at' => now()->toDateString(),
+        ]);
+
+        $order->items()->create([
+            'product_id' => $this->product->id,
+            'quantity' => 2,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('pedidos.show', $order));
+
+        $response->assertOk()
+            ->assertSee('Código / Ref.');
+    }
+
+    public function test_order_detail_displays_product_reference_when_present(): void
+    {
+        $productWithRef = Product::create([
+            'name' => 'Banda de Distribución',
+            'reference' => 'REF-001',
+            'is_active' => true,
+        ]);
+
+        $order = Order::create([
+            'code' => 'PED-SHOW-002',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $this->status->id,
+            'ordered_at' => now()->toDateString(),
+        ]);
+
+        $order->items()->create([
+            'product_id' => $productWithRef->id,
+            'quantity' => 4,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('pedidos.show', $order));
+
+        $response->assertOk()
+            ->assertSee('REF-001')
+            ->assertSee('<td>REF-001</td>', false)
+            ->assertSee('Banda de Distribución');
+    }
+
+    public function test_order_detail_displays_hyphen_when_product_reference_is_null_or_empty(): void
+    {
+        $productNullRef = Product::create([
+            'name' => 'Empaque de Culata',
+            'reference' => null,
+            'is_active' => true,
+        ]);
+
+        $productEmptyRef = Product::create([
+            'name' => 'Retén de Cigüeñal',
+            'reference' => '',
+            'is_active' => true,
+        ]);
+
+        $order = Order::create([
+            'code' => 'PED-SHOW-003',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $this->status->id,
+            'ordered_at' => now()->toDateString(),
+        ]);
+
+        $order->items()->create([
+            'product_id' => $productNullRef->id,
+            'quantity' => 1,
+        ]);
+
+        $order->items()->create([
+            'product_id' => $productEmptyRef->id,
+            'quantity' => 2,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('pedidos.show', $order));
+
+        $response->assertOk()
+            ->assertSee('Empaque de Culata')
+            ->assertSee('Retén de Cigüeñal')
+            ->assertSee('<td>-</td>', false);
     }
 }

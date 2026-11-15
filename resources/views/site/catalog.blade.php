@@ -38,6 +38,15 @@
         <div class="container">
             <h1 class="section-title">Catálogo de Cauchos y Neumáticos</h1>
             <p class="lead mb-0">Explora los neumáticos de alto rendimiento disponibles.</p>
+            @auth
+                @if (auth()->user()->isSeller())
+                    <div class="mt-3">
+                        <a href="{{ route('site.seller.catalog.latest') }}" class="btn btn-red">
+                            <i class="bi bi-file-earmark-pdf"></i> Descargar último catálogo (PDF)
+                        </a>
+                    </div>
+                @endif
+            @endauth
         </div>
     </section>
 

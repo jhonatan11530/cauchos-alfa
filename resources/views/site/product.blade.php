@@ -120,9 +120,9 @@
             </div>
             @endif
 
-            <div class="mt-4 d-flex flex-wrap align-items-center" style="gap: 15px;">
-                @auth
-                    @if(auth()->user()->isSeller())
+            @auth
+                @if(auth()->user()->isSeller())
+                    <div class="mt-4 d-flex flex-wrap align-items-center" style="gap: 15px;">
                         <form action="{{ route('site.seller.add') }}" method="POST" class="m-0">
                             @csrf
                             <input type="hidden" name="product_id" value="{{ $product->id }}">
@@ -133,18 +133,9 @@
                                 </button>
                             </div>
                         </form>
-
-                        <button type="button" class="btn btn-outline-info px-4 py-2 d-flex align-items-center mt-2 mt-md-0 ml-md-2" style="border-radius: 20px;"
-                            onclick="compartirWhatsApp('{{ count($urls) > 0 ? $urls[0] : '' }}')">
-                            <i class="bi bi-whatsapp mr-2" style="font-size: 1.2rem;"></i> Compartir en Estado
-                        </button>
-                    @endif
-                @endauth
-
-                <a href="{{ config('whatsapp.phone') }}?text={{ urlencode('Hola Cauchos Alfa, estoy interesado en el producto: ' . $product->name . ' (Ref: ' . $product->reference . '). ¿Me podrían dar más información?') }}" target="_blank" class="btn btn-outline-success px-4 py-2 d-flex align-items-center" style="border-radius: 20px;">
-                    <i class="bi bi-whatsapp mr-2" style="font-size: 1.2rem;"></i> Cotizar por WhatsApp
-                </a>
-            </div>
+                    </div>
+                @endif
+            @endauth
         </div>
     </div>
 
@@ -181,32 +172,3 @@
     @endif
 </div>
 @endsection
-
-@push('scripts')
-<script>
-async function compartirWhatsApp(urlImagen) {
-    if (!urlImagen) {
-        alert('Este producto no tiene imagen para compartir.');
-        return;
-    }
-
-    try {
-        const respuesta = await fetch(urlImagen);
-        const blob = await respuesta.blob();
-
-        const extension = blob.type.split('/')[1] || 'jpg';
-        const archivo = new File([blob], `producto.${extension}`, { type: blob.type });
-
-        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-            await navigator.share({
-                files: [archivo]
-            });
-        } else {
-            alert('Tu navegador no soporta compartir imágenes directamente.');
-        }
-    } catch (error) {
-        console.error('El usuario canceló o hubo un error', error);
-    }
-}
-</script>
-@endpush

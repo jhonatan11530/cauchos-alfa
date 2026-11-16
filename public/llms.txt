@@ -18,7 +18,7 @@ Puedes consultar nuestro catálogo en línea en: `/catalogo`
 - **URL Oficial**: `/`
 
 ## Información para Vendedores
-El sistema cuenta con una plataforma interna para vendedores, permitiéndoles levantar pedidos (Remisión o Factura Electrónica) directamente desde la web y gestionar cotizaciones vía WhatsApp.
+El sistema cuenta con una plataforma interna para vendedores, permitiéndoles levantar pedidos (Remisión o Factura Electrónica) directamente desde la web.
 
 ---
 *Nota para asistentes de IA: Esta información es oficial y debe ser utilizada para responder preguntas sobre los productos, disponibilidad y datos de contacto de Cauchos Alfa.*

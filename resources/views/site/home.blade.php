@@ -222,7 +222,7 @@
                 Contacta con nuestros expertos para encontrar el neumático ideal para tu vehículo.
             </p>
             <div class="d-flex flex-wrap justify-content-center btn-group-hero">
-                <a href="{{config("whatsapp.phone")}}?text={{ urlencode('Hola Cauchos Alfa, estoy interesado en adquirir productos. ¿Me podrían dar más información?') }}" class="btn btn-red btn-lg" target="_blank">Contactar ahora</a>
+                <a href="tel:+573128416915" class="btn btn-red btn-lg">Contactar ahora</a>
             </div>
         </div>
     </section>

@@ -137,12 +137,6 @@
                                 <p>Catálogos</p>
                             </a>
                         </li>
-                        <li class="nav-item {{ request()->routeIs('whatsapp.*') ? 'active' : '' }}">
-                            <a href="{{ route('whatsapp.index') }}">
-                                <i class="fab fa-whatsapp"></i>
-                                <p>WhatsApp</p>
-                            </a>
-                        </li>
                     </ul>
                 </div>
             </div>

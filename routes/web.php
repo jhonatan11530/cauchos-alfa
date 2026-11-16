@@ -12,7 +12,6 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VendedorController;
-use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\EnsureUserIsAdmin;
 
@@ -77,18 +76,6 @@ Route::middleware('auth')->group(function () {
 
         Route::get('catalogos/{catalogo}/pdf', [CatalogController::class, 'pdf'])->name('catalogos.pdf');
         Route::resource('catalogos', CatalogController::class);
-        Route::get('whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');
-        Route::get('whatsapp/mensajes', [WhatsAppController::class, 'templatesIndex'])->name('whatsapp.templates.index');
-        Route::get('whatsapp/mensajes/crear', [WhatsAppController::class, 'templatesCreate'])->name('whatsapp.templates.create');
-        Route::post('whatsapp/mensajes', [WhatsAppController::class, 'templatesStore'])->name('whatsapp.templates.store');
-        Route::get('whatsapp/mensajes/{template}/editar', [WhatsAppController::class, 'templatesEdit'])->name('whatsapp.templates.edit');
-        Route::put('whatsapp/mensajes/{template}', [WhatsAppController::class, 'templatesUpdate'])->name('whatsapp.templates.update');
-        Route::delete('whatsapp/mensajes/{template}', [WhatsAppController::class, 'templatesDestroy'])->name('whatsapp.templates.destroy');
-        Route::get('whatsapp/status', [WhatsAppController::class, 'status'])->name('whatsapp.status');
-        Route::post('whatsapp/enviar', [WhatsAppController::class, 'send'])->name('whatsapp.send');
-        Route::post('whatsapp/enviar-catalogo', [WhatsAppController::class, 'sendCatalog'])->name('whatsapp.catalog');
-        Route::post('whatsapp/salir', [WhatsAppController::class, 'logout'])->name('whatsapp.logout');
-        Route::post('whatsapp/reiniciar', [WhatsAppController::class, 'restart'])->name('whatsapp.restart');
         Route::get('pedidos', [OrderController::class, 'index'])->name('pedidos.index');
         Route::get('pedidos/{pedido}', [OrderController::class, 'show'])->name('pedidos.show');
         Route::get('pedidos/{pedido}/pdf', [OrderController::class, 'pdf'])->name('pedidos.pdf');

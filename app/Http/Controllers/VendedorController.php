@@ -24,10 +24,10 @@ class VendedorController extends Controller
         $role = Role::where('slug', 'vendedor')->first();
 
         $sellers = User::with('role')
-            ->when($role, fn($q) => $q->where('role_id', $role->id))
+            ->when($role, fn ($q) => $q->where('role_id', $role->id))
             ->when(request()->filled('q'), function ($query) {
-                $term = '%' . request()->string('q') . '%';
-                $query->where(fn($q) => $q->where('name', 'like', $term)
+                $term = '%'.request()->string('q').'%';
+                $query->where(fn ($q) => $q->where('name', 'like', $term)
                     ->orWhere('email', 'like', $term)
                     ->orWhere('seller_code', 'like', $term));
             })
@@ -50,13 +50,15 @@ class VendedorController extends Controller
         $data['role_id'] = Role::where('slug', 'vendedor')->value('id');
         $data['seller_code'] = strtoupper(trim($data['seller_code']));
         $data['email'] = $this->generateEmail($data['name']);
-        $data['password'] = Hash::make($this->generatePassword($data['seller_code']));
+        $plainPassword = $this->generatePassword();
+        $data['password'] = Hash::make($plainPassword);
         $data['is_active'] = $request->boolean('is_active', true);
         User::create($data);
 
         return redirect()->route('vendedores.index')->with('success',
             'Vendedor creado correctamente. Código de acceso: '.$data['seller_code'].
-            ' | Correo: '.$data['email']);
+            ' | Correo: '.$data['email'].
+            ' | Contraseña temporal: '.$plainPassword);
     }
 
     public function edit(User $vendedor): View
@@ -73,7 +75,7 @@ class VendedorController extends Controller
         $data['seller_code'] = strtoupper(trim($data['seller_code']));
         $data['is_active'] = $request->boolean('is_active');
 
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         } else {
             unset($data['password']);
@@ -86,7 +88,7 @@ class VendedorController extends Controller
 
     public function destroy(User $vendedor): RedirectResponse
     {
-        $vendedor->update(['is_active' => !$vendedor->is_active]);
+        $vendedor->update(['is_active' => ! $vendedor->is_active]);
 
         return back()->with('success', 'Estado del vendedor actualizado.');
     }
@@ -118,18 +120,17 @@ class VendedorController extends Controller
     }
 
     /**
-     * Contraseña automatica: código del vendedor + fecha actual (Ymd).
-     * Ej: V-1234 + 2026-05-30 -> "V-1234-20260530"
+     * Genera una contraseña aleatoria y segura para el vendedor.
      */
-    private function generatePassword(string $sellerCode): string
+    private function generatePassword(): string
     {
-        return $sellerCode.'-'.now()->format('Ymd');
+        return Str::password(16);
     }
 
     private function generateCode(): string
     {
         do {
-            $code = 'V-' . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $code = 'V-'.str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
         } while (User::where('seller_code', $code)->exists());
 
         return $code;

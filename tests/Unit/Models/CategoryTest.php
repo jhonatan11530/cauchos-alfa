@@ -8,8 +8,8 @@ use Tests\TestCase;
 
 class CategoryTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     public function test_tiene_muchos_productos(): void
     {

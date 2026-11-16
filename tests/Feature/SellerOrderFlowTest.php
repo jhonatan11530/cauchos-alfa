@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesSystemData;
@@ -9,12 +10,12 @@ use Tests\TestCase;
 
 class SellerOrderFlowTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     private User $seller;
 
-    private \App\Models\Product $product;
+    private Product $product;
 
     protected function setUp(): void
     {
@@ -83,7 +84,7 @@ class SellerOrderFlowTest extends TestCase
 
         $response = $this->actingAs($this->seller)->get(route('site.seller.order'));
         $response->assertOk();
-        $response->assertViewHas('cartProducts', fn($products) => $products->first()->cart_quantity === 2);
+        $response->assertViewHas('cartProducts', fn ($products) => $products->first()->cart_quantity === 2);
     }
 
     /** Caso límite: pedido vacío redirige al catálogo con advertencia */
@@ -109,4 +110,3 @@ class SellerOrderFlowTest extends TestCase
         $this->assertSame([], session('seller_cart'));
     }
 }
-

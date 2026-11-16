@@ -9,6 +9,7 @@ use App\Models\OrderStatusHistory;
 use App\Models\Product;
 use App\Models\User;
 use App\Support\SellerCart;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class OrderController extends Controller
     {
         $orders = Order::with(['client', 'status'])
             ->when($request->filled('q'), function ($query) use ($request) {
-                $term = '%' . $request->string('q') . '%';
+                $term = '%'.$request->string('q').'%';
                 $query->where(fn ($q) => $q->where('code', 'like', $term)
                     ->orWhereHas('client', fn ($c) => $c->where('name', 'like', $term)));
             })
@@ -41,7 +42,7 @@ class OrderController extends Controller
 
     public function create(): View
     {
-        return view('admin.orders.form', $this->formData(new Order()));
+        return view('admin.orders.form', $this->formData(new Order));
     }
 
     public function store(Request $request): RedirectResponse
@@ -518,7 +519,8 @@ class OrderController extends Controller
     private function generateCode(): string
     {
         do {
-            $code = 'PED-'.now()->format('YmdHis').'-'.strtoupper(bin2hex(random_bytes(2)));        } while (Order::where('code', $code)->exists());
+            $code = 'PED-'.now()->format('YmdHis').'-'.strtoupper(bin2hex(random_bytes(2)));
+        } while (Order::where('code', $code)->exists());
 
         return $code;
     }
@@ -550,7 +552,8 @@ class OrderController extends Controller
     public function pdf(Order $pedido)
     {
         $pedido->load(['client', 'items.product', 'creator']);
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.orders.pdf', compact('pedido'));
+        $pdf = Pdf::loadView('admin.orders.pdf', compact('pedido'));
+
         return $pdf->stream('pedido-'.$pedido->code.'.pdf');
     }
 }

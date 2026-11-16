@@ -3,16 +3,16 @@
 namespace Tests\Feature;
 
 use App\Models\Catalog;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
+use Illuminate\View\View;
 use Tests\Support\CreatesSystemData;
 use Tests\TestCase;
 
 class SiteCatalogTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     /** Caso positivo: el catálogo carga y muestra los productos activos */
     public function test_el_catalogo_carga_y_muestra_productos_activos(): void
@@ -40,7 +40,7 @@ class SiteCatalogTest extends TestCase
 
         $response->assertOk();
         $response->assertViewHas('products', fn ($products) => $products->contains('id', $llanta->id) && ! $products->contains('name', 'Aceite B'));
-        $response->assertViewHas('selectedCategory', fn($c) => $c && $c->id === $llantas->id);
+        $response->assertViewHas('selectedCategory', fn ($c) => $c && $c->id === $llantas->id);
     }
 
     /** Caso positivo: filtra por ruta SEO de categoría y marca visualmente la categoría seleccionada en lugar de Todos */
@@ -54,7 +54,7 @@ class SiteCatalogTest extends TestCase
 
         $response = $this->get(route('site.catalog.category', [
             'categoriaId' => $llantas->id,
-            'slug' => \Illuminate\Support\Str::slug($llantas->name),
+            'slug' => Str::slug($llantas->name),
         ]));
 
         $response->assertOk();
@@ -62,7 +62,7 @@ class SiteCatalogTest extends TestCase
         $response->assertViewHas('selectedCategory', fn ($c) => $c && $c->id === $llantas->id);
 
         $html = $response->getContent();
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
 
@@ -90,7 +90,7 @@ class SiteCatalogTest extends TestCase
         $response = $this->get(route('site.home'));
 
         $response->assertOk();
-        $this->assertInstanceOf(\Illuminate\View\View::class, $response->original);
+        $this->assertInstanceOf(View::class, $response->original);
         $this->assertTrue($response->original->featured->contains('id', $product->id));
     }
 
@@ -102,7 +102,7 @@ class SiteCatalogTest extends TestCase
 
         $this->get(route('site.catalog'))
             ->assertOk()
-            ->assertViewHas('activeCatalogs', fn($catalogs) => $catalogs->count() === 1);
+            ->assertViewHas('activeCatalogs', fn ($catalogs) => $catalogs->count() === 1);
     }
 
     /** Caso límite: sin productos la página no falla */
@@ -165,7 +165,7 @@ class SiteCatalogTest extends TestCase
 
     private function assertAllImagesHaveLazyLoading(string $html, string $contextUrl): void
     {
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
         $images = $xpath->query('//img');
@@ -183,4 +183,3 @@ class SiteCatalogTest extends TestCase
         }
     }
 }
-

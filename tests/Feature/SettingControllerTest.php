@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\GeminiPromptService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesSystemData;
@@ -10,8 +11,8 @@ use Tests\TestCase;
 
 class SettingControllerTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -43,7 +44,7 @@ class SettingControllerTest extends TestCase
 
     public function test_usuario_no_administrador_recibe_403(): void
     {
-        $user = \App\Models\User::create([
+        $user = User::create([
             'role_id' => null,
             'name' => 'Usuario Normal',
             'email' => 'normal@test.com',

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Services\GeminiPromptService;
+use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 /**
@@ -12,7 +14,9 @@ use Tests\TestCase;
 class ChallengerGeminiPromptVerificationTest extends TestCase
 {
     private string $bladeContent;
+
     private string $extractedPrompt;
+
     private string $expectedPrompt;
 
     protected function setUp(): void
@@ -29,14 +33,14 @@ class ChallengerGeminiPromptVerificationTest extends TestCase
             'buildGeminiStudioPrompt() must invoke PROMPT_GEMINI dynamically via @json'
         );
 
-        $compiledSnippet = \Illuminate\Support\Facades\Blade::render(
+        $compiledSnippet = Blade::render(
             'function buildGeminiStudioPrompt() { return @json(\App\Services\GeminiPromptService::get(\'PROMPT_GEMINI\'), JSON_UNESCAPED_UNICODE); }'
         );
         $matched = preg_match('/return\s+(["\'].*?["\']);/s', $compiledSnippet, $matches);
         $this->assertSame(1, $matched);
         $this->extractedPrompt = json_decode($matches[1], true);
 
-        $this->expectedPrompt = (string)(\App\Services\GeminiPromptService::get('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
+        $this->expectedPrompt = (string) (GeminiPromptService::get('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
     }
 
     /**
@@ -86,12 +90,12 @@ class ChallengerGeminiPromptVerificationTest extends TestCase
                     'expected' => $charExpected,
                     'expected_ord' => mb_ord($charExpected, 'UTF-8'),
                     'actual' => $charActual,
-                    'actual_ord' => mb_ord($charActual, 'UTF-8')
+                    'actual_ord' => mb_ord($charActual, 'UTF-8'),
                 ];
             }
         }
 
-        $this->assertEmpty($discrepancies, 'Discrepancies found: ' . json_encode($discrepancies));
+        $this->assertEmpty($discrepancies, 'Discrepancies found: '.json_encode($discrepancies));
     }
 
     /**
@@ -125,7 +129,7 @@ class ChallengerGeminiPromptVerificationTest extends TestCase
         $unaccented = strtr($this->extractedPrompt, [
             'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
             'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U',
-            'ñ' => 'n', 'Ñ' => 'N'
+            'ñ' => 'n', 'Ñ' => 'N',
         ]);
         $this->assertSame(strlen($unaccented), mb_strlen($unaccented, 'UTF-8'));
         $this->assertNotSame(hash('sha256', $this->extractedPrompt), hash('sha256', $unaccented));
@@ -147,7 +151,7 @@ class ChallengerGeminiPromptVerificationTest extends TestCase
         );
 
         $this->assertStringContainsString("type: 'CAUCHOS_START_GEMINI_AUTOMATION'", $this->bladeContent);
-        $this->assertStringContainsString("prompt: promptText", $this->bladeContent);
+        $this->assertStringContainsString('prompt: promptText', $this->bladeContent);
     }
 
     /**

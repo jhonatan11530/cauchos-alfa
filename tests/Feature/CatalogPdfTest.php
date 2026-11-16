@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Catalog;
-use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\CreatesSystemData;
@@ -11,8 +10,8 @@ use Tests\TestCase;
 
 class CatalogPdfTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     /** Caso positivo: el administrador puede exportar el catálogo a PDF */
     public function test_admin_puede_descargar_catalogo_en_pdf(): void

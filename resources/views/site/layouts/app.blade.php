@@ -4,12 +4,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Cauchos Alfa | Llantas y Repuestos de Bicicleta en Cali')</title>
-    <title>@yield('title', 'Cauchos Alfa | Fabricantes e Importadores de Llantas para Motos y Bicicletas')</title>
+    <title>@yield('title', 'Cauchos Alfa | Fábrica y Distribuidor de Llantas para Motos y Bicicletas')</title>
     <meta name="google-site-verification" content="29v5bm7axdRaGKn_W81TiVpHGptO6pPlljdlvhmM-rc" />
-    <meta name="description" content="@yield('description', 'Distribuidores e importadores de llantas tubeless, neumáticos MTB/Ruta, repuestos Shimano, frenos y accesorios para bicicletas en Cali y todo Colombia. Calidad garantizada.')">
-    <meta property="og:title" content="@yield('title', 'Cauchos Alfa | Llantas y Repuestos para Bicicletas')" content="@yield('description', 'Cauchos Alfa: Fabricantes, importadores y distribuidores de cauchos y llantas para motos y bicicletas en Cali, Colombia. Alta calidad y rendimiento.')">
-    <meta property="og:title" content="@yield('title', 'Cauchos Alfa | Llantas para Motos y Bicicletas')">
+    <meta name="description" content="@yield('description', 'Fabricantes e importadores directos de cauchos, llantas y neumáticos para motos y bicicletas en Colombia. Distribución mayorista en Cali.')">
+    <meta property="og:title" content="@yield('title', 'Cauchos Alfa | Fábrica y Distribuidor de Llantas para Motos y Bicicletas')">
     <meta property="og:description" content="@yield('description', 'Fabricantes y distribuidores mayoristas de cauchos para motos, llantas de bicicleta y bicicletas completas. Calidad premium desde Cali para toda Colombia.')">
     <meta property="og:type" content="website">
     <meta property="og:image" content="{{ asset('img/hero-bike.png') }}">

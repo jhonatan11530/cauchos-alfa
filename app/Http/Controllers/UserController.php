@@ -16,7 +16,7 @@ class UserController extends Controller
     {
         $users = User::with('role')
             ->when(request()->filled('q'), function ($query) {
-                $term = '%' . request()->string('q') . '%';
+                $term = '%'.request()->string('q').'%';
                 $query->where(fn ($q) => $q->where('name', 'like', $term)->orWhere('email', 'like', $term)->orWhere('seller_code', 'like', $term));
             })
             ->latest();
@@ -26,7 +26,7 @@ class UserController extends Controller
 
     public function create(): View
     {
-        return view('admin.users.form', ['user' => new User(), 'roles' => Role::orderBy('name')->get()]);
+        return view('admin.users.form', ['user' => new User, 'roles' => Role::orderBy('name')->get()]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -46,8 +46,12 @@ class UserController extends Controller
 
     public function update(Request $request, User $usuario): RedirectResponse
     {
+        if (auth()->id() === $usuario->id && ! $request->boolean('is_active')) {
+            return back()->with('error', 'No puedes desactivar tu propia cuenta activa.');
+        }
+
         $data = $this->validatedData($request, $usuario);
-        $data['is_active'] = $request->boolean('is_active');
+        $data['is_active'] = auth()->id() === $usuario->id ? true : $request->boolean('is_active');
 
         if (! empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
@@ -62,6 +66,10 @@ class UserController extends Controller
 
     public function destroy(User $usuario): RedirectResponse
     {
+        if (auth()->id() === $usuario->id) {
+            return back()->with('error', 'No puedes desactivar o eliminar tu propia cuenta activa.');
+        }
+
         $usuario->update(['is_active' => ! $usuario->is_active]);
 
         return back()->with('success', 'Estado del usuario actualizado.');

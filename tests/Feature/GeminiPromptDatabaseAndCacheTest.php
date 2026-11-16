@@ -31,12 +31,13 @@ use Tests\TestCase;
  */
 class GeminiPromptDatabaseAndCacheTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     protected const CANONICAL_PROMPT = 'Mejora la imagen aplicando un estilo de fotografía de estudio en primer plano y de alta calidad sobre un fondo blanco puro y continuo, utilizando iluminación natural con enfoque nítido y sombras suaves en la base para asentar el objeto de forma realista. Es indispensable lograr una alineación geométrica absoluta: el producto debe quedar perfectamente recto, nivelado y con 0 grados de inclinación de extremo a extremo, respetando su orientación natural (estrictamente horizontal o vertical) y quedando totalmente paralelo a los bordes del encuadre, sin ladeos, desniveles ni caídas accidentales hacia ningún lado. Asimismo, aplica una corrección de perspectiva rigurosa para obtener una vista frontal plana y ortogonal, eliminando por completo cualquier fuga diagonal, distorsión de lente o ángulo de cámara que haga que una parte se vea más cercana o distorsionada, asegurando una simetría y estabilidad visual perfectas. Finalmente, conserva con absoluta fidelidad la forma, proporciones, materiales y texturas originales del objeto, centrándolo en la composición con un espacio blanco equilibrado alrededor, sin marcas de agua ni elementos adicionales, para entregar un acabado hiperrealista, nítido y profesional ideal para un catálogo online.';
 
     private ?string $originalEnvPrompt = null;
+
     private ?string $originalConfigPrompt = null;
 
     protected function setUp(): void
@@ -106,6 +107,7 @@ class GeminiPromptDatabaseAndCacheTest extends TestCase
         if (Route::has('productos.create')) {
             return route('productos.create');
         }
+
         return url('/productos/create');
     }
 
@@ -191,7 +193,7 @@ class GeminiPromptDatabaseAndCacheTest extends TestCase
         $queries = DB::getQueryLog();
         $this->assertEmpty(
             $queries,
-            'Subsequent prompt retrievals within TTL must execute ZERO database queries. Found: ' . json_encode($queries)
+            'Subsequent prompt retrievals within TTL must execute ZERO database queries. Found: '.json_encode($queries)
         );
     }
 
@@ -632,7 +634,7 @@ class GeminiPromptDatabaseAndCacheTest extends TestCase
 
         $this->assertEmpty(
             $settingsQueries,
-            'Form rendering must make 0 queries to settings table when prompt is cached. Found: ' . json_encode($settingsQueries)
+            'Form rendering must make 0 queries to settings table when prompt is cached. Found: '.json_encode($settingsQueries)
         );
     }
 }

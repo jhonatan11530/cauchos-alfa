@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Client;
 use App\Models\Order;
 use App\Models\OrderStatus;
-use App\Models\OrderStatusHistory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -15,15 +14,21 @@ use Tests\TestCase;
 
 class SellerDeliveryTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     private User $sellerA;
+
     private User $sellerB;
+
     private User $admin;
+
     private Client $client;
+
     private OrderStatus $creadoStatus;
+
     private OrderStatus $despachadoStatus;
+
     private OrderStatus $entregadoStatus;
 
     protected function setUp(): void
@@ -74,7 +79,7 @@ class SellerDeliveryTest extends TestCase
     private function createOrderFor(User $creator, OrderStatus $status, array $attributes = []): Order
     {
         return Order::create(array_merge([
-            'code' => 'PED-' . strtoupper(uniqid()),
+            'code' => 'PED-'.strtoupper(uniqid()),
             'client_id' => $this->client->id,
             'created_by' => $creator->id,
             'order_status_id' => $status->id,

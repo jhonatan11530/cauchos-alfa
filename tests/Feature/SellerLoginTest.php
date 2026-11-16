@@ -2,16 +2,16 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
+use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
 use Tests\Support\CreatesSystemData;
 use Tests\TestCase;
 
 class SellerLoginTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -131,7 +131,7 @@ class SellerLoginTest extends TestCase
             'recaptchav3.secret' => 'fake-secret',
         ]);
 
-        \Lunaweb\RecaptchaV3\Facades\RecaptchaV3::shouldReceive('verify')
+        RecaptchaV3::shouldReceive('verify')
             ->once()
             ->with('token-valido', 'seller_login')
             ->andReturn(0.8);
@@ -142,7 +142,7 @@ class SellerLoginTest extends TestCase
             'code' => 'VEND002',
             'g-recaptcha-response' => 'token-valido',
         ])->assertRedirect(route('site.catalog'))
-          ->assertSessionHas('success');
+            ->assertSessionHas('success');
 
         $this->assertAuthenticatedAs($seller);
     }
@@ -155,7 +155,7 @@ class SellerLoginTest extends TestCase
             'recaptchav3.secret' => 'fake-secret',
         ]);
 
-        \Lunaweb\RecaptchaV3\Facades\RecaptchaV3::shouldReceive('verify')
+        RecaptchaV3::shouldReceive('verify')
             ->once()
             ->with('token-invalido', 'seller_login')
             ->andReturn(0.2);
@@ -170,4 +170,3 @@ class SellerLoginTest extends TestCase
         $this->assertGuest();
     }
 }
-

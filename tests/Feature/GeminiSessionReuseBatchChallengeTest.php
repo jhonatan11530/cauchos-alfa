@@ -6,7 +6,7 @@ use Tests\TestCase;
 
 /**
  * Challenger Verification Test Harness for Session Reuse & Batch Concurrency Lifecycle.
- * 
+ *
  * Independently and empirically challenges:
  * 1. Batch sequential processing (main -> gallery_0 -> gallery_1).
  * 2. Attachment chip cleanup queries across <uploader> and <rich-textarea>.
@@ -18,10 +18,15 @@ use Tests\TestCase;
 class GeminiSessionReuseBatchChallengeTest extends TestCase
 {
     private string $contentGeminiPath;
+
     private string $contentGeminiCode;
+
     private string $backgroundJsPath;
+
     private string $backgroundJsCode;
+
     private string $contentCauchosPath;
+
     private string $contentCauchosCode;
 
     protected function setUp(): void
@@ -113,8 +118,8 @@ class GeminiSessionReuseBatchChallengeTest extends TestCase
 
         // Escape key event with composed: true
         $this->assertStringContainsString("key: 'Escape'", $this->contentGeminiCode);
-        $this->assertStringContainsString("keyCode: 27", $this->contentGeminiCode);
-        $this->assertStringContainsString("composed: true", $this->contentGeminiCode);
+        $this->assertStringContainsString('keyCode: 27', $this->contentGeminiCode);
+        $this->assertStringContainsString('composed: true', $this->contentGeminiCode);
 
         // Target dispatch to document, window, document.body, document.activeElement
         $this->assertStringContainsString('[document, window, document.body, document.activeElement]', $this->contentGeminiCode);
@@ -195,8 +200,8 @@ class GeminiSessionReuseBatchChallengeTest extends TestCase
     public function test_response_count_tracking_and_target_response_isolation(): void
     {
         $this->assertStringContainsString("document.querySelectorAll('model-response')", $this->contentGeminiCode);
-        $this->assertStringContainsString("initialResponseCount", $this->contentGeminiCode);
-        $this->assertStringContainsString("currentResponses.length > initialResponseCount", $this->contentGeminiCode);
+        $this->assertStringContainsString('initialResponseCount', $this->contentGeminiCode);
+        $this->assertStringContainsString('currentResponses.length > initialResponseCount', $this->contentGeminiCode);
     }
 
     /**
@@ -204,10 +209,10 @@ class GeminiSessionReuseBatchChallengeTest extends TestCase
      */
     public function test_generated_image_resolution_preservation(): void
     {
-        $this->assertStringContainsString("imgElement.naturalWidth || imgElement.width || 1024", $this->contentGeminiCode);
-        $this->assertStringContainsString("imgElement.naturalHeight || imgElement.height || 1024", $this->contentGeminiCode);
-        $this->assertStringContainsString("createImageBitmap(imgElement)", $this->contentGeminiCode);
-        $this->assertStringContainsString("FETCH_IMAGE_URL", $this->contentGeminiCode);
+        $this->assertStringContainsString('imgElement.naturalWidth || imgElement.width || 1024', $this->contentGeminiCode);
+        $this->assertStringContainsString('imgElement.naturalHeight || imgElement.height || 1024', $this->contentGeminiCode);
+        $this->assertStringContainsString('createImageBitmap(imgElement)', $this->contentGeminiCode);
+        $this->assertStringContainsString('FETCH_IMAGE_URL', $this->contentGeminiCode);
     }
 
     /**
@@ -215,10 +220,10 @@ class GeminiSessionReuseBatchChallengeTest extends TestCase
      */
     public function test_background_js_session_reuse_and_is_last_handling(): void
     {
-        $this->assertStringContainsString("activeSessions[geminiTabId] = {", $this->backgroundJsCode);
+        $this->assertStringContainsString('activeSessions[geminiTabId] = {', $this->backgroundJsCode);
         $this->assertStringContainsString("status: 'reusing'", $this->backgroundJsCode);
-        $this->assertStringContainsString("if (session.isLast)", $this->backgroundJsCode);
-        $this->assertStringContainsString("delete activeSessions[geminiTabId];", $this->backgroundJsCode);
+        $this->assertStringContainsString('if (session.isLast)', $this->backgroundJsCode);
+        $this->assertStringContainsString('delete activeSessions[geminiTabId];', $this->backgroundJsCode);
     }
 
     /**
@@ -226,10 +231,10 @@ class GeminiSessionReuseBatchChallengeTest extends TestCase
      */
     public function test_content_cauchos_event_forwarding_contract(): void
     {
-        $this->assertStringContainsString("CAUCHOS_START_GEMINI_AUTOMATION", $this->contentCauchosCode);
-        $this->assertStringContainsString("GEMINI_STATUS_UPDATE", $this->contentCauchosCode);
-        $this->assertStringContainsString("GEMINI_AUTOMATION_COMPLETED", $this->contentCauchosCode);
-        $this->assertStringContainsString("GEMINI_AUTOMATION_ERROR", $this->contentCauchosCode);
+        $this->assertStringContainsString('CAUCHOS_START_GEMINI_AUTOMATION', $this->contentCauchosCode);
+        $this->assertStringContainsString('GEMINI_STATUS_UPDATE', $this->contentCauchosCode);
+        $this->assertStringContainsString('GEMINI_AUTOMATION_COMPLETED', $this->contentCauchosCode);
+        $this->assertStringContainsString('GEMINI_AUTOMATION_ERROR', $this->contentCauchosCode);
     }
 
     /**
@@ -274,4 +279,3 @@ class GeminiSessionReuseBatchChallengeTest extends TestCase
         );
     }
 }
-

@@ -6,9 +6,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Validator;
-use Log;
-use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -38,12 +35,13 @@ class AuthController extends Controller
             'g-recaptcha-response.recaptchav3' => 'La verificación anti-robot falló. Vuelve a intentarlo.',
         ]);
 
-        $throttleKey = 'admin-login:' . strtolower($credentials['email']) . '|' . $request->ip();
+        $throttleKey = 'admin-login:'.strtolower($credentials['email']).'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
+
             return back()
-                ->withErrors(['email' => 'Demasiados intentos de acceso. Inténtalo de nuevo en ' . $seconds . ' segundos.'])
+                ->withErrors(['email' => 'Demasiados intentos de acceso. Inténtalo de nuevo en '.$seconds.' segundos.'])
                 ->onlyInput('email');
         }
 

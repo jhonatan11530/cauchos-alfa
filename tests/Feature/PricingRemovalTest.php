@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -22,11 +24,11 @@ class PricingRemovalTest extends TestCase
             ->assertDontSee('price');
     }
 
-    private function createAdminUser(): \App\Models\User
+    private function createAdminUser(): User
     {
-        $role = \App\Models\Role::firstOrCreate(['slug' => 'administrador'], ['name' => 'Administrador']);
+        $role = Role::firstOrCreate(['slug' => 'administrador'], ['name' => 'Administrador']);
 
-        return \App\Models\User::factory()->create([
+        return User::factory()->create([
             'role_id' => $role->id,
             'is_active' => true,
         ]);

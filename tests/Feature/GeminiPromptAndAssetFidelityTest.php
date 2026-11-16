@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 class GeminiPromptAndAssetFidelityTest extends TestCase
@@ -14,7 +15,7 @@ class GeminiPromptAndAssetFidelityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->expectedPrompt = (string)(env('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
+        $this->expectedPrompt = (string) (env('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
     }
 
     /**
@@ -35,7 +36,7 @@ class GeminiPromptAndAssetFidelityTest extends TestCase
         );
 
         // 2. Render the Blade snippet with the active env/config
-        $compiledSnippet = \Illuminate\Support\Facades\Blade::render(
+        $compiledSnippet = Blade::render(
             'function buildGeminiStudioPrompt() { return @json(env(\'PROMPT_GEMINI\') ?: config(\'services.gemini.prompt\'), JSON_UNESCAPED_UNICODE); }'
         );
 
@@ -74,12 +75,12 @@ class GeminiPromptAndAssetFidelityTest extends TestCase
             }
         }
 
-        $this->assertEmpty($discrepancies, 'Found character discrepancies: ' . json_encode($discrepancies));
+        $this->assertEmpty($discrepancies, 'Found character discrepancies: '.json_encode($discrepancies));
 
         // 7. Verify dynamic reactivity to env/config changes (not hardcoded/burned-in)
-        $customPrompt = 'Prompt dinamico de prueba ' . uniqid();
+        $customPrompt = 'Prompt dinamico de prueba '.uniqid();
         config(['services.gemini.prompt' => $customPrompt]);
-        $customCompiled = \Illuminate\Support\Facades\Blade::render(
+        $customCompiled = Blade::render(
             'function buildGeminiStudioPrompt() { return @json(config(\'services.gemini.prompt\'), JSON_UNESCAPED_UNICODE); }'
         );
         $this->assertStringContainsString(json_encode($customPrompt, JSON_UNESCAPED_UNICODE), $customCompiled);
@@ -109,7 +110,7 @@ class GeminiPromptAndAssetFidelityTest extends TestCase
 
         // Verify bridge transmission payload in runGeminiGenerationBridge
         $this->assertStringContainsString("type: 'CAUCHOS_START_GEMINI_AUTOMATION'", $content);
-        $this->assertStringContainsString("prompt: promptText", $content);
+        $this->assertStringContainsString('prompt: promptText', $content);
     }
 
     /**
@@ -150,6 +151,6 @@ class GeminiPromptAndAssetFidelityTest extends TestCase
 
         $this->assertSame(200, $httpCode, "HTTP HEAD request to {$url} must return HTTP 200 OK. Got: {$httpCode}");
         $this->assertStringStartsWith('image/jpeg', $contentType, "Content-Type must be image/jpeg. Got: {$contentType}");
-        $this->assertSame(filesize(public_path('img/plantilla-estado.jpg')), (int)$contentLength, "HTTP Content-Length must match disk file size.");
+        $this->assertSame(filesize(public_path('img/plantilla-estado.jpg')), (int) $contentLength, 'HTTP Content-Length must match disk file size.');
     }
 }

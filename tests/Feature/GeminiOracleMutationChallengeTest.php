@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use PHPUnit\Framework\AssertionFailedError;
+use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 /**
@@ -18,7 +18,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->canonicalPrompt = (string)(env('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
+        $this->canonicalPrompt = (string) (env('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
     }
 
     /**
@@ -65,12 +65,12 @@ class GeminiOracleMutationChallengeTest extends TestCase
                 ];
             }
         }
-        if (!empty($discrepancies)) {
+        if (! empty($discrepancies)) {
             $failures['discrepancies'] = $discrepancies;
         }
 
         // 5. Cross-check against dynamic env prompt
-        $expected = (string)(env('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
+        $expected = (string) (env('PROMPT_GEMINI') ?: config('services.gemini.prompt'));
         if ($testCandidate !== $expected) {
             $failures['env_mismatch'] = 'Candidate does not match env PROMPT_GEMINI';
         }
@@ -96,6 +96,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
         if ($mimeType !== IMAGETYPE_JPEG) {
             $failures['mime'] = "MIME type {$mimeType} !== IMAGETYPE_JPEG";
         }
+
         return $failures;
     }
 
@@ -105,18 +106,19 @@ class GeminiOracleMutationChallengeTest extends TestCase
     private function evaluateWindowExposureOracle(string $bladeContent): array
     {
         $failures = [];
-        if (!preg_match('/window\.buildGeminiStudioPrompt\s*=\s*buildGeminiStudioPrompt\s*;/', $bladeContent)) {
+        if (! preg_match('/window\.buildGeminiStudioPrompt\s*=\s*buildGeminiStudioPrompt\s*;/', $bladeContent)) {
             $failures['window_binding'] = 'Missing window.buildGeminiStudioPrompt binding';
         }
-        if (!preg_match('/const\s+promptText\s*=\s*buildGeminiStudioPrompt\(\)\s*;/', $bladeContent)) {
+        if (! preg_match('/const\s+promptText\s*=\s*buildGeminiStudioPrompt\(\)\s*;/', $bladeContent)) {
             $failures['bridge_invocation'] = 'Missing promptText invocation';
         }
-        if (!str_contains($bladeContent, "type: 'CAUCHOS_START_GEMINI_AUTOMATION'")) {
-            $failures['automation_type'] = "Missing CAUCHOS_START_GEMINI_AUTOMATION";
+        if (! str_contains($bladeContent, "type: 'CAUCHOS_START_GEMINI_AUTOMATION'")) {
+            $failures['automation_type'] = 'Missing CAUCHOS_START_GEMINI_AUTOMATION';
         }
-        if (!str_contains($bladeContent, "prompt: promptText")) {
-            $failures['payload_prompt'] = "Missing prompt: promptText in payload";
+        if (! str_contains($bladeContent, 'prompt: promptText')) {
+            $failures['payload_prompt'] = 'Missing prompt: promptText in payload';
         }
+
         return $failures;
     }
 
@@ -137,7 +139,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
         // 2a. Mutation at index 0
         $char0 = mb_substr($this->canonicalPrompt, 0, 1, 'UTF-8');
         $alt0 = ($char0 === 'M') ? 'm' : 'M';
-        $mutant1 = $alt0 . mb_substr($this->canonicalPrompt, 1, null, 'UTF-8');
+        $mutant1 = $alt0.mb_substr($this->canonicalPrompt, 1, null, 'UTF-8');
         $failures1 = $this->evaluatePromptOracle($mutant1);
         $this->assertNotEmpty($failures1, 'Must catch mutation at index 0');
         $this->assertArrayHasKey('hash', $failures1);
@@ -150,7 +152,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
         $idx10 = 10;
         $char10 = mb_substr($this->canonicalPrompt, $idx10, 1, 'UTF-8');
         $alt10 = ($char10 === 'X') ? 'Y' : 'X';
-        $mutant2 = mb_substr($this->canonicalPrompt, 0, $idx10, 'UTF-8') . $alt10 . mb_substr($this->canonicalPrompt, $idx10 + 1, null, 'UTF-8');
+        $mutant2 = mb_substr($this->canonicalPrompt, 0, $idx10, 'UTF-8').$alt10.mb_substr($this->canonicalPrompt, $idx10 + 1, null, 'UTF-8');
         $failures2 = $this->evaluatePromptOracle($mutant2);
         $this->assertNotEmpty($failures2, 'Must catch mutation at index 10');
         $this->assertArrayHasKey('hash', $failures2);
@@ -159,7 +161,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
 
         // 2c. Mutation at terminal index: '.' -> '!'
         $lastIdx = mb_strlen($this->canonicalPrompt, 'UTF-8') - 1;
-        $mutant3 = mb_substr($this->canonicalPrompt, 0, $lastIdx, 'UTF-8') . '!';
+        $mutant3 = mb_substr($this->canonicalPrompt, 0, $lastIdx, 'UTF-8').'!';
         $failures3 = $this->evaluatePromptOracle($mutant3);
         $this->assertNotEmpty($failures3, 'Must catch mutation at terminal period');
         $this->assertArrayHasKey('hash', $failures3);
@@ -173,7 +175,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
     public function test_oracle_detects_single_character_deletion(): void
     {
         $expectedLen = mb_strlen($this->canonicalPrompt, 'UTF-8');
-        $mutant = mb_substr($this->canonicalPrompt, 0, 10, 'UTF-8') . mb_substr($this->canonicalPrompt, 11, null, 'UTF-8');
+        $mutant = mb_substr($this->canonicalPrompt, 0, 10, 'UTF-8').mb_substr($this->canonicalPrompt, 11, null, 'UTF-8');
         $this->assertSame($expectedLen - 1, mb_strlen($mutant, 'UTF-8'));
 
         $failures = $this->evaluatePromptOracle($mutant);
@@ -189,7 +191,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
     public function test_oracle_detects_single_character_insertion(): void
     {
         $expectedLen = mb_strlen($this->canonicalPrompt, 'UTF-8');
-        $mutant = $this->canonicalPrompt . ' ';
+        $mutant = $this->canonicalPrompt.' ';
         $this->assertSame($expectedLen + 1, mb_strlen($mutant, 'UTF-8'));
 
         $failures = $this->evaluatePromptOracle($mutant);
@@ -292,7 +294,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
         $this->assertArrayHasKey('automation_type', $f3);
 
         // 8e. Missing prompt: promptText payload
-        $mutated4 = str_replace("prompt: promptText", "data: promptText", $bladeContent);
+        $mutated4 = str_replace('prompt: promptText', 'data: promptText', $bladeContent);
         $f4 = $this->evaluateWindowExposureOracle($mutated4);
         $this->assertArrayHasKey('payload_prompt', $f4);
     }
@@ -311,7 +313,7 @@ class GeminiOracleMutationChallengeTest extends TestCase
             'buildGeminiStudioPrompt must dynamically invoke PROMPT_GEMINI'
         );
 
-        $rendered = \Illuminate\Support\Facades\Blade::render(
+        $rendered = Blade::render(
             'function buildGeminiStudioPrompt() { return @json(\App\Services\GeminiPromptService::get(\'PROMPT_GEMINI\'), JSON_UNESCAPED_UNICODE); }'
         );
         $matched = preg_match('/return\s+(["\'].*?["\']);/s', $rendered, $matches);

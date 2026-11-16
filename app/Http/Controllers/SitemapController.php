@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Http\Response;
 
 class SitemapController extends Controller
@@ -14,13 +14,14 @@ class SitemapController extends Controller
 
         $content = view('site.sitemap', compact('categories'))->render();
 
-        return response($content)->header('Content-Type', 'text/xml');
+        return response($content)->header('Content-Type', 'text/xml; charset=UTF-8');
     }
 
     public function feed(): Response
     {
-        $products = \App\Models\Product::where('is_active', true)->with('category')->get();
+        $products = Product::where('is_active', true)->with(['category', 'images'])->get();
         $content = view('site.feed', compact('products'))->render();
-        return response($content)->header('Content-Type', 'text/xml');
+
+        return response($content)->header('Content-Type', 'text/xml; charset=UTF-8');
     }
 }

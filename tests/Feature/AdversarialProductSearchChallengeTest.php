@@ -13,8 +13,8 @@ use Tests\TestCase;
 
 class AdversarialProductSearchChallengeTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     protected User $admin;
 
@@ -229,6 +229,7 @@ class AdversarialProductSearchChallengeTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('products', function (LengthAwarePaginator $products) use ($prodA_Match1, $prodA_Match2, $prodA_NoMatch, $prodB_MatchText, $prodB_NoMatch) {
             $ids = $products->pluck('id')->all();
+
             return count($ids) === 2
                 && in_array($prodA_Match1->id, $ids)
                 && in_array($prodA_Match2->id, $ids)
@@ -255,7 +256,7 @@ class AdversarialProductSearchChallengeTest extends TestCase
                 $query->where('category_id', $request->input('category_id'));
             })
             ->when($request->filled('q'), function ($query) use ($request) {
-                $term = '%' . $request->string('q') . '%';
+                $term = '%'.$request->string('q').'%';
                 $query->where(fn ($q) => $q->where('name', 'like', $term)
                     ->orWhere('reference', 'like', $term)
                     ->orWhere('description', 'like', $term)
@@ -266,7 +267,7 @@ class AdversarialProductSearchChallengeTest extends TestCase
         $rawSql = $query->toRawSql();
 
         // 1. Verify category_id filter is present in WHERE clause
-        $this->assertStringContainsString('"category_id" = ' . $cat->id, $rawSql);
+        $this->assertStringContainsString('"category_id" = '.$cat->id, $rawSql);
 
         // 2. Verify 'where(fn ($q) => ...)' creates enclosing parentheses around the OR group
         // The pattern should be: where "category_id" = ... and ( "name" like ... or "reference" like ... or "description" like ... or exists ( ... ) )

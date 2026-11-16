@@ -29,7 +29,7 @@
                                         'destroy' => route('categoria.destroy', $category), 
                                         'active' => $category->is_active
                                     ];
-                                    if ($category->products()->count() === 0) {
+                                    if (($category->products_count ?? $category->products()->count()) === 0) {
                                         $actionParams['forceDelete'] = route('categoria.forceDelete', $category);
                                     }
                                 @endphp

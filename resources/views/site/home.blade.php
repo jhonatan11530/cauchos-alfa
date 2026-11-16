@@ -1,16 +1,13 @@
 @extends('site.layouts.app')
 
-@section('title', 'Cauchos Alfa | Mayorista de Repuestos y Llantas para Bicicletas en Cali')
-@section('description', 'Distribuidor mayorista de cauchos, llantas y repuestos de bicicletas en Cali. Encuentra la mejor calidad, rendimiento y marcas líderes para tu negocio o bicicleta.')
-@section('title', 'Cauchos Alfa | Fábrica y Distribuidor de Llantas para Motos y Bicicletas')
-@section('description', 'Fabricantes e importadores directos de cauchos y llantas para motos y bicicletas en Colombia. Venta de bicicletas y distribución mayorista en Cali.')
+@section('title', 'Cauchos Alfa | Fábrica y Distribuidor de Llantas para Motos y Bicicletas en Cali')
+@section('description', 'Fabricantes e importadores directos de cauchos, llantas y repuestos para motos y bicicletas en Colombia. Distribución mayorista y envíos a todo el país.')
 
 @section('schema')
     <script type="application/ld+json">
         {
           "@@context": "https://schema.org",
-          "@@type": "BicycleStore",
-          "@@type": "AutoPartsStore",
+          "@@type": ["AutoPartsStore", "BicycleStore"],
           "name": "Cauchos Alfa",
           "image": {!! json_encode(asset('img/hero-bike.png')) !!},
           "@@id": {!! json_encode(url('/')) !!},
@@ -40,13 +37,10 @@
     <header class="hero-section">
         <div class="container">
             <p class="text-red font-weight-bold mb-3" style="letter-spacing:.15em; font-size:.85rem;">
-                CATÁLOGO DE REPUESTOS Y LLANTAS 2026
                 CATÁLOGO DE CAUCHOS Y LLANTAS 2026
             </p>
-            <h1 class="hero-title">Llantas y Repuestos para Bicicletas en Cali.</h1>
-            <h1 class="hero-title">Fabricantes de Cauchos para Motos y Bicicletas.</h1>
+            <h1 class="hero-title">Fabricantes y Distribuidores de Cauchos y Llantas en Cali</h1>
             <p class="hero-subtitle">
-                Distribuidores mayoristas e importadores de llantas tubeless, neumáticos MTB 29, repuestos Shimano originales, frenos, cadenas y corazas de alto rendimiento en Colombia. La máxima adherencia y seguridad para ciclistas exigentes y tiendas especializadas.
                 Somos fabricantes e importadores directos de cauchos, llantas y neumáticos para motos y bicicletas. Distribuidores mayoristas y venta de bicicletas completas en Cali con envíos a toda Colombia.
             </p>
             <div class="d-flex flex-wrap justify-content-center btn-group-hero">
@@ -214,6 +208,7 @@
                     </div>
                 @endif
             </div>
+        </div>
     </section>
     <section id="contacto" class="cta-section py-5">
         <div class="container py-5 text-center">

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\OrderStatus;
 use App\Models\Product;
 use App\Models\Role;
@@ -91,7 +90,7 @@ class OrderControllerTest extends TestCase
         $response->assertRedirect(route('pedidos.index'))
             ->assertSessionHas('success');
 
-        $order = \App\Models\Order::where('client_id', $this->client->id)->firstOrFail();
+        $order = Order::where('client_id', $this->client->id)->firstOrFail();
 
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
@@ -120,7 +119,7 @@ class OrderControllerTest extends TestCase
                 ],
             ]));
 
-        $order = \App\Models\Order::where('client_id', $this->client->id)->firstOrFail();
+        $order = Order::where('client_id', $this->client->id)->firstOrFail();
         $this->assertSame(2, $order->items()->count());
     }
 
@@ -129,7 +128,7 @@ class OrderControllerTest extends TestCase
         $this->actingAs($this->admin)
             ->post(route('pedidos.store'), $this->validPayload());
 
-        $order = \App\Models\Order::where('client_id', $this->client->id)->firstOrFail();
+        $order = Order::where('client_id', $this->client->id)->firstOrFail();
 
         $this->assertDatabaseHas('order_status_histories', [
             'order_id' => $order->id,
@@ -174,7 +173,7 @@ class OrderControllerTest extends TestCase
                 'from_seller_site' => true,
             ]));
 
-        $order = \App\Models\Order::where('client_id', $this->client->id)->firstOrFail();
+        $order = Order::where('client_id', $this->client->id)->firstOrFail();
 
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
@@ -187,7 +186,7 @@ class OrderControllerTest extends TestCase
 
     public function test_update_replaces_items_without_price_fields(): void
     {
-        $order = \App\Models\Order::create([
+        $order = Order::create([
             'code' => 'PED-TEST-001',
             'client_id' => $this->client->id,
             'created_by' => $this->admin->id,
@@ -228,7 +227,7 @@ class OrderControllerTest extends TestCase
 
     public function test_update_requires_valid_data(): void
     {
-        $order = \App\Models\Order::create([
+        $order = Order::create([
             'code' => 'PED-TEST-002',
             'client_id' => $this->client->id,
             'created_by' => $this->admin->id,
@@ -283,7 +282,7 @@ class OrderControllerTest extends TestCase
             ]));
 
         // 4. El pedido se crea con sus items y el carrito queda limpio
-        $order = \App\Models\Order::where('client_id', $this->client->id)->firstOrFail();
+        $order = Order::where('client_id', $this->client->id)->firstOrFail();
         $this->assertSame(2, $order->items()->count());
         $this->assertNull(session('seller_cart'));
 
@@ -328,7 +327,7 @@ class OrderControllerTest extends TestCase
         $response->assertRedirect(route('pedidos.index'))
             ->assertSessionHas('success');
 
-        $order = \App\Models\Order::where('code', 'PED-MANUAL-100')->first();
+        $order = Order::where('code', 'PED-MANUAL-100')->first();
         $this->assertNotNull($order);
         $this->assertSame('2026-10-15', $order->ordered_at->format('Y-m-d'));
     }
@@ -360,7 +359,7 @@ class OrderControllerTest extends TestCase
             'is_active' => true,
         ]);
 
-        $order = \App\Models\Order::create([
+        $order = Order::create([
             'code' => 'PED-EDIT-001',
             'client_id' => $this->client->id,
             'created_by' => $this->admin->id,

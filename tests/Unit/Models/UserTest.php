@@ -10,8 +10,8 @@ use Tests\TestCase;
 
 class UserTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     public function test_pertenece_a_un_rol(): void
     {

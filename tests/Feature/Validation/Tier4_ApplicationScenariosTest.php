@@ -9,8 +9,6 @@ use App\Models\Order;
 use App\Models\OrderStatus;
 use App\Models\OrderStatusHistory;
 use App\Models\Product;
-use App\Models\Role;
-use App\Models\Setting;
 use App\Models\User;
 use App\Services\GeminiPromptService;
 use App\Support\SellerCart;
@@ -33,13 +31,17 @@ use Tests\TestCase;
  */
 class Tier4_ApplicationScenariosTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     private User $admin;
+
     private OrderStatus $creadoStatus;
+
     private OrderStatus $despachadoStatus;
+
     private OrderStatus $entregadoStatus;
+
     private OrderStatus $cobradoStatus;
 
     protected function setUp(): void

@@ -31,8 +31,7 @@
                         @if (! $seller->exists)
                             <div class="col-md-12 text-muted small">
                                 <i class="bi bi-info-circle"></i> El correo se genera automáticamente con el nombre y el
-                                dominio de la empresa. La contraseña se genera automáticamente con el código más la
-                                fecha actual.
+                                dominio de la empresa. La contraseña temporal se genera de forma segura y se muestra al guardar.
                             </div>
                         @endif
                     </div>

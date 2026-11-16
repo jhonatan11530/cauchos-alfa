@@ -3,10 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Product;
-use App\Models\ProductImage;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -21,7 +21,7 @@ class ProductImageTest extends TestCase
             'role_id' => $role->id,
             'name' => $roleName,
             'email' => $email,
-            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+            'password' => Hash::make('password123'),
             'is_active' => true,
         ]);
 
@@ -36,8 +36,8 @@ class ProductImageTest extends TestCase
     private function createProductWithImage(string $fileName): array
     {
         $product = Product::create(['name' => 'Llanta 185/65 R15', 'availability' => 'disponible', 'is_active' => true]);
-        $image = $product->images()->create(['path' => 'products/' . $fileName, 'sort_order' => 1]);
-        Storage::disk('public')->put('products/' . $fileName, 'contenido');
+        $image = $product->images()->create(['path' => 'products/'.$fileName, 'sort_order' => 1]);
+        Storage::disk('public')->put('products/'.$fileName, 'contenido');
 
         return [$product, $image];
     }

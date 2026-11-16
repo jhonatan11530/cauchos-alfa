@@ -21,7 +21,7 @@ class ProductController extends Controller
                 $query->where('category_id', $request->input('category_id'));
             })
             ->when($request->filled('q'), function ($query) use ($request) {
-                $term = '%' . $request->string('q') . '%';
+                $term = '%'.$request->string('q').'%';
                 $query->where(fn ($q) => $q->where('name', 'like', $term)
                     ->orWhere('reference', 'like', $term)
                     ->orWhere('description', 'like', $term)
@@ -37,7 +37,7 @@ class ProductController extends Controller
 
     public function create(): View
     {
-        return view('admin.products.form', $this->formData(new Product()));
+        return view('admin.products.form', $this->formData(new Product));
     }
 
     public function store(Request $request): RedirectResponse
@@ -64,7 +64,12 @@ class ProductController extends Controller
         if ($path = $this->storeImage($request)) {
             $data['image_path'] = $path;
             $data['flyer_path'] = null;
-            if ($producto->flyer_path) {
+
+            if ($producto->image_path && $producto->image_path !== $path && Storage::disk('public')->exists($producto->image_path)) {
+                Storage::disk('public')->delete($producto->image_path);
+            }
+
+            if ($producto->flyer_path && Storage::disk('public')->exists($producto->flyer_path)) {
                 Storage::disk('public')->delete($producto->flyer_path);
             }
         }
@@ -84,18 +89,24 @@ class ProductController extends Controller
 
     public function forceDelete(Product $producto): RedirectResponse
     {
-        if (!empty($producto->category_id)) {
+        if (! empty($producto->category_id)) {
             return back()->with('error', 'No se puede eliminar porque el producto pertenece a una categoría.');
         }
-        
-        if ($producto->image_path) {
+
+        if ($producto->image_path && Storage::disk('public')->exists($producto->image_path)) {
             Storage::disk('public')->delete($producto->image_path);
         }
-        foreach ($producto->images as $imagen) {
-            Storage::disk('public')->delete($imagen->path);
+        if ($producto->flyer_path && Storage::disk('public')->exists($producto->flyer_path)) {
+            Storage::disk('public')->delete($producto->flyer_path);
         }
-        
+        foreach ($producto->images as $imagen) {
+            if (Storage::disk('public')->exists($imagen->path)) {
+                Storage::disk('public')->delete($imagen->path);
+            }
+        }
+
         $producto->delete();
+
         return back()->with('success', 'Producto eliminado definitivamente.');
     }
 
@@ -163,40 +174,40 @@ class ProductController extends Controller
     public function replaceMainImage(Request $request, Product $producto)
     {
         $request->validate(['image' => ['required', 'image', 'max:20480']]);
-        
+
         if ($producto->image_path) {
             Storage::disk('public')->delete($producto->image_path);
         }
         if ($producto->flyer_path) {
             Storage::disk('public')->delete($producto->flyer_path);
         }
-        
+
         $producto->update([
             'image_path' => $request->file('image')->store('products', 'public'),
-            'flyer_path' => null
+            'flyer_path' => null,
         ]);
-        
+
         $this->sweepOrphanedImages();
-        
+
         return response()->json([
-            'success' => true, 
-            'path' => \App\Models\Product::getStorageUrl($producto->image_path)
+            'success' => true,
+            'path' => Product::getStorageUrl($producto->image_path),
         ]);
     }
 
     public function uploadFlyer(Request $request, Product $producto)
     {
         $request->validate(['flyer' => ['required', 'image', 'max:20480']]);
-        
+
         if ($producto->flyer_path) {
             Storage::disk('public')->delete($producto->flyer_path);
         }
-        
+
         $producto->update(['flyer_path' => $request->file('flyer')->store('products/flyers', 'public')]);
-        
+
         return response()->json([
-            'success' => true, 
-            'path' => \App\Models\Product::getStorageUrl($producto->flyer_path)
+            'success' => true,
+            'path' => Product::getStorageUrl($producto->flyer_path),
         ]);
     }
 
@@ -206,11 +217,11 @@ class ProductController extends Controller
     private function sweepOrphanedImages()
     {
         $filesOnDisk = Storage::disk('public')->files('products');
-        
-        $mainImages = \App\Models\Product::pluck('image_path')->filter()->toArray();
-        $galleryImages = \App\Models\ProductImage::pluck('path')->filter()->toArray();
+
+        $mainImages = Product::pluck('image_path')->filter()->toArray();
+        $galleryImages = ProductImage::pluck('path')->filter()->toArray();
         $usedFiles = array_merge($mainImages, $galleryImages);
-        
+
         $orphans = array_diff($filesOnDisk, $usedFiles);
         foreach ($orphans as $orphan) {
             Storage::disk('public')->delete($orphan);
@@ -220,18 +231,16 @@ class ProductController extends Controller
     public function replaceGalleryImage(Request $request, ProductImage $imagen)
     {
         $request->validate(['image' => ['required', 'image', 'max:20480']]);
-        
+
         Storage::disk('public')->delete($imagen->path);
-        
+
         $imagen->update(['path' => $request->file('image')->store('products', 'public')]);
-        
+
         $this->sweepOrphanedImages();
-        
+
         return response()->json([
-            'success' => true, 
-            'path' => \App\Models\Product::getStorageUrl($imagen->path)
+            'success' => true,
+            'path' => Product::getStorageUrl($imagen->path),
         ]);
     }
 }
-
-

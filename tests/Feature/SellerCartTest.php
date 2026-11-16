@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Client;
 use App\Models\Category;
+use App\Models\Client;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\User;
@@ -102,7 +102,7 @@ class SellerCartTest extends TestCase
                     && $cartProducts->first()->id === $this->product->id
                     && $cartProducts->first()->cart_quantity === 4;
             })
-            ->assertViewHas('clients', fn($clients) => $clients->contains($client));
+            ->assertViewHas('clients', fn ($clients) => $clients->contains($client));
     }
 
     public function test_show_seller_order_redirects_when_cart_is_empty(): void
@@ -120,7 +120,7 @@ class SellerCartTest extends TestCase
         $this->actingAs($this->seller)
             ->withSession(['seller_cart' => [$this->product->id => 2]])
             ->get(route('site.seller.order'))
-            ->assertViewHas('cartProducts', fn($cartProducts) => $cartProducts->isEmpty());
+            ->assertViewHas('cartProducts', fn ($cartProducts) => $cartProducts->isEmpty());
     }
 
     public function test_guest_cannot_access_cart_routes(): void

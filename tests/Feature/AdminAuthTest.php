@@ -2,15 +2,15 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
 use Tests\Support\CreatesSystemData;
 use Tests\TestCase;
 
 class AdminAuthTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     /** Caso positivo: la vista de login carga para invitados */
     public function test_muestra_el_formulario_de_login(): void
@@ -104,7 +104,7 @@ class AdminAuthTest extends TestCase
             'recaptchav3.secret' => 'fake-secret',
         ]);
 
-        \Lunaweb\RecaptchaV3\Facades\RecaptchaV3::shouldReceive('verify')
+        RecaptchaV3::shouldReceive('verify')
             ->once()
             ->with('token-valido', 'login')
             ->andReturn(0.9);
@@ -128,7 +128,7 @@ class AdminAuthTest extends TestCase
             'recaptchav3.secret' => 'fake-secret',
         ]);
 
-        \Lunaweb\RecaptchaV3\Facades\RecaptchaV3::shouldReceive('verify')
+        RecaptchaV3::shouldReceive('verify')
             ->once()
             ->with('token-invalido', 'login')
             ->andReturn(0.2);
@@ -147,8 +147,8 @@ class AdminAuthTest extends TestCase
 
 class SellerAccessRestrictionTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     /** Caso negativo: un vendedor no puede entrar al dashboard administrativo */
     public function test_vendedor_no_accede_al_dashboard(): void

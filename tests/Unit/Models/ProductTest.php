@@ -6,18 +6,16 @@ use App\Models\Catalog;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Product;
+use App\Models\OrderStatus;
 use App\Models\ProductImage;
-use App\Models\Role;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesSystemData;
 use Tests\TestCase;
 
 class ProductTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     public function test_pertenece_a_una_categoria(): void
     {
@@ -34,7 +32,7 @@ class ProductTest extends TestCase
         $product->images()->create(['path' => 'products/b.jpg', 'sort_order' => 2]);
         $product->images()->create(['path' => 'products/a.jpg', 'sort_order' => 1]);
 
-        $paths = $product->images()->get()->map(fn(ProductImage $img) => $img->path)->all();
+        $paths = $product->images()->get()->map(fn (ProductImage $img) => $img->path)->all();
 
         $this->assertSame(['products/a.jpg', 'products/b.jpg'], $paths);
     }
@@ -99,7 +97,7 @@ class ProductTest extends TestCase
                 'code' => 'PED-1',
                 'client_id' => $this->createClient()->id,
                 'created_by' => $this->createAdmin()->id,
-                'order_status_id' => \App\Models\OrderStatus::create(['name' => 'Pendiente', 'slug' => 'pendiente', 'sort_order' => 1, 'is_active' => true])->id,
+                'order_status_id' => OrderStatus::create(['name' => 'Pendiente', 'slug' => 'pendiente', 'sort_order' => 1, 'is_active' => true])->id,
             ])->id,
             'quantity' => 2,
         ]));

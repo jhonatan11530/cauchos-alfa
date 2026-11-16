@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
 use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
@@ -51,14 +50,22 @@ class Product extends Model
     }
 
     /**
-     * Resuelve la URL pública correcta dependiendo del entorno (localhost vs producción).
+     * Resuelve la URL pública correcta del almacenamiento público.
      */
-    public static function getStorageUrl(string $path): string
+    public static function getStorageUrl(?string $path): string
     {
-        $host = request()->getHost();
-        // En desarrollo local (artisan serve o XAMPP normal) usamos la ruta estandar
-        $prefix = in_array($host, ['localhost', '127.0.0.1', '::1']) ? 'storage/' : 'public/storage/';
-        return asset($prefix . $path);
+        if (empty($path)) {
+            return '';
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, 'data:')) {
+            return $path;
+        }
+
+        // Strip leading slashes and any duplicate storage prefixes
+        $cleanPath = preg_replace('#^(public/|storage/)+#', '', ltrim($path, '/'));
+
+        return Storage::disk('public')->url($cleanPath);
     }
 
     /**
@@ -67,15 +74,15 @@ class Product extends Model
     public function imageUrls(): array
     {
         $urls = [];
-        
+
         if ($this->flyer_path) {
             $urls[] = self::getStorageUrl($this->flyer_path);
         } elseif ($this->image_path) {
             $urls[] = self::getStorageUrl($this->image_path);
         }
-        
+
         $galleryUrls = $this->images->map(fn (ProductImage $img) => self::getStorageUrl($img->path))->all();
-        
+
         return array_merge($urls, $galleryUrls);
     }
 
@@ -155,7 +162,7 @@ class Product extends Model
 
         $mime = $mime ?: ($extension === 'png' ? 'image/png' : 'image/jpeg');
 
-        return 'data:' . $mime . ';base64,' . base64_encode($content);
+        return 'data:'.$mime.';base64,'.base64_encode($content);
     }
 
     /**
@@ -169,7 +176,7 @@ class Product extends Model
 
         $fullPath = Storage::disk('public')->path($relativePath);
         if (! file_exists($fullPath) || ! is_readable($fullPath)) {
-            $fullPath = public_path('storage/' . $relativePath);
+            $fullPath = public_path('storage/'.$relativePath);
         }
 
         return (file_exists($fullPath) && is_readable($fullPath)) ? $fullPath : null;

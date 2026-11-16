@@ -10,10 +10,11 @@ use Tests\TestCase;
 
 class SellerCatalogDownloadTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     protected User $seller;
+
     protected User $admin;
 
     protected function setUp(): void
@@ -47,7 +48,7 @@ class SellerCatalogDownloadTest extends TestCase
         $this->assertStringStartsWith('%PDF-', $response->getContent());
 
         $disposition = $response->headers->get('Content-Disposition') ?? '';
-        $this->assertStringContainsString('catalogo-' . $catalog->id . '.pdf', $disposition);
+        $this->assertStringContainsString('catalogo-'.$catalog->id.'.pdf', $disposition);
     }
 
     /**
@@ -74,7 +75,7 @@ class SellerCatalogDownloadTest extends TestCase
 
         $response->assertOk();
         $disposition = $response->headers->get('Content-Disposition') ?? '';
-        $this->assertStringContainsString('catalogo-' . $catalog2->id . '.pdf', $disposition);
+        $this->assertStringContainsString('catalogo-'.$catalog2->id.'.pdf', $disposition);
     }
 
     /**
@@ -99,7 +100,7 @@ class SellerCatalogDownloadTest extends TestCase
 
         $response->assertOk();
         $disposition = $response->headers->get('Content-Disposition') ?? '';
-        $this->assertStringContainsString('catalogo-' . $activeCatalog->id . '.pdf', $disposition);
+        $this->assertStringContainsString('catalogo-'.$activeCatalog->id.'.pdf', $disposition);
     }
 
     /**

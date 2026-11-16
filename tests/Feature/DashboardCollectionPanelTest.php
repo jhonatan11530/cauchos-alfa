@@ -16,8 +16,11 @@ class DashboardCollectionPanelTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $seller;
+
     private Client $client;
+
     private OrderStatus $creadoStatus;
 
     protected function setUp(): void

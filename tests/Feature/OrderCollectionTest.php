@@ -7,7 +7,6 @@ use App\Models\Order;
 use App\Models\OrderStatus;
 use App\Models\Role;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -18,11 +17,17 @@ class OrderCollectionTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $collector;
+
     private Client $client;
+
     private OrderStatus $creadoStatus;
+
     private OrderStatus $despachadoStatus;
+
     private OrderStatus $entregadoStatus;
+
     private OrderStatus $cobradoStatus;
 
     protected function setUp(): void
@@ -79,7 +84,7 @@ class OrderCollectionTest extends TestCase
     private function createTestOrder(array $attributes = []): Order
     {
         return Order::create(array_merge([
-            'code' => 'PED-COL-' . uniqid(),
+            'code' => 'PED-COL-'.uniqid(),
             'client_id' => $this->client->id,
             'created_by' => $this->admin->id,
             'order_status_id' => $this->creadoStatus->id,

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class VendedorControllerTest extends TestCase
@@ -45,7 +46,9 @@ class VendedorControllerTest extends TestCase
         $seller = User::where('seller_code', 'V-0001')->firstOrFail();
 
         $this->assertSame('juan.perez@cauchosalfa.com', $seller->email);
-        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('V-0001-' . now()->format('Ymd'), $seller->password));
+        $this->assertFalse(Hash::check('V-0001-'.now()->format('Ymd'), $seller->password));
+        $this->assertNotEmpty($seller->password);
+        $this->assertStringContainsString('Contraseña temporal:', session('success'));
         $this->assertSame('3001234567', $seller->phone);
     }
 

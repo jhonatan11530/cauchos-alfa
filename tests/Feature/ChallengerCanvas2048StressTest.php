@@ -6,7 +6,7 @@ use Tests\TestCase;
 
 /**
  * ChallengerCanvas2048StressTest
- * 
+ *
  * Adversarial and empirical stress test suite for 2048x2048 canvas recalibration:
  * 1. Product aspect ratio scaling & centering matrix (tall, wide, square, extreme).
  * 2. Adversarial title strings (long, 1 word, zero brand, punctuation-attached brands).
@@ -17,6 +17,7 @@ use Tests\TestCase;
 class ChallengerCanvas2048StressTest extends TestCase
 {
     private string $bladeContent;
+
     private string $templatePath;
 
     protected function setUp(): void
@@ -158,15 +159,18 @@ class ChallengerCanvas2048StressTest extends TestCase
         // Extract MOTORCYCLE_BRANDS from form.blade.php
         $matched = preg_match('/const\s+MOTORCYCLE_BRANDS\s*=\s*new\s+Set\(\[\s*(.*?)\s*\]\);/s', $this->bladeContent, $m);
         $this->assertSame(1, $matched, 'MOTORCYCLE_BRANDS Set must be extracted from form.blade.php');
-        
+
         preg_match_all("/'([A-Z0-9\-\s]+)'/", $m[1], $brandMatches);
         $brands = array_flip($brandMatches[1]);
 
         // Exact tokenization logic from form.blade.php
         $isBrandToken = function (string $str) use ($brands): bool {
-            if (!$str) return false;
+            if (! $str) {
+                return false;
+            }
             $clean = preg_replace('/^[^A-Z0-9]+|[^A-Z0-9]+$/i', '', $str);
             $cleanUpper = strtoupper($clean);
+
             return strlen($cleanUpper) > 0 && isset($brands[$cleanUpper]);
         };
 
@@ -185,7 +189,7 @@ class ChallengerCanvas2048StressTest extends TestCase
                 for ($p = 0; $p < $pCount; $p++) {
                     $part = $parts[$p];
 
-                    if (str_contains($part, '-') && !isset($brands[strtoupper($part)])) {
+                    if (str_contains($part, '-') && ! isset($brands[strtoupper($part)])) {
                         $subHyphen = preg_split('/(-)/', $part, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
                         $hasBrand = false;
                         foreach ($subHyphen as $sh) {
@@ -200,26 +204,28 @@ class ChallengerCanvas2048StressTest extends TestCase
                                 $hPart = $subHyphen[$h];
                                 $isLastSub = ($p === $pCount - 1 && $h === $shCount - 1);
                                 $tokens[] = [
-                                    'text' => $hPart . ($isLastSub && !$isLastWord ? ' ' : ''),
-                                    'color' => $isBrandToken($hPart) ? '#e61b23' : '#111111'
+                                    'text' => $hPart.($isLastSub && ! $isLastWord ? ' ' : ''),
+                                    'color' => $isBrandToken($hPart) ? '#e61b23' : '#111111',
                                 ];
                             }
+
                             continue;
                         }
                     }
 
                     $isLastPart = ($p === $pCount - 1);
                     $tokens[] = [
-                        'text' => $part . ($isLastPart && !$isLastWord ? ' ' : ''),
-                        'color' => $isBrandToken($part) ? '#e61b23' : '#111111'
+                        'text' => $part.($isLastPart && ! $isLastWord ? ' ' : ''),
+                        'color' => $isBrandToken($part) ? '#e61b23' : '#111111',
                     ];
                 }
             }
+
             return $tokens;
         };
 
         // Adversarial Case A: Long title with multiple brands and models
-        $titleA = "YAMAHA SUZUKI HONDA CALAPIES TRASERO ESPECIAL 1234567890";
+        $titleA = 'YAMAHA SUZUKI HONDA CALAPIES TRASERO ESPECIAL 1234567890';
         $tokensA = $tokenizeLine($titleA);
         $this->assertSame('#e61b23', $tokensA[0]['color'], 'YAMAHA must be colored red #e61b23');
         $this->assertSame('#e61b23', $tokensA[1]['color'], 'SUZUKI must be colored red #e61b23');
@@ -230,26 +236,26 @@ class ChallengerCanvas2048StressTest extends TestCase
         $this->assertSame('#111111', $tokensA[6]['color'], '1234567890 must be colored black #111111');
 
         // Adversarial Case B: Very short title (single word and 2 words)
-        $titleB1 = "RETEN";
+        $titleB1 = 'RETEN';
         $tokensB1 = $tokenizeLine($titleB1);
         $this->assertCount(1, $tokensB1);
         $this->assertSame('#111111', $tokensB1[0]['color']);
 
-        $titleB2 = "RETEN HONDA";
+        $titleB2 = 'RETEN HONDA';
         $tokensB2 = $tokenizeLine($titleB2);
         $this->assertCount(2, $tokensB2);
         $this->assertSame('#111111', $tokensB2[0]['color']);
         $this->assertSame('#e61b23', $tokensB2[1]['color']);
 
         // Adversarial Case C: Zero brands title
-        $titleC = "BUJE MANILAR UNIVERSAL NEGRO 50MM";
+        $titleC = 'BUJE MANILAR UNIVERSAL NEGRO 50MM';
         $tokensC = $tokenizeLine($titleC);
         foreach ($tokensC as $tok) {
             $this->assertSame('#111111', $tok['color'], "Non-brand word '{$tok['text']}' must be colored #111111");
         }
 
         // Adversarial Case D: Punctuation adjacent to brands
-        $titleD = "YAMAHA/HONDA (AKT) [KAWASAKI], SUZUKI, AUTECO-BAJAJ";
+        $titleD = 'YAMAHA/HONDA (AKT) [KAWASAKI], SUZUKI, AUTECO-BAJAJ';
         $tokensD = $tokenizeLine($titleD);
         $redTexts = [];
         $blackTexts = [];
@@ -283,6 +289,10 @@ class ChallengerCanvas2048StressTest extends TestCase
      */
     public function test_flyer_detection_on_actual_template_asset(): void
     {
+        if (! extension_loaded('gd')) {
+            $this->markTestSkipped('GD extension not loaded');
+        }
+
         $im = imagecreatefromjpeg($this->templatePath);
         $this->assertNotFalse($im, 'Could not load plantilla-estado.jpg with GD');
 
@@ -329,6 +339,10 @@ class ChallengerCanvas2048StressTest extends TestCase
      */
     public function test_flyer_crop_geometry_leaves_zero_banner_or_badge_remnants(): void
     {
+        if (! extension_loaded('gd')) {
+            $this->markTestSkipped('GD extension not loaded');
+        }
+
         $im = imagecreatefromjpeg($this->templatePath);
         $w = imagesx($im);
         $h = imagesy($im);
@@ -415,6 +429,10 @@ class ChallengerCanvas2048StressTest extends TestCase
      */
     public function test_reference_code_container_clearance_on_template_asset(): void
     {
+        if (! extension_loaded('gd')) {
+            $this->markTestSkipped('GD extension not loaded');
+        }
+
         $im = imagecreatefromjpeg($this->templatePath);
 
         // Center at (1024, 1905)
@@ -474,9 +492,12 @@ class ChallengerCanvas2048StressTest extends TestCase
         $brands = array_flip($brandMatches[1]);
 
         $isBrandToken = function (string $str) use ($brands): bool {
-            if (!$str) return false;
+            if (! $str) {
+                return false;
+            }
             $clean = preg_replace('/^[^A-Z0-9]+|[^A-Z0-9]+$/i', '', $str);
             $cleanUpper = strtoupper($clean);
+
             return strlen($cleanUpper) > 0 && isset($brands[$cleanUpper]);
         };
 
@@ -484,12 +505,15 @@ class ChallengerCanvas2048StressTest extends TestCase
         $measureText = function (string $text): float {
             $len = strlen($text);
             $spaces = substr_count($text, ' ');
+
             return ($len - $spaces) * 36.0 + $spaces * 20.0;
         };
 
         $splitTitle = function (string $fullTitle, float $maxPxWidth) use ($measureText, $isBrandToken): array {
             $words = preg_split('/\s+/', trim($fullTitle));
-            if (count($words) <= 1) return [$fullTitle, ''];
+            if (count($words) <= 1) {
+                return [$fullTitle, ''];
+            }
 
             $bestSplit = [$fullTitle, ''];
             $bestScore = INF;
@@ -505,44 +529,59 @@ class ChallengerCanvas2048StressTest extends TestCase
                 $w2 = $measureText($line2);
 
                 $score = abs($w1 - $w2);
-                if ($w1 > $maxPxWidth) $score += 2000;
-                if ($w2 > $maxPxWidth) $score += 2000;
+                if ($w1 > $maxPxWidth) {
+                    $score += 2000;
+                }
+                if ($w2 > $maxPxWidth) {
+                    $score += 2000;
+                }
 
                 $lastWord1 = $p1[count($p1) - 1];
                 $firstWord2 = $p2[0];
 
-                if (preg_match('/^[\/,\-\x{2013}]/u', $firstWord2)) $score += 600;
-                if (preg_match('/^[\)\]]/', $firstWord2)) $score += 1000;
-                if (preg_match('/[\(\[]$/', $lastWord1)) $score += 1000;
+                if (preg_match('/^[\/,\-\x{2013}]/u', $firstWord2)) {
+                    $score += 600;
+                }
+                if (preg_match('/^[\)\]]/', $firstWord2)) {
+                    $score += 1000;
+                }
+                if (preg_match('/[\(\[]$/', $lastWord1)) {
+                    $score += 1000;
+                }
 
                 if (preg_match('/^\d+$/', $lastWord1) && preg_match('/^[A-Z]{1,4}$/', $firstWord2)) {
                     $score += 350;
                 }
 
-                if ($lastWord1 === '/') $score -= 60;
-                if ($isBrandToken($lastWord1)) $score -= 60;
+                if ($lastWord1 === '/') {
+                    $score -= 60;
+                }
+                if ($isBrandToken($lastWord1)) {
+                    $score -= 60;
+                }
 
                 if ($score < $bestScore) {
                     $bestScore = $score;
                     $bestSplit = [$line1, $line2];
                 }
             }
+
             return $bestSplit;
         };
 
         // Test 1: Canonical example
-        [$l1, $l2] = $splitTitle("CALAPIES DELANTERO YAMAHA RX100-115 / V80 / FR80 / RX200-215", 1650.0);
+        [$l1, $l2] = $splitTitle('CALAPIES DELANTERO YAMAHA RX100-115 / V80 / FR80 / RX200-215', 1650.0);
         $this->assertNotEmpty($l1);
         $this->assertNotEmpty($l2);
         $this->assertDoesNotMatchRegularExpression('/^[\/,\-\)]/', $l2, 'Line 2 must not start with orphan punctuation');
 
         // Test 2: Single word
-        [$single1, $single2] = $splitTitle("CALAPIES", 1650.0);
-        $this->assertSame("CALAPIES", $single1);
-        $this->assertSame("", $single2);
+        [$single1, $single2] = $splitTitle('CALAPIES', 1650.0);
+        $this->assertSame('CALAPIES', $single1);
+        $this->assertSame('', $single2);
 
         // Test 3: Model number suffix cohesion (e.g. 160 NS)
-        [$m1, $m2] = $splitTitle("SOPORTE MOTOR BAJAJ ROUSER 160 NS TRASERO", 800.0);
+        [$m1, $m2] = $splitTitle('SOPORTE MOTOR BAJAJ ROUSER 160 NS TRASERO', 800.0);
         $this->assertFalse(
             (str_ends_with($m1, '160') && str_starts_with($m2, 'NS')),
             'Should avoid splitting between number and model suffix (160 NS)'

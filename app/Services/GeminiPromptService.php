@@ -8,10 +8,12 @@ use Illuminate\Support\Facades\Cache;
 class GeminiPromptService
 {
     public const PROMPT_KEY = 'PROMPT_GEMINI';
+
     public const CACHE_KEY = 'setting_prompt_gemini';
+
     public const DEFAULT_TTL = 3600;
 
-    public const CANONICAL_FALLBACK_PROMPT = 'no mantegas el diseño original luego recrea la imagen, Mejora la imagen aplicando un estilo de fotografía de estudio en primer plano y de alta calidad sobre un fondo blanco puro y continuo, alineada de extremo a extremo, respetando su orientación original en una vista estrictamente horizontal o vertical sin ningún grado de inclinación en los bordes los bordes deben tener el mismo tamaño y sin distorsiones de perspectiva';
+    public const CANONICAL_FALLBACK_PROMPT = 'Mejora la imagen aplicando un estilo de fotografía de estudio en primer plano y de alta calidad sobre un fondo blanco puro y continuo, utilizando iluminación natural con enfoque nítido y sombras suaves en la base para asentar el objeto de forma realista. Es indispensable lograr una alineación geométrica absoluta: el producto debe quedar perfectamente recto, nivelado y con 0 grados de inclinación de extremo a extremo, respetando su orientación natural (estrictamente horizontal o vertical) y quedando totalmente paralelo a los bordes del encuadre, sin ladeos, desniveles ni caídas accidentales hacia ningún lado. Asimismo, aplica una corrección de perspectiva rigurosa para obtener una vista frontal plana y ortogonal, eliminando por completo cualquier fuga diagonal, distorsión de lente o ángulo de cámara que haga que una parte se vea más cercana o distorsionada, asegurando una simetría y estabilidad visual perfectas. Finalmente, conserva con absoluta fidelidad la forma, proporciones, materiales y texturas originales del objeto, centrándolo en la composición con un espacio blanco equilibrado alrededor, sin marcas de agua ni elementos adicionales, para entregar un acabado hiperrealista, nítido y profesional ideal para un catálogo online.';
 
     /**
      * Tier 1: In-memory static cache for current PHP process / request.
@@ -77,6 +79,7 @@ class GeminiPromptService
         ) {
             self::$memoryCache = $cached['value'];
             self::$memoryExpiresAt = $cached['cached_at'] + self::$ttl;
+
             return self::$memoryCache;
         }
 
@@ -105,7 +108,7 @@ class GeminiPromptService
         // Graceful fallback if database has no record or table is empty
         if ($prompt === null) {
             $configPrompt = config('services.gemini.prompt');
-            $prompt = !empty($configPrompt) ? (string) $configPrompt : self::CANONICAL_FALLBACK_PROMPT;
+            $prompt = ! empty($configPrompt) ? (string) $configPrompt : self::CANONICAL_FALLBACK_PROMPT;
             $updatedAt = now()->timestamp;
         }
 
@@ -135,11 +138,13 @@ class GeminiPromptService
         $cachedHash = (is_array($cached) && isset($cached['hash'])) ? $cached['hash'] : null;
 
         $setting = Setting::where('key', self::PROMPT_KEY)->first();
-        if (!$setting || $setting->value === null) {
+        if (! $setting || $setting->value === null) {
             if ($cachedHash !== null) {
                 self::clearCache();
+
                 return true;
             }
+
             return false;
         }
 

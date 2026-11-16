@@ -17,11 +17,17 @@ class OrderStatusTransitionTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private Client $client;
+
     private OrderStatus $creadoStatus;
+
     private OrderStatus $despachadoStatus;
+
     private OrderStatus $entregadoStatus;
+
     private OrderStatus $devueltoStatus;
+
     private OrderStatus $rechazadoStatus;
 
     protected function setUp(): void
@@ -74,7 +80,7 @@ class OrderStatusTransitionTest extends TestCase
     private function createTestOrder(array $attributes = []): Order
     {
         return Order::create(array_merge([
-            'code' => 'PED-TEST-' . uniqid(),
+            'code' => 'PED-TEST-'.uniqid(),
             'client_id' => $this->client->id,
             'created_by' => $this->admin->id,
             'order_status_id' => $this->creadoStatus->id,

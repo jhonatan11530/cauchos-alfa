@@ -18,7 +18,7 @@ class CatalogController extends Controller
 
     public function create(): View
     {
-        return view('admin.catalogs.form', $this->formData(new Catalog()));
+        return view('admin.catalogs.form', $this->formData(new Catalog));
     }
 
     public function store(Request $request): RedirectResponse
@@ -77,7 +77,7 @@ class CatalogController extends Controller
             return $product->category?->name ?? 'Otros Productos';
         });
 
-        $pdf = app('dompdf.wrapper')->loadView('admin.catalogs.templates.' . ($catalogo->template ?: 'default'), [
+        $pdf = app('dompdf.wrapper')->loadView('admin.catalogs.templates.'.($catalogo->template ?: 'default'), [
             'catalog' => $catalogo,
             'productsByCategory' => $productsByCategory,
         ]);
@@ -94,7 +94,7 @@ class CatalogController extends Controller
         });
 
         return app('dompdf.wrapper')
-            ->loadView('admin.catalogs.templates.' . ($catalogo->template ?: 'default'), [
+            ->loadView('admin.catalogs.templates.'.($catalogo->template ?: 'default'), [
                 'catalog' => $catalogo,
                 'productsByCategory' => $productsByCategory,
             ])

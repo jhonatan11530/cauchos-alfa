@@ -30,7 +30,7 @@ class CatalogTemplateTitleAndBrandFidelityTest extends TestCase
         $requiredBrands = [
             'YAMAHA', 'HONDA', 'SUZUKI', 'BAJAJ', 'AKT', 'AUTECO',
             'KAWASAKI', 'HERO', 'KTM', 'TVS', 'KYMCO', 'VICTORY',
-            'SIGMA', 'SYM'
+            'SIGMA', 'SYM',
         ];
 
         foreach ($requiredBrands as $brand) {
@@ -52,8 +52,8 @@ class CatalogTemplateTitleAndBrandFidelityTest extends TestCase
      */
     public function test_brand_coloring_colors_in_blade(): void
     {
-        $this->assertStringContainsString('#e61b23', $this->bladeContent, "Corporate red #e61b23 must be used for brands.");
-        $this->assertStringContainsString('#111111', $this->bladeContent, "High-contrast black #111111 must be used for non-brand text.");
+        $this->assertStringContainsString('#e61b23', $this->bladeContent, 'Corporate red #e61b23 must be used for brands.');
+        $this->assertStringContainsString('#111111', $this->bladeContent, 'High-contrast black #111111 must be used for non-brand text.');
 
         // Assert old naive heuristic (i === 1) is completely removed
         $this->assertDoesNotMatchRegularExpression(
@@ -201,12 +201,13 @@ class CatalogTemplateTitleAndBrandFidelityTest extends TestCase
             'SIGMA', 'SYM', 'BENELLI', 'ROYAL ENFIELD', 'ROYAL', 'ENFIELD',
             'DUCATI', 'BMW', 'HARLEY', 'VESPA', 'PIAGGIO', 'ITALIKA',
             'CHEVROLET', 'RENAULT', 'MAZDA', 'TOYOTA', 'NISSAN', 'KIA',
-            'HYUNDAI', 'FORD', 'VOLKSWAGEN'
+            'HYUNDAI', 'FORD', 'VOLKSWAGEN',
         ];
         $brandLookup = array_flip($brands);
 
         $isBrand = function (string $word) use ($brandLookup): bool {
             $clean = preg_replace('/^[^\w]+|[^\w]+$/u', '', $word);
+
             return isset($brandLookup[mb_strtoupper($clean, 'UTF-8')]);
         };
 
@@ -228,7 +229,7 @@ class CatalogTemplateTitleAndBrandFidelityTest extends TestCase
         $nonBrands = [
             'MANILAR', 'UNIVERSAL', 'CAUCHO', 'TRASERO', 'DELANTERO',
             'SUPERIOR', 'INFERIOR', 'RETEN', 'EMPAQUE', 'VALVULA',
-            'BUJE', 'SOPORTE', 'AMORTIGUADOR', 'CAMPANA', 'RUEDA'
+            'BUJE', 'SOPORTE', 'AMORTIGUADOR', 'CAMPANA', 'RUEDA',
         ];
         foreach ($nonBrands as $nb) {
             $this->assertFalse($isBrand($nb), "'{$nb}' must NOT be recognized as brand");

@@ -6,9 +6,9 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\GeminiPromptService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Tests\Support\CreatesSystemData;
 use Tests\TestCase;
 
@@ -23,10 +23,11 @@ use Tests\TestCase;
  */
 class ChallengerPromptIsolationAndEdgePayloadTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     private ?string $origEnv;
+
     private ?string $origConfig;
 
     protected function setUp(): void
@@ -79,12 +80,13 @@ class ChallengerPromptIsolationAndEdgePayloadTest extends TestCase
      */
     private function getProductCreateRoute(): string
     {
-        if (\Illuminate\Support\Facades\Route::has('admin.products.create')) {
+        if (Route::has('admin.products.create')) {
             return route('admin.products.create');
         }
-        if (\Illuminate\Support\Facades\Route::has('productos.create')) {
+        if (Route::has('productos.create')) {
             return route('productos.create');
         }
+
         return url('/productos/create');
     }
 
@@ -95,6 +97,7 @@ class ChallengerPromptIsolationAndEdgePayloadTest extends TestCase
     {
         $admin = $this->createAdmin();
         $this->actingAs($admin);
+
         return $admin;
     }
 
@@ -107,7 +110,7 @@ class ChallengerPromptIsolationAndEdgePayloadTest extends TestCase
         $this->stripEnvironmentPrompt();
         GeminiPromptService::clearCache();
 
-        $dbOnlyPrompt = 'CHALLENGER_DB_ONLY_PROMPT_' . bin2hex(random_bytes(16));
+        $dbOnlyPrompt = 'CHALLENGER_DB_ONLY_PROMPT_'.bin2hex(random_bytes(16));
         Setting::set('PROMPT_GEMINI', $dbOnlyPrompt, 'Adversarial isolation test');
 
         // Cold cache load
@@ -132,7 +135,7 @@ class ChallengerPromptIsolationAndEdgePayloadTest extends TestCase
         $this->stripEnvironmentPrompt();
         $this->authenticateAdminUser();
 
-        $uniquePrompt = 'UNIQUE_VIEW_PROMPT_' . bin2hex(random_bytes(12));
+        $uniquePrompt = 'UNIQUE_VIEW_PROMPT_'.bin2hex(random_bytes(12));
         Setting::set('PROMPT_GEMINI', $uniquePrompt);
         GeminiPromptService::clearCache();
 
@@ -165,8 +168,8 @@ class ChallengerPromptIsolationAndEdgePayloadTest extends TestCase
         $this->authenticateAdminUser();
 
         $multibytePrompt = '¡Atención, Cauchos Alfa! Válvulas, neumáticos, cuñas cónicas y piñones con alineación a 0° de inclinación. '
-            . 'Conservar proporciones, texturas, iluminación óptima y diseño único sobre fondo blanco puro: '
-            . 'á é í ó ú ñ Á É Í Ó Ú Ñ ¿ ¡ ° « »';
+            .'Conservar proporciones, texturas, iluminación óptima y diseño único sobre fondo blanco puro: '
+            .'á é í ó ú ñ Á É Í Ó Ú Ñ ¿ ¡ ° « »';
 
         Setting::set('PROMPT_GEMINI', $multibytePrompt);
         GeminiPromptService::clearCache();
@@ -199,8 +202,8 @@ class ChallengerPromptIsolationAndEdgePayloadTest extends TestCase
         $this->authenticateAdminUser();
 
         $adversarialPrompt = "Adversarial \"double quotes\" and 'single quotes', <script>alert('XSS')</script>, "
-            . "JSON: {\"geometry\": {\"angle\": 0, \"ratio\": 1.5, \"tags\": [\"alfa\", \"caucho\"]}}, "
-            . "backslashes: \\\\ and special control chars: \t \n \r.";
+            .'JSON: {"geometry": {"angle": 0, "ratio": 1.5, "tags": ["alfa", "caucho"]}}, '
+            ."backslashes: \\\\ and special control chars: \t \n \r.";
 
         Setting::set('PROMPT_GEMINI', $adversarialPrompt);
         GeminiPromptService::clearCache();
@@ -248,7 +251,7 @@ class ChallengerPromptIsolationAndEdgePayloadTest extends TestCase
         $this->assertSame('INITIAL_PROMPT_VAL', $initial);
 
         // Direct SQL update (simulating external database administrator edit)
-        $tamperedVal = 'TAMPERED_BY_SQL_DIRECT_UPDATE_' . bin2hex(random_bytes(8));
+        $tamperedVal = 'TAMPERED_BY_SQL_DIRECT_UPDATE_'.bin2hex(random_bytes(8));
         DB::table('settings')->where('key', 'PROMPT_GEMINI')->update([
             'value' => $tamperedVal,
             'updated_at' => now(),
@@ -300,7 +303,7 @@ class ChallengerPromptIsolationAndEdgePayloadTest extends TestCase
         $this->stripEnvironmentPrompt();
         $this->authenticateAdminUser();
 
-        $emojiPrompt = "📷 Studio Photography ⚙️ Precision Alignment 0° 📐 Perspective frontale 🎨 Couleurs fidèles 🌟 100% Top";
+        $emojiPrompt = '📷 Studio Photography ⚙️ Precision Alignment 0° 📐 Perspective frontale 🎨 Couleurs fidèles 🌟 100% Top';
         Setting::set('PROMPT_GEMINI', $emojiPrompt);
         GeminiPromptService::clearCache();
 

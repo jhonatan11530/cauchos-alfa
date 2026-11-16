@@ -5,26 +5,26 @@
 
 @section('schema')
 <script type="application/ld+json">
-{
-  "@@context": "https://schema.org",
-  "@@type": "Product",
-  "name": "{!! $product->name !!}",
-  "image": {!! json_encode($product->imageUrls()) !!},
-  "description": "{!! strip_tags($product->description) !!}",
-  "sku": "{!! $product->reference !!}",
-  "brand": {
-    "@@type": "Brand",
-    "name": "Cauchos Alfa"
-  },
-  "offers": {
-    "@@type": "Offer",
-    "url": "{!! url()->current() !!}",
-    "priceCurrency": "COP",
-    "price": "{!! $product->price ?? 0 !!}",
-    "itemCondition": "https://schema.org/NewCondition",
-    "availability": "{!! $product->availability === 'disponible' ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' !!}"
-  }
-}
+{!! json_encode([
+    '@@context' => 'https://schema.org',
+    '@type' => 'Product',
+    'name' => $product->name,
+    'image' => $product->imageUrls(),
+    'description' => strip_tags($product->description ?? ''),
+    'sku' => $product->reference ?? '',
+    'brand' => [
+        '@type' => 'Brand',
+        'name' => 'Cauchos Alfa',
+    ],
+    'offers' => [
+        '@type' => 'Offer',
+        'url' => url()->current(),
+        'priceCurrency' => 'COP',
+        'price' => (string) ($product->price ?? 0),
+        'itemCondition' => 'https://schema.org/NewCondition',
+        'availability' => $product->availability === 'disponible' ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    ],
+], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
 </script>
 @endsection
 

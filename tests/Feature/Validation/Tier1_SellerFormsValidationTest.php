@@ -2,16 +2,13 @@
 
 namespace Tests\Feature\Validation;
 
-use App\Models\Category;
 use App\Models\Client;
 use App\Models\Order;
 use App\Models\OrderStatus;
 use App\Models\Product;
-use App\Models\Role;
 use App\Models\User;
 use App\Support\SellerCart;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\CreatesSystemData;
 use Tests\TestCase;
@@ -27,14 +24,19 @@ use Tests\TestCase;
  */
 class Tier1_SellerFormsValidationTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     private User $seller;
+
     private Product $product;
+
     private Client $client;
+
     private OrderStatus $creadoStatus;
+
     private OrderStatus $despachadoStatus;
+
     private OrderStatus $entregadoStatus;
 
     protected function setUp(): void
@@ -76,7 +78,7 @@ class Tier1_SellerFormsValidationTest extends TestCase
     {
         $response = $this->get(route('site.seller.login'));
         $response->assertOk();
-        $response->assertSee('action="' . route('site.seller.auth') . '"', false);
+        $response->assertSee('action="'.route('site.seller.auth').'"', false);
         $response->assertSee('method="POST"', false);
     }
 
@@ -126,14 +128,14 @@ class Tier1_SellerFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->seller)->get(route('site.catalog'));
         $response->assertOk();
-        $response->assertSee('action="' . route('site.seller.add') . '"', false);
+        $response->assertSee('action="'.route('site.seller.add').'"', false);
     }
 
     public function test_seller_catalog_quick_add_form_action_is_seller_add_post(): void
     {
         $response = $this->actingAs($this->seller)->get(route('site.catalog'));
         $response->assertOk();
-        $response->assertSee('action="' . route('site.seller.add') . '"', false);
+        $response->assertSee('action="'.route('site.seller.add').'"', false);
         $response->assertSee('method="POST"', false);
     }
 
@@ -188,7 +190,7 @@ class Tier1_SellerFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->seller)->get(route('site.product', ['id' => $this->product->id, 'slug' => 'llanta-test']));
         $response->assertOk();
-        $response->assertSee('action="' . route('site.seller.add') . '"', false);
+        $response->assertSee('action="'.route('site.seller.add').'"', false);
         $response->assertSee('name="_token"', false);
     }
 
@@ -198,7 +200,7 @@ class Tier1_SellerFormsValidationTest extends TestCase
         $response->assertOk();
         $response->assertSee('name="product_id"', false);
         $response->assertSee('type="hidden"', false);
-        $response->assertSee('value="' . $this->product->id . '"', false);
+        $response->assertSee('value="'.$this->product->id.'"', false);
     }
 
     public function test_seller_product_detail_quantity_is_required_and_digits(): void
@@ -248,7 +250,7 @@ class Tier1_SellerFormsValidationTest extends TestCase
 
         $response = $this->actingAs($this->seller)->get(route('site.seller.order'));
         $response->assertOk();
-        $response->assertSee('action="' . route('pedidos.store') . '"', false);
+        $response->assertSee('action="'.route('pedidos.store').'"', false);
         $response->assertSee('method="POST"', false);
     }
 
@@ -451,8 +453,8 @@ class Tier1_SellerFormsValidationTest extends TestCase
     {
         $engine = file_get_contents(public_path('js/form-validation.js'));
         $this->assertNotFalse($engine);
-        $this->assertStringContainsString("select2-hidden-accessible", $engine);
-        $this->assertStringContainsString("border-danger", $engine);
+        $this->assertStringContainsString('select2-hidden-accessible', $engine);
+        $this->assertStringContainsString('border-danger', $engine);
     }
 
     public function test_seller_layout_spanish_dictionary_contract(): void

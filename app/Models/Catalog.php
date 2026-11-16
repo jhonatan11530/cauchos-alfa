@@ -42,7 +42,7 @@ class Catalog extends Model
 
         $fullPath = Storage::disk('public')->path($this->logo_path);
         if (! file_exists($fullPath) || ! is_readable($fullPath)) {
-            $fullPath = public_path('storage/' . $this->logo_path);
+            $fullPath = public_path('storage/'.$this->logo_path);
         }
 
         if (! file_exists($fullPath) || ! is_readable($fullPath)) {
@@ -66,6 +66,6 @@ class Catalog extends Model
 
         $mime = $mime ?: ($extension === 'png' ? 'image/png' : 'image/jpeg');
 
-        return 'data:' . $mime . ';base64,' . base64_encode($content);
+        return 'data:'.$mime.';base64,'.base64_encode($content);
     }
 }

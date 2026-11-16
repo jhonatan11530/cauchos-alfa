@@ -13,4 +13,3 @@ return [
         'g-recaptcha-response' => 'reCAPTCHA',
     ],
 ];
-

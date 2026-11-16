@@ -2,9 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Category;
-use App\Models\Client;
-use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -13,8 +10,8 @@ use Tests\TestCase;
 
 class AdminProductSearchTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     protected User $admin;
 
@@ -138,7 +135,7 @@ class AdminProductSearchTest extends TestCase
                 && ! $products->contains('id', $prodBuje->id);
         });
 
-        $response->assertSee('value="' . $catLlantas->id . '" selected', false);
+        $response->assertSee('value="'.$catLlantas->id.'" selected', false);
     }
 
     /** Caso límite: category_id vacío (Todas las categorías) devuelve todos los productos */
@@ -180,7 +177,7 @@ class AdminProductSearchTest extends TestCase
         });
 
         $response->assertSee('value="Amortiguador"', false);
-        $response->assertSee('value="' . $catA->id . '" selected', false);
+        $response->assertSee('value="'.$catA->id.'" selected', false);
     }
 
     /** Caso positivo: la paginación conserva los parámetros de búsqueda mediante withQueryString() */
@@ -208,12 +205,12 @@ class AdminProductSearchTest extends TestCase
         $nextPageUrl = $products->nextPageUrl();
         $this->assertNotNull($nextPageUrl);
         $this->assertStringContainsString('q=Especial', $nextPageUrl);
-        $this->assertStringContainsString('category_id=' . $cat->id, $nextPageUrl);
+        $this->assertStringContainsString('category_id='.$cat->id, $nextPageUrl);
         $this->assertStringContainsString('page=2', $nextPageUrl);
 
         // Verifica que en el HTML renderizado el enlace de la página 2 tenga los parámetros
         $response->assertSee('q=Especial', false);
-        $response->assertSee('category_id=' . $cat->id, false);
+        $response->assertSee('category_id='.$cat->id, false);
     }
 
     /** Caso de compatibilidad regresiva: la vista de clientes no falla y no muestra el selector */

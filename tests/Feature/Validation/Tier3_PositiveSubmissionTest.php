@@ -7,10 +7,8 @@ use App\Models\Category;
 use App\Models\Client;
 use App\Models\Order;
 use App\Models\OrderStatus;
-use App\Models\OrderStatusHistory;
 use App\Models\Product;
 use App\Models\Role;
-use App\Models\Setting;
 use App\Models\User;
 use App\Services\GeminiPromptService;
 use App\Support\SellerCart;
@@ -31,16 +29,23 @@ use Tests\TestCase;
  */
 class Tier3_PositiveSubmissionTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     private User $admin;
+
     private User $seller;
+
     private OrderStatus $creadoStatus;
+
     private OrderStatus $despachadoStatus;
+
     private OrderStatus $entregadoStatus;
+
     private OrderStatus $cobradoStatus;
+
     private OrderStatus $devueltoStatus;
+
     private OrderStatus $rechazadoStatus;
 
     protected function setUp(): void

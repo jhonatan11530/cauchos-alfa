@@ -61,4 +61,3 @@ class SettingController extends Controller
             ->with('info', 'El prompt ha sido restablecido a su valor canónico predeterminado.');
     }
 }
-

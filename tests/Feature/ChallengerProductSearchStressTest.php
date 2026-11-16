@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
-use App\Models\Client;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,8 +12,8 @@ use Tests\TestCase;
 
 class ChallengerProductSearchStressTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     protected User $admin;
 
@@ -83,12 +82,12 @@ class ChallengerProductSearchStressTest extends TestCase
         $this->assertNotNull($nextPageUrl);
         $this->assertStringContainsString('page=2', $nextPageUrl);
         $this->assertStringContainsString('q=Valvula', $nextPageUrl);
-        $this->assertStringContainsString('category_id=' . $cat->id, $nextPageUrl);
+        $this->assertStringContainsString('category_id='.$cat->id, $nextPageUrl);
 
         // Verify HTML output contains page 2 link with preserved query params
         $content = $response->getContent();
         $this->assertMatchesRegularExpression(
-            '/href="[^"]*page=2[^"]*category_id=' . $cat->id . '[^"]*q=Valvula[^"]*"|href="[^"]*page=2[^"]*q=Valvula[^"]*category_id=' . $cat->id . '[^"]*"|href="[^"]*category_id=' . $cat->id . '[^"]*q=Valvula[^"]*page=2[^"]*"|href="[^"]*q=Valvula[^"]*category_id=' . $cat->id . '[^"]*page=2[^"]*"/',
+            '/href="[^"]*page=2[^"]*category_id='.$cat->id.'[^"]*q=Valvula[^"]*"|href="[^"]*page=2[^"]*q=Valvula[^"]*category_id='.$cat->id.'[^"]*"|href="[^"]*category_id='.$cat->id.'[^"]*q=Valvula[^"]*page=2[^"]*"|href="[^"]*q=Valvula[^"]*category_id='.$cat->id.'[^"]*page=2[^"]*"/',
             $content,
             'Page 2 pagination link in HTML must preserve both q and category_id query parameters.'
         );
@@ -103,7 +102,7 @@ class ChallengerProductSearchStressTest extends TestCase
         $page2Response->assertOk();
         $page2Content = $page2Response->getContent();
         $this->assertMatchesRegularExpression(
-            '/href="[^"]*page=1[^"]*category_id=' . $cat->id . '[^"]*q=Valvula[^"]*"|href="[^"]*page=1[^"]*q=Valvula[^"]*category_id=' . $cat->id . '[^"]*"|href="[^"]*category_id=' . $cat->id . '[^"]*q=Valvula[^"]*page=1[^"]*"|href="[^"]*q=Valvula[^"]*category_id=' . $cat->id . '[^"]*page=1[^"]*"/',
+            '/href="[^"]*page=1[^"]*category_id='.$cat->id.'[^"]*q=Valvula[^"]*"|href="[^"]*page=1[^"]*q=Valvula[^"]*category_id='.$cat->id.'[^"]*"|href="[^"]*category_id='.$cat->id.'[^"]*q=Valvula[^"]*page=1[^"]*"|href="[^"]*q=Valvula[^"]*category_id='.$cat->id.'[^"]*page=1[^"]*"/',
             $page2Content,
             'Page 1 pagination link in HTML on page 2 must preserve both q and category_id query parameters.'
         );
@@ -157,11 +156,11 @@ class ChallengerProductSearchStressTest extends TestCase
 
         $content = $response->getContent();
         // Assert selected option in HTML
-        $expectedOptionSnippet = 'value="' . $cat2->id . '" selected';
+        $expectedOptionSnippet = 'value="'.$cat2->id.'" selected';
         $this->assertStringContainsString($expectedOptionSnippet, $content);
 
         // Ensure cat1 is NOT selected
-        $unselectedSnippet = 'value="' . $cat1->id . '" selected';
+        $unselectedSnippet = 'value="'.$cat1->id.'" selected';
         $this->assertStringNotContainsString($unselectedSnippet, $content);
     }
 
@@ -204,7 +203,7 @@ class ChallengerProductSearchStressTest extends TestCase
         // Expected URL for "Limpiar" button is route('productos.index') without query parameters
         $cleanProductUrl = route('productos.index');
         $this->assertMatchesRegularExpression(
-            '/<a[^>]*href="' . preg_quote($cleanProductUrl, '/') . '"[^>]*class="[^"]*btn-secondary[^"]*"[^>]*>\s*Limpiar\s*<\/a>/',
+            '/<a[^>]*href="'.preg_quote($cleanProductUrl, '/').'"[^>]*class="[^"]*btn-secondary[^"]*"[^>]*>\s*Limpiar\s*<\/a>/',
             $prodContent,
             'Limpiar button in productos.index must link to the clean route URL without query parameters.'
         );
@@ -219,7 +218,7 @@ class ChallengerProductSearchStressTest extends TestCase
 
         $cleanClientUrl = route('clientes.index');
         $this->assertMatchesRegularExpression(
-            '/<a[^>]*href="' . preg_quote($cleanClientUrl, '/') . '"[^>]*class="[^"]*btn-secondary[^"]*"[^>]*>\s*Limpiar\s*<\/a>/',
+            '/<a[^>]*href="'.preg_quote($cleanClientUrl, '/').'"[^>]*class="[^"]*btn-secondary[^"]*"[^>]*>\s*Limpiar\s*<\/a>/',
             $clientContent,
             'Limpiar button in clientes.index must link to the clean route URL without query parameters.'
         );

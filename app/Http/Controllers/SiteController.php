@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Catalog;
 use App\Models\Category;
+use App\Models\Client;
 use App\Models\Order;
 use App\Models\OrderStatus;
 use App\Models\OrderStatusHistory;
@@ -11,13 +12,11 @@ use App\Models\Product;
 use App\Models\User;
 use App\Support\SellerCart;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
 use Illuminate\View\View;
 
 class SiteController extends Controller
@@ -32,7 +31,7 @@ class SiteController extends Controller
     public function catalog(Request $request, $categoriaId = null, $slug = null): View
     {
         $categories = Category::where('is_active', true)
-            ->withCount(['products' => fn($q) => $q->where('is_active', true)])
+            ->withCount(['products' => fn ($q) => $q->where('is_active', true)])
             ->orderBy('name')
             ->get();
 
@@ -41,7 +40,7 @@ class SiteController extends Controller
 
         $products = Product::where('is_active', true)
             ->with(['category', 'images'])
-            ->when($filterCategoryId, fn($q) => $q->where('category_id', $filterCategoryId))
+            ->when($filterCategoryId, fn ($q) => $q->where('category_id', $filterCategoryId))
             ->orderBy('name')
             ->paginate(12)
             ->withQueryString();
@@ -96,13 +95,13 @@ class SiteController extends Controller
         ]);
 
         $code = strtoupper(trim($data['code']));
-        $throttleKey = 'seller-login:' . strtolower($code) . '|' . $request->ip();
+        $throttleKey = 'seller-login:'.strtolower($code).'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
 
             return back()->withErrors([
-                'code' => 'Demasiados intentos. Inténtalo de nuevo en ' . $seconds . ' segundos.',
+                'code' => 'Demasiados intentos. Inténtalo de nuevo en '.$seconds.' segundos.',
             ]);
         }
 
@@ -110,7 +109,7 @@ class SiteController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$user || !$user->isSeller()) {
+        if (! $user || ! $user->isSeller()) {
             RateLimiter::hit($throttleKey, 120);
 
             return back()->withErrors(['code' => 'El código ingresado no corresponde a un vendedor activo.']);
@@ -123,7 +122,7 @@ class SiteController extends Controller
 
         return redirect()
             ->route('site.catalog')
-            ->with('success', 'Bienvenido ' . $user->name . '. Ya puedes crear pedidos desde el catálogo.');
+            ->with('success', 'Bienvenido '.$user->name.'. Ya puedes crear pedidos desde el catálogo.');
     }
 
     public function sellerLogout(Request $request): RedirectResponse
@@ -167,7 +166,7 @@ class SiteController extends Controller
 
         $cartProducts = Product::whereIn('id', array_keys($cart))
             ->where('is_active', true)
-            ->with('category')->get()
+            ->with(['category', 'images'])->get()
             ->map(function ($product) use ($cart) {
                 $product->cart_quantity = $cart[$product->id];
 
@@ -176,7 +175,7 @@ class SiteController extends Controller
 
         return view('site.seller-order', [
             'cartProducts' => $cartProducts,
-            'clients' => \App\Models\Client::where('is_active', true)->orderBy('name')->get(),
+            'clients' => Client::where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -387,8 +386,8 @@ class SiteController extends Controller
         });
 
         $template = $catalog->template ?: 'default';
-        $viewName = view()->exists('admin.catalogs.templates.' . $template)
-            ? 'admin.catalogs.templates.' . $template
+        $viewName = view()->exists('admin.catalogs.templates.'.$template)
+            ? 'admin.catalogs.templates.'.$template
             : 'admin.catalogs.templates.default';
 
         $pdf = app('dompdf.wrapper')->loadView($viewName, [
@@ -396,6 +395,6 @@ class SiteController extends Controller
             'productsByCategory' => $productsByCategory,
         ]);
 
-        return $pdf->download('catalogo-' . $catalog->id . '.pdf');
+        return $pdf->download('catalogo-'.$catalog->id.'.pdf');
     }
 }

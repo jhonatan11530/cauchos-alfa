@@ -18,13 +18,17 @@ class OrderStatusController extends Controller
 
     public function create(): View
     {
-        return view('admin.order-statuses.form', ['status' => new OrderStatus()]);
+        return view('admin.order-statuses.form', ['status' => new OrderStatus]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validatedData($request);
-        $data['slug'] = Str::slug($data['name']);
+        $newSlug = Str::slug($data['name']);
+        if (in_array($newSlug, OrderStatus::CRITICAL_SLUGS, true)) {
+            return back()->with('error', 'El nombre ingresado genera un slug reservado por el sistema.');
+        }
+        $data['slug'] = $newSlug;
         $data['is_final'] = $request->boolean('is_final');
         $data['is_cancelled'] = $request->boolean('is_cancelled');
         $data['is_active'] = $request->boolean('is_active');
@@ -41,7 +45,17 @@ class OrderStatusController extends Controller
     public function update(Request $request, OrderStatus $estados_pedido): RedirectResponse
     {
         $data = $this->validatedData($request, $estados_pedido);
-        $data['slug'] = Str::slug($data['name']);
+
+        if ($estados_pedido->isCritical()) {
+            $data['slug'] = $estados_pedido->slug;
+        } else {
+            $newSlug = Str::slug($data['name']);
+            if (in_array($newSlug, OrderStatus::CRITICAL_SLUGS, true)) {
+                return back()->with('error', 'El nombre ingresado genera un slug reservado por el sistema.');
+            }
+            $data['slug'] = $newSlug;
+        }
+
         $data['is_final'] = $request->boolean('is_final');
         $data['is_cancelled'] = $request->boolean('is_cancelled');
         $data['is_active'] = $request->boolean('is_active');

@@ -2,17 +2,10 @@
 
 namespace Tests\Feature\Validation;
 
-use App\Models\Catalog;
-use App\Models\Category;
-use App\Models\Client;
 use App\Models\Order;
 use App\Models\OrderStatus;
-use App\Models\Product;
-use App\Models\Role;
-use App\Models\Setting;
 use App\Models\User;
 use App\Services\GeminiPromptService;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -33,14 +26,19 @@ use Tests\TestCase;
  */
 class Tier2_BoundaryValidationTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     private User $admin;
+
     private OrderStatus $creadoStatus;
+
     private OrderStatus $despachadoStatus;
+
     private OrderStatus $entregadoStatus;
+
     private OrderStatus $cobradoStatus;
+
     private OrderStatus $rechazadoStatus;
 
     protected function setUp(): void
@@ -493,7 +491,7 @@ class Tier2_BoundaryValidationTest extends TestCase
     {
         // 255 chars valid email: 236 chars username + '@cauchosalfa.com' (15 chars) = 251 chars
         $userPart = str_repeat('u', 236);
-        $email = $userPart . '@cauchosalfa.com';
+        $email = $userPart.'@cauchosalfa.com';
         $response = $this->actingAs($this->admin)->post(route('clientes.store'), [
             'name' => 'Cliente Email Largo',
             'email' => $email,
@@ -505,7 +503,7 @@ class Tier2_BoundaryValidationTest extends TestCase
     public function test_client_email_boundary_length_256_rejected(): void
     {
         $userPart = str_repeat('u', 242);
-        $email = $userPart . '@cauchosalfa.com'; // 257 chars
+        $email = $userPart.'@cauchosalfa.com'; // 257 chars
         $response = $this->actingAs($this->admin)->post(route('clientes.store'), [
             'name' => 'Cliente Email Mas Largo',
             'email' => $email,

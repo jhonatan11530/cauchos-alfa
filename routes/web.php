@@ -10,18 +10,19 @@ use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SiteController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VendedorController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use Illuminate\Support\Facades\Route;
 
 // Pagina web publica
 Route::get('/', [SiteController::class, 'home'])->name('site.home');
 Route::get('/catalogo', [SiteController::class, 'catalog'])->name('site.catalog');
 Route::get('/catalogo/{categoriaId}-{slug}', [SiteController::class, 'catalog'])->name('site.catalog.category');
 Route::get('/producto/{id}-{slug}', [SiteController::class, 'product'])->name('site.product');
-Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])->name('site.sitemap');
-Route::get('/feed.xml', [App\Http\Controllers\SitemapController::class, 'feed'])->name('site.feed');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('site.sitemap');
+Route::get('/feed.xml', [SitemapController::class, 'feed'])->name('site.feed');
 Route::middleware('auth')->group(function () {
     Route::post('/vendedor/pedido/agregar', [SiteController::class, 'addToCart'])->name('site.seller.add');
     Route::post('/vendedor/pedido/quitar', [SiteController::class, 'removeCartItem'])->name('site.seller.remove');
@@ -53,26 +54,25 @@ Route::middleware('auth')->group(function () {
     Route::middleware('no-seller')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::resource('clientes', ClientController::class);
-        
+
         // Rutas de eliminación definitiva
         Route::delete('categoria/{categoria}/force-delete', [CategoryController::class, 'forceDelete'])->name('categoria.forceDelete');
         Route::delete('productos/{producto}/force-delete', [ProductController::class, 'forceDelete'])->name('productos.forceDelete');
-        
+
         Route::resource('categoria', CategoryController::class);
         Route::resource('productos', ProductController::class)->except('show');
         Route::delete('productos/{producto}/imagenes/{imagen}', [ProductController::class, 'destroyImage'])
             ->middleware(EnsureUserIsAdmin::class)
             ->name('productos.images.destroy');
-            
+
         Route::post('productos/{producto}/replace-main-image', [ProductController::class, 'replaceMainImage'])
             ->name('productos.images.replaceMain');
-            
+
         Route::post('productos/{producto}/upload-flyer', [ProductController::class, 'uploadFlyer'])
             ->name('productos.images.uploadFlyer');
-            
+
         Route::post('productos/imagenes/{imagen}/replace', [ProductController::class, 'replaceGalleryImage'])
             ->name('productos.images.replaceGallery');
-
 
         Route::get('catalogos/{catalogo}/pdf', [CatalogController::class, 'pdf'])->name('catalogos.pdf');
         Route::resource('catalogos', CatalogController::class);

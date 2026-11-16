@@ -11,12 +11,14 @@ class CategoryController extends Controller
 {
     public function index(): View
     {
-        return view('admin.category.index', ['categories' => Category::latest()->paginate(10)]);
+        return view('admin.category.index', [
+            'categories' => Category::withCount('products')->latest()->paginate(10),
+        ]);
     }
 
     public function create(): View
     {
-        return view('admin.category.form', ['category' => new Category()]);
+        return view('admin.category.form', ['category' => new Category]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -66,6 +68,7 @@ class CategoryController extends Controller
             return back()->with('error', 'No se puede eliminar la categoría porque tiene productos asociados.');
         }
         $categoria->delete();
+
         return back()->with('success', 'Categoría eliminada definitivamente.');
     }
 }

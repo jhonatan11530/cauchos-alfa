@@ -8,10 +8,7 @@ use App\Models\Client;
 use App\Models\Order;
 use App\Models\OrderStatus;
 use App\Models\Product;
-use App\Models\Role;
-use App\Models\Setting;
 use App\Models\User;
-use App\Services\GeminiPromptService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -29,14 +26,19 @@ use Tests\TestCase;
  */
 class Tier1_AdminFormsValidationTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesSystemData;
+    use RefreshDatabase;
 
     private User $admin;
+
     private OrderStatus $creadoStatus;
+
     private OrderStatus $despachadoStatus;
+
     private OrderStatus $entregadoStatus;
+
     private OrderStatus $cobradoStatus;
+
     private OrderStatus $rechazadoStatus;
 
     protected function setUp(): void
@@ -84,7 +86,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->get(route('login'));
         $response->assertOk();
-        $response->assertSee('action="' . route('login.store') . '"', false);
+        $response->assertSee('action="'.route('login.store').'"', false);
         $response->assertSee('method="POST"', false);
     }
 
@@ -140,7 +142,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('categoria.create'));
         $response->assertOk();
-        $response->assertSee('action="' . route('categoria.store') . '"', false);
+        $response->assertSee('action="'.route('categoria.store').'"', false);
         $response->assertSee('method="POST"', false);
         $response->assertSee('name="_token"', false);
     }
@@ -150,7 +152,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
         $category = $this->createCategory(['name' => 'Neumáticos Agrícolas']);
         $response = $this->actingAs($this->admin)->get(route('categoria.edit', $category));
         $response->assertOk();
-        $response->assertSee('action="' . route('categoria.update', $category) . '"', false);
+        $response->assertSee('action="'.route('categoria.update', $category).'"', false);
         $response->assertSee('name="_method"', false);
         $response->assertSee('value="PUT"', false);
     }
@@ -200,7 +202,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('clientes.create'));
         $response->assertOk();
-        $response->assertSee('action="' . route('clientes.store') . '"', false);
+        $response->assertSee('action="'.route('clientes.store').'"', false);
         $response->assertSee('name="_token"', false);
     }
 
@@ -209,7 +211,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
         $client = $this->createClient(['name' => 'Transportes Unidos S.A.']);
         $response = $this->actingAs($this->admin)->get(route('clientes.edit', $client));
         $response->assertOk();
-        $response->assertSee('action="' . route('clientes.update', $client) . '"', false);
+        $response->assertSee('action="'.route('clientes.update', $client).'"', false);
         $response->assertSee('value="PUT"', false);
     }
 
@@ -269,7 +271,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('productos.create'));
         $response->assertOk();
-        $response->assertSee('action="' . route('productos.store') . '"', false);
+        $response->assertSee('action="'.route('productos.store').'"', false);
         $response->assertSee('enctype="multipart/form-data"', false);
         $response->assertSee('name="_token"', false);
     }
@@ -279,7 +281,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
         $product = $this->createProduct(null, ['name' => 'Llanta Radial 295/80 R22.5']);
         $response = $this->actingAs($this->admin)->get(route('productos.edit', $product));
         $response->assertOk();
-        $response->assertSee('action="' . route('productos.update', $product) . '"', false);
+        $response->assertSee('action="'.route('productos.update', $product).'"', false);
         $response->assertSee('value="PUT"', false);
         $response->assertSee('Llanta Radial 295/80 R22.5', false);
     }
@@ -352,7 +354,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('catalogos.create'));
         $response->assertOk();
-        $response->assertSee('action="' . route('catalogos.store') . '"', false);
+        $response->assertSee('action="'.route('catalogos.store').'"', false);
         $response->assertSee('enctype="multipart/form-data"', false);
         $response->assertSee('name="_token"', false);
     }
@@ -366,7 +368,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
         ]);
         $response = $this->actingAs($this->admin)->get(route('catalogos.edit', $catalog));
         $response->assertOk();
-        $response->assertSee('action="' . route('catalogos.update', $catalog) . '"', false);
+        $response->assertSee('action="'.route('catalogos.update', $catalog).'"', false);
         $response->assertSee('value="PUT"', false);
     }
 
@@ -429,7 +431,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('pedidos.create'));
         $response->assertOk();
-        $response->assertSee('action="' . route('pedidos.store') . '"', false);
+        $response->assertSee('action="'.route('pedidos.store').'"', false);
         $response->assertSee('name="_token"', false);
     }
 
@@ -446,7 +448,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
 
         $response = $this->actingAs($this->admin)->get(route('pedidos.edit', $order));
         $response->assertOk();
-        $response->assertSee('action="' . route('pedidos.update', $order) . '"', false);
+        $response->assertSee('action="'.route('pedidos.update', $order).'"', false);
         $response->assertSee('value="PUT"', false);
     }
 
@@ -534,7 +536,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
 
         $response = $this->actingAs($this->admin)->get(route('pedidos.show', $order));
         $response->assertOk();
-        $response->assertSee('action="' . route('pedidos.estado', $order) . '"', false);
+        $response->assertSee('action="'.route('pedidos.estado', $order).'"', false);
         $response->assertSee('value="PATCH"', false);
         $response->assertSee('name="_token"', false);
     }
@@ -668,7 +670,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('vendedores.create'));
         $response->assertOk();
-        $response->assertSee('action="' . route('vendedores.store') . '"', false);
+        $response->assertSee('action="'.route('vendedores.store').'"', false);
         $response->assertSee('name="_token"', false);
     }
 
@@ -677,7 +679,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
         $seller = $this->createSeller(['name' => 'Vendedor Regional', 'seller_code' => 'V-REG-01']);
         $response = $this->actingAs($this->admin)->get(route('vendedores.edit', $seller));
         $response->assertOk();
-        $response->assertSee('action="' . route('vendedores.update', $seller) . '"', false);
+        $response->assertSee('action="'.route('vendedores.update', $seller).'"', false);
         $response->assertSee('value="PUT"', false);
     }
 
@@ -728,7 +730,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('usuarios.create'));
         $response->assertOk();
-        $response->assertSee('action="' . route('usuarios.store') . '"', false);
+        $response->assertSee('action="'.route('usuarios.store').'"', false);
         $response->assertSee('name="_token"', false);
     }
 
@@ -742,7 +744,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
         ]);
         $response = $this->actingAs($this->admin)->get(route('usuarios.edit', $user));
         $response->assertOk();
-        $response->assertSee('action="' . route('usuarios.update', $user) . '"', false);
+        $response->assertSee('action="'.route('usuarios.update', $user).'"', false);
         $response->assertSee('value="PUT"', false);
     }
 
@@ -805,7 +807,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('estados-pedido.create'));
         $response->assertOk();
-        $response->assertSee('action="' . route('estados-pedido.store') . '"', false);
+        $response->assertSee('action="'.route('estados-pedido.store').'"', false);
         $response->assertSee('name="_token"', false);
     }
 
@@ -820,7 +822,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
         ]);
         $response = $this->actingAs($this->admin)->get(route('estados-pedido.edit', $status));
         $response->assertOk();
-        $response->assertSee('action="' . route('estados-pedido.update', $status) . '"', false);
+        $response->assertSee('action="'.route('estados-pedido.update', $status).'"', false);
         $response->assertSee('value="PUT"', false);
     }
 
@@ -870,7 +872,7 @@ class Tier1_AdminFormsValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('settings.index'));
         $response->assertOk();
-        $response->assertSee('action="' . route('settings.update') . '"', false);
+        $response->assertSee('action="'.route('settings.update').'"', false);
         $response->assertSee('value="PUT"', false);
         $response->assertSee('name="_token"', false);
     }

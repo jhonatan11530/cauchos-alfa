@@ -12,9 +12,7 @@ class SellerCart
 {
     public const SESSION_KEY = 'seller_cart';
 
-    public function __construct(private SessionManager $session)
-    {
-    }
+    public function __construct(private SessionManager $session) {}
 
     /** @return array<int, int> mapa product_id => cantidad */
     public function get(): array

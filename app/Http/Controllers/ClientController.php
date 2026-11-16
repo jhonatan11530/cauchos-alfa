@@ -13,7 +13,7 @@ class ClientController extends Controller
     {
         $clients = Client::query()
             ->when($request->filled('q'), function ($query) use ($request) {
-                $term = '%' . $request->string('q') . '%';
+                $term = '%'.$request->string('q').'%';
                 $query->where(fn ($q) => $q->where('name', 'like', $term)
                     ->orWhere('document', 'like', $term)
                     ->orWhere('email', 'like', $term)
@@ -26,7 +26,7 @@ class ClientController extends Controller
 
     public function create(): View
     {
-        return view('admin.clients.form', ['client' => new Client()]);
+        return view('admin.clients.form', ['client' => new Client]);
     }
 
     public function store(Request $request): RedirectResponse

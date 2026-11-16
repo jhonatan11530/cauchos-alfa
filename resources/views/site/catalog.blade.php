@@ -1,6 +1,5 @@
 @extends('site.layouts.app')
 
-@section('title', 'Catálogo Mayorista de Repuestos y Llantas para Bicicletas | Cauchos Alfa')
 @section('title', 'Catálogo Mayorista | Cauchos para Motos y Bicicletas | Cauchos Alfa')
 
 @section('schema')
@@ -8,8 +7,6 @@
 {
   "@@context": "https://schema.org",
   "@@type": "CollectionPage",
-  "name": "Catálogo de Repuestos y Llantas para Bicicletas - Cauchos Alfa",
-  "description": "Explora nuestro catálogo completo de llantas, cauchos y repuestos para bicicletas en Cali.",
   "name": "Catálogo de Cauchos para Motos y Bicicletas - Cauchos Alfa",
   "description": "Explora nuestro catálogo de fábrica e importación directa de cauchos, llantas para motos, repuestos de bicicletas y bicicletas en Cali.",
   "url": {!! json_encode(url()->current()) !!},

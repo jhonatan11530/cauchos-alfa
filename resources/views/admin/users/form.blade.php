@@ -4,7 +4,7 @@
 @endsection
 @section('contenido')
     <div class="page-inner mt--5"><div class="card"><div class="card-body">
-        <form action="{{ $user->exists ? route('usuarios.update', $user) : route('usuarios.store') }}" method="POST">
+        <form id="user-form" action="{{ $user->exists ? route('usuarios.update', $user) : route('usuarios.store') }}" method="POST">
             @csrf
             @if ($user->exists) @method('PUT') @endif
             <div class="row">
@@ -20,3 +20,50 @@
         </form>
     </div></div></div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    $('#user-form').validate({
+        rules: {
+            name: {
+                required: true,
+                maxlength: 255
+            },
+            email: {
+                required: true,
+                email: true,
+                maxlength: 255
+            },
+            phone: {
+                maxlength: 50
+            },
+            password: {
+                @if (!$user->exists)
+                required: true,
+                @endif
+                minlength: 8
+            }
+        },
+        messages: {
+            name: {
+                required: "Este campo es obligatorio.",
+                maxlength: "Por favor, no escribas más de 255 caracteres."
+            },
+            email: {
+                required: "Este campo es obligatorio.",
+                email: "Por favor, escribe una dirección de correo válida.",
+                maxlength: "Por favor, no escribas más de 255 caracteres."
+            },
+            phone: {
+                maxlength: "Por favor, no escribas más de 50 caracteres."
+            },
+            password: {
+                required: "Este campo es obligatorio.",
+                minlength: "Por favor, no escribas menos de 8 caracteres."
+            }
+        }
+    });
+});
+</script>
+@endpush

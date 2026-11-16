@@ -9,7 +9,7 @@
     <div class="page-inner mt--5">
         <div class="card">
             <div class="card-body">
-                <form action="{{ $seller->exists ? route('vendedores.update', $seller) : route('vendedores.store') }}"
+                <form id="seller-form" action="{{ $seller->exists ? route('vendedores.update', $seller) : route('vendedores.store') }}"
                     method="POST">
                     @csrf
                     @if ($seller->exists)
@@ -45,3 +45,40 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    $('#seller-form').validate({
+        rules: {
+            name: {
+                required: true,
+                maxlength: 255
+            },
+            seller_code: {
+                required: true,
+                minlength: 2,
+                maxlength: 50
+            },
+            phone: {
+                maxlength: 50
+            }
+        },
+        messages: {
+            name: {
+                required: "Este campo es obligatorio.",
+                maxlength: "Por favor, no escribas más de 255 caracteres."
+            },
+            seller_code: {
+                required: "Este campo es obligatorio.",
+                minlength: "Por favor, no escribas menos de 2 caracteres.",
+                maxlength: "Por favor, no escribas más de 50 caracteres."
+            },
+            phone: {
+                maxlength: "Por favor, no escribas más de 50 caracteres."
+            }
+        }
+    });
+});
+</script>
+@endpush

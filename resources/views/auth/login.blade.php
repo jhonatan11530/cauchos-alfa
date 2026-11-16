@@ -120,7 +120,7 @@
                     </ul>
                 </div>
             @endif
-            <form id="admin-login-form" action="{{ route('login.store') }}" method="POST">
+            <form id="admin-login-form" action="{{ route('login.store') }}" method="POST" novalidate>
                 @csrf
                 @if (config('recaptchav3.sitekey'))
                     {!! RecaptchaV3::field('login') !!}
@@ -155,7 +155,47 @@
         </div>
     </div>
 
+    @push('scripts')
+    <script>
+        $(function () {
+            $('#admin-login-form').validate({
+                rules: {
+                    email: {
+                        required: true,
+                        email: true,
+                        maxlength: 255
+                    },
+                    password: {
+                        required: true
+                    }
+                },
+                messages: {
+                    email: {
+                        required: 'Por favor, ingrese su correo electrónico.',
+                        email: 'Por favor, ingrese un correo electrónico válido.',
+                        maxlength: 'Por favor, no escribas más de 255 caracteres.'
+                    },
+                    password: {
+                        required: 'Por favor, ingrese su contraseña.'
+                    }
+                },
+                submitHandler: function (form) {
+                    form.submit();
+                }
+            });
+
+            $('#admin-login-form input').on('input', function () {
+                $(this).siblings('.invalid-feedback:not([id$="-error"])').remove();
+            });
+        });
+    </script>
+    @endpush
+
     <script src="{{ asset('/js/jquery-3.7.1.min.js') }}"></script>
     <script src="{{ asset('/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('/js/jquery.validate.min.js') }}"></script>
+    <script src="{{ asset('/js/messages_es.min.js') }}"></script>
+    <script src="{{ asset('/js/form-validation.js') }}"></script>
+    @stack('scripts')
 </body>
 </html>

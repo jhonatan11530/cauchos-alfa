@@ -396,10 +396,18 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     function togglePaymentRadio() {
-        const selectedRadio = document.querySelector('.payment-radio:checked');
+        const selectedRadio = document.querySelector('.payment-radio:checked:not(:disabled)');
         const isCredit = selectedRadio && selectedRadio.value === 'credito';
         document.querySelectorAll('.credit-due-container').forEach(container => {
-            container.style.display = isCredit ? 'block' : 'none';
+            const isVisibleSection = $(container).closest('.status-section').is(':visible');
+            if (isVisibleSection && isCredit) {
+                container.style.display = 'block';
+                $(container).find(':input').prop('disabled', false);
+            } else {
+                container.style.display = 'none';
+                $(container).find(':input').prop('disabled', true).removeClass('is-invalid');
+                $(container).find('.invalid-feedback').remove();
+            }
         });
     }
 
@@ -410,15 +418,27 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedOpt = statusSelect.options[statusSelect.selectedIndex];
         const slug = selectedOpt ? selectedOpt.getAttribute('data-slug') : '';
 
-        // Hide all sections
+        // Reset previous validation errors across sections
+        if (window.jQuery && $('#order-status-form').data('validator')) {
+            const validator = $('#order-status-form').validate();
+            validator.resetForm();
+            $('#order-status-form').find('.is-invalid').removeClass('is-invalid');
+            $('#order-status-form').find('.border-danger').removeClass('border-danger');
+        }
+
+        // Hide all sections and disable inputs to prevent corrupting HTTP payloads
         Object.values(sections).forEach(sec => {
-            if (sec) sec.style.display = 'none';
+            if (sec) {
+                sec.style.display = 'none';
+                $(sec).find(':input').prop('disabled', true);
+            }
         });
 
-        // Activate matching section
+        // Activate matching section and enable its inputs
         const activeSec = sections[slug];
         if (activeSec) {
             activeSec.style.display = 'block';
+            $(activeSec).find(':input').prop('disabled', false);
             togglePaymentRadio();
         }
     }
@@ -471,11 +491,19 @@ document.addEventListener('DOMContentLoaded', function () {
             const sigInput = document.getElementById('dispatch_signature');
             if (sigInput) {
                 sigInput.value = canvas.toDataURL('image/png');
+                $('#signature_file').removeClass('is-invalid');
+                $('#signature_file-error').remove();
             }
             if (e.touches) e.preventDefault();
         }
 
-        function end() { drawing = false; }
+        function end() { 
+            drawing = false; 
+            const sigInput = document.getElementById('dispatch_signature');
+            if (sigInput && sigInput.value && $('#order-status-form').data('validator')) {
+                $('#signature_file').valid();
+            }
+        }
 
         canvas.addEventListener('mousedown', start);
         canvas.addEventListener('mousemove', move);
@@ -490,11 +518,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 const sigInput = document.getElementById('dispatch_signature');
                 if (sigInput) sigInput.value = '';
+                if ($('#order-status-form').data('validator') && $('#order-status-form').data('validator').submitted['signature_file']) {
+                    $('#signature_file').valid();
+                }
             });
         }
     }
 
-    // GPS Geolocation API
+    // Geolocation API
     const btnGps = document.getElementById('btn-get-gps');
     const locInput = document.getElementById('delivery_location');
     const latInput = document.getElementById('delivery_latitude');
@@ -520,6 +551,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     btnGps.disabled = false;
                     btnGps.innerHTML = '<i class="fas fa-crosshairs mr-1"></i> Actualizar GPS';
+
+                    if (window.jQuery && $('#order-status-form').data('validator')) {
+                        $(locInput).valid();
+                        if (latInput) $(latInput).valid();
+                        if (lngInput) $(lngInput).valid();
+                    }
                 },
                 function (err) {
                     btnGps.disabled = false;
@@ -529,6 +566,143 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 { enableHighAccuracy: true, timeout: 8000 }
             );
+        });
+    }
+
+    // Order Status Form jQuery Validate
+    if (window.jQuery && jQuery.fn.validate) {
+        $('#order-status-form').validate({
+            rules: {
+                order_status_id: {
+                    required: true
+                },
+                signature_file: {
+                    required: {
+                        depends: function () {
+                            if (!$('#section-despachado').is(':visible')) return false;
+                            const sigVal = $('#dispatch_signature').val();
+                            return !sigVal || sigVal.trim() === '';
+                        }
+                    }
+                },
+                dispatch_photo: {
+                    required: {
+                        depends: function () {
+                            return $('#section-despachado').is(':visible');
+                        }
+                    }
+                },
+                payment_term: {
+                    required: {
+                        depends: function () {
+                            return $('#section-despachado').is(':visible') || $('#section-entregado').is(':visible');
+                        }
+                    }
+                },
+                payment_due_date: {
+                    required: {
+                        depends: function (element) {
+                            return $(element).is(':visible');
+                        }
+                    },
+                    date: true
+                },
+                delivery_photo: {
+                    required: {
+                        depends: function () {
+                            return $('#section-entregado').is(':visible');
+                        }
+                    }
+                },
+                client_location: {
+                    required: {
+                        depends: function () {
+                            return $('#section-entregado').is(':visible');
+                        }
+                    }
+                },
+                delivery_latitude: {
+                    coordLatitude: true
+                },
+                delivery_longitude: {
+                    coordLongitude: true
+                },
+                payment_responsible_id: {
+                    required: {
+                        depends: function () {
+                            return $('#section-cobrado').is(':visible');
+                        }
+                    }
+                },
+                payment_support: {
+                    required: {
+                        depends: function () {
+                            return $('#section-cobrado').is(':visible');
+                        }
+                    }
+                },
+                return_justification_file: {
+                    required: {
+                        depends: function () {
+                            return $('#section-devuelto').is(':visible');
+                        }
+                    }
+                },
+                rejection_reason: {
+                    required: {
+                        depends: function () {
+                            return $('#section-rechazado').is(':visible');
+                        }
+                    },
+                    minlength: 3
+                }
+            },
+            messages: {
+                order_status_id: {
+                    required: 'Por favor, seleccione el nuevo estado del pedido.'
+                },
+                signature_file: {
+                    required: 'La firma de autorización es obligatoria (dibuje en el recuadro o adjunte una imagen).'
+                },
+                dispatch_photo: {
+                    required: 'La fotografía del despacho es obligatoria.'
+                },
+                payment_term: {
+                    required: 'La modalidad de pago es obligatoria.'
+                },
+                payment_due_date: {
+                    required: 'La fecha de vencimiento es obligatoria para crédito.',
+                    date: 'Por favor, ingrese una fecha válida.'
+                },
+                delivery_photo: {
+                    required: 'La fotografía de entrega es obligatoria.'
+                },
+                client_location: {
+                    required: 'La ubicación del cliente es obligatoria.'
+                },
+                delivery_latitude: {
+                    coordLatitude: 'Por favor, ingrese una latitud válida (-90 a 90).'
+                },
+                delivery_longitude: {
+                    coordLongitude: 'Por favor, ingrese una longitud válida (-180 a 180).'
+                },
+                payment_responsible_id: {
+                    required: 'El responsable del cobro es obligatorio.'
+                },
+                payment_support: {
+                    required: 'El archivo de soporte de cobro es obligatorio.'
+                },
+                return_justification_file: {
+                    required: 'El archivo de justificación de devolución es obligatorio.'
+                },
+                rejection_reason: {
+                    required: 'La justificación de cancelación es obligatoria.',
+                    minlength: 'La justificación debe tener al menos 3 caracteres.'
+                }
+            },
+            submitHandler: function (form) {
+                form.submit();
+            }
         });
     }
 });

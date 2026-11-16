@@ -1,4 +1,4 @@
-"@extends('site.layouts.app')
+@extends('site.layouts.app')
 
 @section('title', 'Mi Pedido | Cauchos Alfa')
 
@@ -77,23 +77,24 @@
                 <div class="card shadow-sm border-0 bg-void">
                     <div class="card-body p-4">
                         <h4 class="font-weight-bold mb-4">Finalizar Pedido</h4>
-                        <form method="POST" action="{{ route('pedidos.store') }}">
+                        <form id="seller-order-form" method="POST" action="{{ route('pedidos.store') }}">
                             @csrf
+                            <input type="hidden" name="from_seller_site" value="1">
                             <div class="form-group">
                                 <label class="small font-weight-bold">SELECCIONAR CLIENTE</label>
-                                <select name="client_id" class="form-control custom-select" required>
-                                    <option value="" selected disabled>Elige un cliente...</option>
+                                <select name="client_id" id="client_id" class="form-control custom-select @error('client_id') is-invalid @enderror" required>
+                                    <option value="" disabled {{ old('client_id') ? '' : 'selected' }}>Elige un cliente...</option>
                                     @foreach ($clients as $client)
-                                        <option value="{{ $client->id }}">{{ $client->name }}</option>
+                                        <option value="{{ $client->id }}" @selected(old('client_id') == $client->id)>{{ $client->name }}</option>
                                     @endforeach
                                 </select>
                                 @error('client_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="form-group mt-3">
                                 <label class="small font-weight-bold">TIPO DE FACTURACIÓN</label>
-                                <select name="billing_type" class="form-control custom-select" required>
+                                <select name="billing_type" id="billing_type" class="form-control custom-select @error('billing_type') is-invalid @enderror" required>
                                     <option value="remision" @selected(old('billing_type') == 'remision')>Remisión</option>
                                     <option value="factura_electronica" @selected(old('billing_type') == 'factura_electronica')>Factura Electrónica</option>
                                 </select>
@@ -103,7 +104,10 @@
                             </div>
                             <div class="mb-3 mt-3">
                                 <label class="small font-weight-bold">OBSERVACIONES</label>
-                                <textarea name="notes" rows="3" class="form-control">{{ old('notes') }}</textarea>
+                                <textarea name="notes" id="notes" rows="3" class="form-control @error('notes') is-invalid @enderror" maxlength="1000">{{ old('notes') }}</textarea>
+                                @error('notes')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
                             </div>
                             @php
                                 $oldItems = old('items');
@@ -123,4 +127,39 @@
             </div>
         </div>
     </div>
-@endsection"
+@endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    $('#seller-order-form').validate({
+        rules: {
+            client_id: {
+                required: true
+            },
+            billing_type: {
+                required: true
+            },
+            notes: {
+                maxlength: 1000
+            }
+        },
+        messages: {
+            client_id: {
+                required: "Por favor selecciona un cliente para el pedido."
+            },
+            billing_type: {
+                required: "Por favor selecciona el tipo de facturación."
+            },
+            notes: {
+                maxlength: "Las observaciones no pueden superar los 1000 caracteres."
+            }
+        },
+        submitHandler: function (form) {
+            form.submit();
+        }
+    });
+});
+</script>
+@endpush
+

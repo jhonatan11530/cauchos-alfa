@@ -9,7 +9,7 @@
     <div class="page-inner mt--5">
         <div class="card">
             <div class="card-body">
-                <form action="{{ $product->exists ? route('productos.update', $product) : route('productos.store') }}"
+                <form id="productForm" action="{{ $product->exists ? route('productos.update', $product) : route('productos.store') }}"
                     method="POST" enctype="multipart/form-data">
                     @csrf
                     @if ($product->exists)
@@ -1931,16 +1931,48 @@
         }
     };
 
-    // Prevenir envío prematuro si las imágenes aún se están procesando
-    const form = document.querySelector('form[action*="productos"]');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            if (activeProcessCount > 0) {
-                e.preventDefault();
-                if (window.toastr) {
-                    toastr.warning('Por favor espera a que finalice el procesamiento con IA antes de guardar.');
+    // Validación con jQuery Validate y guardia de procesamiento de imágenes con IA
+    const $productForm = $('#productForm').length ? $('#productForm') : $('form[action*="productos"]');
+    if ($productForm.length) {
+        $productForm.validate({
+            rules: {
+                name: {
+                    required: true,
+                    maxlength: 255
+                },
+                reference: {
+                    maxlength: 100
+                },
+                availability: {
+                    required: true
                 }
+            },
+            messages: {
+                name: {
+                    required: 'Por favor, ingrese el nombre del producto.',
+                    maxlength: 'El nombre del producto no puede superar los 255 caracteres.'
+                },
+                reference: {
+                    maxlength: 'La referencia no puede superar los 100 caracteres.'
+                },
+                availability: {
+                    required: 'Por favor, seleccione la disponibilidad.'
+                }
+            },
+            submitHandler: function (form, e) {
+                if (activeProcessCount > 0) {
+                    if (e && e.preventDefault) e.preventDefault();
+                    if (window.toastr) {
+                        toastr.warning('Por favor espera a que finalice el procesamiento con IA antes de guardar.');
+                    }
+                    return false;
+                }
+                form.submit();
             }
+        });
+
+        $productForm.find('input, select, textarea').on('input change', function () {
+            $(this).siblings('.invalid-feedback:not([id$="-error"])').remove();
         });
     }
 </script>

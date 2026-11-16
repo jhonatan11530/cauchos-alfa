@@ -123,7 +123,7 @@
             @auth
                 @if(auth()->user()->isSeller())
                     <div class="mt-4 d-flex flex-wrap align-items-center" style="gap: 15px;">
-                        <form action="{{ route('site.seller.add') }}" method="POST" class="m-0">
+                        <form action="{{ route('site.seller.add') }}" method="POST" id="seller-product-add-to-cart-form" class="m-0 form-seller-add-to-cart">
                             @csrf
                             <input type="hidden" name="product_id" value="{{ $product->id }}">
                             <div class="d-flex align-items-center">
@@ -172,3 +172,50 @@
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    var $form = $('#seller-product-add-to-cart-form');
+    if ($form.length) {
+        $form.validate({
+            rules: {
+                quantity: {
+                    required: true,
+                    digits: true,
+                    min: 1
+                }
+            },
+            messages: {
+                quantity: {
+                    required: 'Ingresa la cantidad.',
+                    digits: 'Solo se permiten números enteros.',
+                    min: 'La cantidad mínima debe ser al menos {0}.'
+                }
+            },
+            errorElement: 'span',
+            errorClass: 'invalid-feedback d-block',
+            highlight: function (element) {
+                $(element).addClass('is-invalid').removeClass('is-valid');
+            },
+            unhighlight: function (element) {
+                $(element).removeClass('is-invalid');
+            },
+            errorPlacement: function (error, element) {
+                if (element.closest('.d-flex').length && !element.closest('.d-flex').is('form')) {
+                    error.insertAfter(element.closest('.d-flex'));
+                } else if (element.closest('.input-group').length) {
+                    error.insertAfter(element.closest('.input-group'));
+                } else {
+                    error.insertAfter(element);
+                }
+            },
+            submitHandler: function (form) {
+                form.submit();
+            }
+        });
+    }
+});
+</script>
+@endpush
+

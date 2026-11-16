@@ -42,6 +42,9 @@
 
     <script src="{{ asset('/js/jquery-3.7.1.min.js') }}"></script>
     <script src="{{ asset('/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('/js/jquery.validate.min.js') }}"></script>
+    <script src="{{ asset('/js/messages_es.min.js') }}"></script>
+    <script src="{{ asset('/js/form-validation.js') }}"></script>
     <script src="{{ asset('/js/toastr.min.js') }}"></script>
     <script src="{{ asset('/js/select2.min.js') }}"></script>
     <script>

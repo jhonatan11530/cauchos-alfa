@@ -183,7 +183,7 @@
 
                                 @auth
                                     @if (auth()->user()->isSeller())
-                                        <form method="POST" action="{{ route('site.seller.add') }}" class="mt-2">
+                                        <form method="POST" action="{{ route('site.seller.add') }}" id="form-add-to-cart-{{ $product->id }}" class="mt-2 form-seller-add-to-cart">
                                             @csrf
                                             <input type="hidden" name="product_id" value="{{ $product->id }}">
                                             <div class="input-group input-group-sm">
@@ -228,3 +228,47 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    $('form.form-seller-add-to-cart').each(function () {
+        $(this).validate({
+            rules: {
+                quantity: {
+                    required: true,
+                    digits: true,
+                    min: 1
+                }
+            },
+            messages: {
+                quantity: {
+                    required: 'Ingresa la cantidad.',
+                    digits: 'Solo se permiten números enteros.',
+                    min: 'La cantidad mínima debe ser al menos {0}.'
+                }
+            },
+            errorElement: 'span',
+            errorClass: 'invalid-feedback d-block',
+            highlight: function (element) {
+                $(element).addClass('is-invalid').removeClass('is-valid');
+            },
+            unhighlight: function (element) {
+                $(element).removeClass('is-invalid');
+            },
+            errorPlacement: function (error, element) {
+                if (element.closest('.input-group').length) {
+                    error.insertAfter(element.closest('.input-group'));
+                } else {
+                    error.insertAfter(element);
+                }
+            },
+            submitHandler: function (form) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+@endpush
+

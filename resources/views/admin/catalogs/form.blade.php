@@ -3,7 +3,7 @@
 @section('contenido')
     <div class="row"><div class="col-md-12"><div class="card card-body">
         <h4 class="card-title">{{ $catalog->exists ? 'Editar Catálogo' : 'Nuevo Catálogo' }}</h4>
-        <form action="{{ $catalog->exists ? route('catalogos.update', $catalog) : route('catalogos.store') }}" method="POST" enctype="multipart/form-data">
+        <form id="catalog-form" action="{{ $catalog->exists ? route('catalogos.update', $catalog) : route('catalogos.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
             @if($catalog->exists) @method('PUT') @endif
 
@@ -77,7 +77,68 @@
 
     @push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        $(document).ready(function() {
+            if (window.jQuery && jQuery.fn.validate) {
+                if (!$.validator.methods.imageFile) {
+                    $.validator.addMethod('imageFile', function (value, element) {
+                        return this.optional(element) || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(value);
+                    }, 'Por favor, seleccione un archivo de imagen válido (jpg, png, webp, gif).');
+                }
+
+                $('#catalog-form').validate({
+                    rules: {
+                        name: {
+                            required: true,
+                            maxlength: 255
+                        },
+                        company_name: {
+                            maxlength: 255
+                        },
+                        contact_email: {
+                            email: true,
+                            maxlength: 255
+                        },
+                        contact_phone: {
+                            maxlength: 50
+                        },
+                        contact_address: {
+                            maxlength: 255
+                        },
+                        template: {
+                            required: true
+                        },
+                        logo: {
+                            imageFile: true
+                        }
+                    },
+                    messages: {
+                        name: {
+                            required: "Este campo es obligatorio.",
+                            maxlength: "Por favor, no escribas más de 255 caracteres."
+                        },
+                        company_name: {
+                            maxlength: "Por favor, no escribas más de 255 caracteres."
+                        },
+                        contact_email: {
+                            email: "Por favor, escribe una dirección de correo válida.",
+                            maxlength: "Por favor, no escribas más de 255 caracteres."
+                        },
+                        contact_phone: {
+                            maxlength: "Por favor, no escribas más de 50 caracteres."
+                        },
+                        contact_address: {
+                            maxlength: "Por favor, no escribas más de 255 caracteres."
+                        },
+                        template: {
+                            required: "Este campo es obligatorio."
+                        },
+                        logo: {
+                            imageFile: "Por favor, seleccione un archivo de imagen válido."
+                        }
+                    }
+                });
+            }
+
             const globalCheckbox = document.getElementById('selectAllGlobal');
             const categoryCheckboxes = document.querySelectorAll('.select-category');
             const allProductCheckboxes = document.querySelectorAll('.product-checkbox');

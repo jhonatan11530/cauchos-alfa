@@ -5,7 +5,7 @@
 @section('contenido')
     <div class="page-inner mt--5">
         <div class="card"><div class="card-body">
-            <form action="{{ $client->exists ? route('clientes.update', $client) : route('clientes.store') }}" method="POST">
+            <form id="client-form" action="{{ $client->exists ? route('clientes.update', $client) : route('clientes.store') }}" method="POST">
                 @csrf
                 @if ($client->exists) @method('PUT') @endif
                 <div class="row">
@@ -24,3 +24,56 @@
         </div></div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    $('#client-form').validate({
+        rules: {
+            name: {
+                required: true,
+                maxlength: 255
+            },
+            document: {
+                maxlength: 100
+            },
+            email: {
+                email: true,
+                maxlength: 255
+            },
+            phone: {
+                maxlength: 50
+            },
+            address: {
+                maxlength: 255
+            },
+            city: {
+                maxlength: 100
+            }
+        },
+        messages: {
+            name: {
+                required: "Este campo es obligatorio.",
+                maxlength: "Por favor, no escribas más de 255 caracteres."
+            },
+            document: {
+                maxlength: "Por favor, no escribas más de 100 caracteres."
+            },
+            email: {
+                email: "Por favor, escribe una dirección de correo válida.",
+                maxlength: "Por favor, no escribas más de 255 caracteres."
+            },
+            phone: {
+                maxlength: "Por favor, no escribas más de 50 caracteres."
+            },
+            address: {
+                maxlength: "Por favor, no escribas más de 255 caracteres."
+            },
+            city: {
+                maxlength: "Por favor, no escribas más de 100 caracteres."
+            }
+        }
+    });
+});
+</script>
+@endpush

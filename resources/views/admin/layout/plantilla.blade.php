@@ -183,6 +183,9 @@
     <!--   Core JS Files   -->
     <script src="{{ asset('/js/jquery-3.7.1.min.js') }}"></script>
     <script src="{{ asset('/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('/js/jquery.validate.min.js') }}"></script>
+    <script src="{{ asset('/js/messages_es.min.js') }}"></script>
+    <script src="{{ asset('/js/form-validation.js') }}"></script>
 
     <!-- jQuery UI -->
     <script src="{{ asset('/js/plugin/jquery-ui-1.12.1.custom/jquery-ui.min.js') }}"></script>

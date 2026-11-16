@@ -15,7 +15,7 @@
         }
     </style>
     <div class="page-inner mt--5"><div class="card"><div class="card-body">
-        <form action="{{ $order->exists ? route('pedidos.update', $order) : route('pedidos.store') }}" method="POST">
+        <form id="order-form" action="{{ $order->exists ? route('pedidos.update', $order) : route('pedidos.store') }}" method="POST">
             @csrf
             @if ($order->exists) @method('PUT') @endif
             <div class="row">
@@ -152,6 +152,20 @@
             }
         }
 
+        function checkItemsCount() {
+            const rowCount = $('#items-table tbody tr.item-row').length;
+            $('#items-table-error').remove();
+            if (rowCount < 1) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('Debe agregar al menos un producto al pedido.');
+                }
+                const $err = $('<span id="items-table-error" class="invalid-feedback d-block mt-2 font-weight-bold">Debe agregar al menos un producto al pedido.</span>');
+                $('#items-table').closest('.table-responsive').after($err);
+                return false;
+            }
+            return true;
+        }
+
         function addProductToTable(productId, productName, productReference) {
             if (!productId) return;
 
@@ -161,6 +175,9 @@
                 if (qtyInput) {
                     qtyInput.value = (parseInt(qtyInput.value, 10) || 1) + 1;
                     qtyInput.focus();
+                    if (window.jQuery && jQuery.fn.valid) {
+                        $(qtyInput).valid();
+                    }
                 }
                 return;
             }
@@ -188,6 +205,8 @@
             `;
             tbody.appendChild(row);
             rowIndex++;
+
+            $('#items-table-error').remove();
         }
 
         function handleProductSelection(selectEl) {
@@ -222,6 +241,12 @@
             jQuery('#product-search-select').on('change', function () {
                 handleProductSelection(this);
             });
+
+            jQuery('#client-select').on('change.select2 change', function () {
+                if (window.jQuery && jQuery.fn.valid) {
+                    $(this).valid();
+                }
+            });
         } else if (productSearchSelect) {
             productSearchSelect.addEventListener('change', function () {
                 handleProductSelection(this);
@@ -237,6 +262,60 @@
                 }
             }
         });
+
+        // jQuery Validate Configuration
+        if (window.jQuery && jQuery.fn.validate) {
+            $.validator.addClassRules('item-quantity', {
+                required: true,
+                digits: true,
+                min: 1,
+                messages: {
+                    required: 'La cantidad es obligatoria.',
+                    digits: 'La cantidad debe ser un número entero.',
+                    min: 'La cantidad mínima es 1.'
+                }
+            });
+
+            $('#order-form').validate({
+                rules: {
+                    client_id: {
+                        required: true
+                    },
+                    billing_type: {
+                        required: true
+                    },
+                    code: {
+                        maxlength: 100
+                    },
+                    ordered_at: {
+                        date: true
+                    }
+                },
+                messages: {
+                    client_id: {
+                        required: 'Por favor, seleccione un cliente.'
+                    },
+                    billing_type: {
+                        required: 'Por favor, seleccione el tipo de facturación.'
+                    },
+                    code: {
+                        maxlength: 'El código no puede exceder 100 caracteres.'
+                    },
+                    ordered_at: {
+                        date: 'Por favor, ingrese una fecha válida.'
+                    }
+                },
+                invalidHandler: function (event, validator) {
+                    checkItemsCount();
+                },
+                submitHandler: function (form) {
+                    if (!checkItemsCount()) {
+                        return false;
+                    }
+                    form.submit();
+                }
+            });
+        }
     });
 </script>
 @endpush

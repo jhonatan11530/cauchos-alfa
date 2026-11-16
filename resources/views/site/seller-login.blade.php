@@ -62,3 +62,42 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    $('#seller-login-form').validate({
+        rules: {
+            code: {
+                required: true,
+                minlength: 2,
+                normalizer: function (value) {
+                    return $.trim(value);
+                }
+            }
+        },
+        messages: {
+            code: {
+                required: 'Por favor ingresa tu código de vendedor.',
+                minlength: 'El código debe tener al menos {0} caracteres.'
+            }
+        },
+        errorElement: 'span',
+        errorClass: 'invalid-feedback d-block',
+        highlight: function (element) {
+            $(element).addClass('is-invalid').removeClass('is-valid');
+        },
+        unhighlight: function (element) {
+            $(element).removeClass('is-invalid');
+        },
+        errorPlacement: function (error, element) {
+            error.insertAfter(element);
+        },
+        submitHandler: function (form) {
+            form.submit();
+        }
+    });
+});
+</script>
+@endpush
+

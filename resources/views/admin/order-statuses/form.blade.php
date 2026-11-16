@@ -4,7 +4,7 @@
 @endsection
 @section('contenido')
     <div class="page-inner mt--5"><div class="card"><div class="card-body">
-        <form action="{{ $status->exists ? route('estados-pedido.update', $status) : route('estados-pedido.store') }}" method="POST">
+        <form id="order-status-crud-form" action="{{ $status->exists ? route('estados-pedido.update', $status) : route('estados-pedido.store') }}" method="POST">
             @csrf
             @if ($status->exists) @method('PUT') @endif
             <div class="row">
@@ -22,3 +22,42 @@
         </form>
     </div></div></div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    $('#order-status-crud-form').validate({
+        rules: {
+            name: {
+                required: true,
+                maxlength: 255
+            },
+            color: {
+                required: true,
+                maxlength: 20
+            },
+            sort_order: {
+                required: true,
+                digits: true,
+                min: 0
+            }
+        },
+        messages: {
+            name: {
+                required: "Este campo es obligatorio.",
+                maxlength: "Por favor, no escribas más de 255 caracteres."
+            },
+            color: {
+                required: "Este campo es obligatorio.",
+                maxlength: "Por favor, no escribas más de 20 caracteres."
+            },
+            sort_order: {
+                required: "Este campo es obligatorio.",
+                digits: "Por favor, escribe sólo dígitos.",
+                min: "Por favor, escribe un valor mayor o igual a 0."
+            }
+        }
+    });
+});
+</script>
+@endpush

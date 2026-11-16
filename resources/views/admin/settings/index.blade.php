@@ -40,7 +40,7 @@
                             </div>
                         </div>
 
-                        <form action="{{ route('settings.update') }}" method="POST" id="promptForm">
+                        <form action="{{ route('settings.update') }}" method="POST" id="promptForm" novalidate>
                             @csrf
                             @method('PUT')
 
@@ -157,6 +157,30 @@
                         toastr.warning('Se ha cargado el prompt canónico en el editor. Haz clic en "Guardar Cambios" para confirmar.');
                     }
                 }
+            });
+        }
+
+        if (typeof $ !== 'undefined' && $.fn.validate) {
+            $('#promptForm').validate({
+                rules: {
+                    prompt_gemini: {
+                        required: true,
+                        minlength: 10
+                    }
+                },
+                messages: {
+                    prompt_gemini: {
+                        required: 'El prompt de Gemini no puede estar vacío.',
+                        minlength: 'El prompt debe tener al menos 10 caracteres.'
+                    }
+                },
+                submitHandler: function (form) {
+                    form.submit();
+                }
+            });
+
+            $('#prompt_gemini').on('input', function () {
+                $(this).siblings('.invalid-feedback:not([id$="-error"])').remove();
             });
         }
     });

@@ -5,7 +5,7 @@
 @section('contenido')
     <div class="page-inner mt--5">
         <div class="card"><div class="card-body">
-            <form action="{{ $category->exists ? route('categoria.update', $category) : route('categoria.store') }}" method="POST">
+            <form id="category-form" action="{{ $category->exists ? route('categoria.update', $category) : route('categoria.store') }}" method="POST">
                 @csrf
                 @if ($category->exists) @method('PUT') @endif
                 <div class="form-group"><label>Nombre</label><input name="name" class="form-control" value="{{ old('name', $category->name) }}" required></div>
@@ -17,3 +17,24 @@
         </div></div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    $('#category-form').validate({
+        rules: {
+            name: {
+                required: true,
+                maxlength: 255
+            }
+        },
+        messages: {
+            name: {
+                required: "Este campo es obligatorio.",
+                maxlength: "Por favor, no escribas más de 255 caracteres."
+            }
+        }
+    });
+});
+</script>
+@endpush

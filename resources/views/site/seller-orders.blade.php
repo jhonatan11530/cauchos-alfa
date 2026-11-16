@@ -180,7 +180,7 @@
         <div class="modal fade" id="modal-deliver-{{ $order->id }}" tabindex="-1" role="dialog" aria-labelledby="modalLabel-{{ $order->id }}" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content shadow">
-                    <form action="{{ route('site.seller.orders.deliver', $order) }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('site.seller.orders.deliver', $order) }}" method="POST" enctype="multipart/form-data" class="form-seller-deliver" id="form-deliver-{{ $order->id }}">
                         @csrf
                         <div class="modal-header bg-dark text-white">
                             <h5 class="modal-title font-weight-bold" id="modalLabel-{{ $order->id }}">
@@ -282,57 +282,142 @@
     @endif
 @endforeach
 
+@endsection
+
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const gpsButtons = document.querySelectorAll('.btn-gps');
+$(function () {
+    'use strict';
 
-    gpsButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-            const orderId = this.getAttribute('data-order-id');
-            const latInput = document.getElementById('lat-' + orderId);
-            const lngInput = document.getElementById('lng-' + orderId);
-            const locInput = document.getElementById('loc-' + orderId);
-            const statusDiv = document.getElementById('gps-status-' + orderId);
-
-            if (!navigator.geolocation) {
-                alert('La geolocalización no está soportada en este navegador.');
-                return;
+    // 1. Initialize jQuery Validate on all seller delivery modal forms
+    $('form.form-seller-deliver').each(function () {
+        $(this).validate({
+            rules: {
+                delivery_photo: {
+                    required: true
+                },
+                delivery_latitude: {
+                    required: true,
+                    number: true,
+                    coordLatitude: true
+                },
+                delivery_longitude: {
+                    required: true,
+                    number: true,
+                    coordLongitude: true
+                },
+                client_location: {
+                    maxlength: 255
+                },
+                observation: {
+                    maxlength: 500
+                }
+            },
+            messages: {
+                delivery_photo: {
+                    required: "La fotografía de entrega es obligatoria."
+                },
+                delivery_latitude: {
+                    required: "Las coordenadas de latitud son obligatorias.",
+                    number: "La latitud debe ser un valor numérico válido.",
+                    coordLatitude: "La latitud debe estar comprendida entre -90 y 90 grados."
+                },
+                delivery_longitude: {
+                    required: "Las coordenadas de longitud son obligatorias.",
+                    number: "La longitud debe ser un valor numérico válido.",
+                    coordLongitude: "La longitud debe estar comprendida entre -180 y 180 grados."
+                },
+                client_location: {
+                    maxlength: "La dirección no puede exceder los {0} caracteres."
+                },
+                observation: {
+                    maxlength: "Las observaciones no pueden exceder los {0} caracteres."
+                }
+            },
+            submitHandler: function (form) {
+                form.submit();
             }
-
-            button.disabled = true;
-            const originalHtml = button.innerHTML;
-            button.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Obteniendo GPS...';
-
-            navigator.geolocation.getCurrentPosition(
-                function (position) {
-                    const lat = position.coords.latitude.toFixed(8);
-                    const lng = position.coords.longitude.toFixed(8);
-
-                    if (latInput) latInput.value = lat;
-                    if (lngInput) lngInput.value = lng;
-                    if (locInput && (!locInput.value || locInput.value.trim() === '')) {
-                        locInput.value = position.coords.latitude.toFixed(6) + ', ' + position.coords.longitude.toFixed(6);
-                    }
-
-                    if (statusDiv) {
-                        statusDiv.innerHTML = '<span class="text-success"><i class="bi bi-check-circle-fill"></i> GPS detectado (precisión ±' + Math.round(position.coords.accuracy) + 'm)</span>';
-                    }
-
-                    button.disabled = false;
-                    button.innerHTML = '<i class="bi bi-check2 mr-1"></i> GPS Actualizado';
-                },
-                function (error) {
-                    button.disabled = false;
-                    button.innerHTML = originalHtml;
-                    if (statusDiv) {
-                        statusDiv.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle-fill"></i> No se pudo obtener el GPS (' + error.message + '). Ingrese las coordenadas manualmente.</span>';
-                    }
-                    if (latInput) latInput.focus();
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
         });
+    });
+
+    // 2. Clear validation error immediately when a photo is selected
+    $(document).on('change', 'form.form-seller-deliver input[type="file"][name="delivery_photo"]', function () {
+        if (typeof $(this).valid === 'function') {
+            $(this).valid();
+        }
+    });
+
+    // 3. Reset validation errors when a delivery modal is dismissed
+    $('.modal').on('hidden.bs.modal', function () {
+        var $form = $(this).find('form.form-seller-deliver');
+        if ($form.length && $form.data('validator')) {
+            $form.data('validator').resetForm();
+            $form.find('.is-invalid').removeClass('is-invalid');
+        }
+    });
+
+    // 4. GPS Auto-detection with real-time coordinate validation clearance
+    $(document).on('click', '.btn-gps', function () {
+        var $button = $(this);
+        var orderId = $button.data('order-id');
+        var $latInput = $('#lat-' + orderId);
+        var $lngInput = $('#lng-' + orderId);
+        var $locInput = $('#loc-' + orderId);
+        var $statusDiv = $('#gps-status-' + orderId);
+
+        if (!navigator.geolocation) {
+            alert('La geolocalización no está soportada en este navegador.');
+            return;
+        }
+
+        $button.prop('disabled', true);
+        var originalHtml = $button.html();
+        $button.html('<span class="spinner-border spinner-border-sm mr-1"></span> Obteniendo GPS...');
+
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                var lat = position.coords.latitude.toFixed(8);
+                var lng = position.coords.longitude.toFixed(8);
+
+                if ($latInput.length) {
+                    $latInput.val(lat);
+                    if (typeof $latInput.valid === 'function') {
+                        $latInput.valid();
+                    }
+                }
+
+                if ($lngInput.length) {
+                    $lngInput.val(lng);
+                    if (typeof $lngInput.valid === 'function') {
+                        $lngInput.valid();
+                    }
+                }
+
+                if ($locInput.length && (!$locInput.val() || $.trim($locInput.val()) === '')) {
+                    $locInput.val(position.coords.latitude.toFixed(6) + ', ' + position.coords.longitude.toFixed(6));
+                    if (typeof $locInput.valid === 'function') {
+                        $locInput.valid();
+                    }
+                }
+
+                if ($statusDiv.length) {
+                    $statusDiv.html('<span class="text-success"><i class="bi bi-check-circle-fill"></i> GPS detectado (precisión ±' + Math.round(position.coords.accuracy) + 'm)</span>');
+                }
+
+                $button.prop('disabled', false).html('<i class="bi bi-check2 mr-1"></i> GPS Actualizado');
+            },
+            function (error) {
+                $button.prop('disabled', false).html(originalHtml);
+                if ($statusDiv.length) {
+                    $statusDiv.html('<span class="text-danger"><i class="bi bi-exclamation-circle-fill"></i> No se pudo obtener el GPS (' + error.message + '). Ingrese las coordenadas manualmente.</span>');
+                }
+                if ($latInput.length) {
+                    $latInput.trigger('focus');
+                }
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
     });
 });
 </script>
-@endsection
+@endpush

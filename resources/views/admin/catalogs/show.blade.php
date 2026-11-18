@@ -11,8 +11,8 @@
         <table class="table">
             <thead><tr><th>Producto</th><th>Referencia</th><th>Categoría</th></tr></thead>
             <tbody>
-                @forelse ($catalog->products as $product)
-                    <tr><td>{{ $product->name }}</td><td>{{ $product->reference }}</td><td>{{ $product->category->name ?? '' }}</td></tr>
+                @forelse ($orderedProducts ?? $catalog->products as $product)
+                    <tr><td>{{ $product->name }}</td><td>{{ $product->reference }}</td><td>{{ $product->category->name ?? 'Otros Productos' }}</td></tr>
                 @empty
                     <tr><td colspan="3" class="text-center">Este catálogo no tiene productos.</td></tr>
                 @endforelse

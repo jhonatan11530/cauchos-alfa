@@ -379,22 +379,48 @@ class SiteController extends Controller
                 ->with('warning', 'No hay ningún catálogo de productos disponible para descargar.');
         }
 
-        $catalog->load(['products.category', 'products.images']);
+        $orderedProducts = $catalog->orderedProductsForPdf();
+        $productsByCategory = $catalog->groupedOrderedProductsForPdf();
 
-        $productsByCategory = $catalog->products->groupBy(function ($product) {
-            return $product->category?->name ?? 'Otros Productos';
-        });
-
-        $template = $catalog->template ?: 'default';
-        $viewName = view()->exists('admin.catalogs.templates.'.$template)
-            ? 'admin.catalogs.templates.'.$template
-            : 'admin.catalogs.templates.default';
-
-        $pdf = app('dompdf.wrapper')->loadView($viewName, [
+        $pdf = app('dompdf.wrapper')->loadView($catalog->resolveTemplateView(), [
             'catalog' => $catalog,
+            'orderedProducts' => $orderedProducts,
             'productsByCategory' => $productsByCategory,
         ]);
 
         return $pdf->download('catalogo-'.$catalog->id.'.pdf');
+    }
+
+    /**
+     * Carga los productos de un pedido anterior en el carrito del vendedor para repetirlo.
+     */
+    public function repeatSellerOrder(Order $pedido): RedirectResponse
+    {
+        $user = auth()->user();
+        if (! $user || (! $user->isSeller() && ! $user->isAdmin())) {
+            abort(403, 'Acceso denegado.');
+        }
+
+        if ($user->isSeller() && (int) $pedido->created_by !== (int) $user->id) {
+            abort(403, 'No tienes permiso para repetir este pedido.');
+        }
+
+        $cart = app(SellerCart::class);
+        $pedido->load('items.product');
+
+        $addedCount = 0;
+        foreach ($pedido->items as $item) {
+            if ($item->product && $item->product->is_active) {
+                $cart->add($item->product_id, (int) $item->quantity);
+                $addedCount++;
+            }
+        }
+
+        if ($addedCount === 0) {
+            return back()->with('error', 'Los productos de este pedido ya no se encuentran activos.');
+        }
+
+        return redirect()->route('site.seller.order')
+            ->with('success', "Se cargaron {$addedCount} productos del pedido {$pedido->code} al carrito.");
     }
 }

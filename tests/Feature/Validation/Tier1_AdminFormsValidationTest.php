@@ -386,9 +386,42 @@ class Tier1_AdminFormsValidationTest extends TestCase
         $response->assertOk();
         $response->assertSee('name="template"', false);
         $response->assertSee('value="default"', false);
-        $response->assertSee('value="modern"', false);
-        $response->assertSee('value="classic"', false);
         $response->assertSee('value="catalogo-web"', false);
+        $response->assertDontSee('value="modern"', false);
+        $response->assertDontSee('value="classic"', false);
+        $response->assertDontSee('Moderno (Fondo Blanco con Grilla)');
+        $response->assertDontSee('Lista Minimalista');
+    }
+
+    public function test_admin_catalog_rejects_removed_modern_and_classic_templates(): void
+    {
+        foreach (['modern', 'classic'] as $removedTemplate) {
+            $storeResponse = $this->actingAs($this->admin)
+                ->from(route('catalogos.create'))
+                ->post(route('catalogos.store'), [
+                    'name' => 'Catálogo Inválido',
+                    'template' => $removedTemplate,
+                ]);
+            $storeResponse->assertRedirect(route('catalogos.create'));
+            $storeResponse->assertSessionHasErrors(['template']);
+        }
+
+        $catalog = Catalog::create([
+            'name' => 'Catálogo Existente',
+            'template' => 'default',
+            'is_active' => true,
+        ]);
+
+        foreach (['modern', 'classic'] as $removedTemplate) {
+            $updateResponse = $this->actingAs($this->admin)
+                ->from(route('catalogos.edit', $catalog))
+                ->put(route('catalogos.update', $catalog), [
+                    'name' => 'Catálogo Existente',
+                    'template' => $removedTemplate,
+                ]);
+            $updateResponse->assertRedirect(route('catalogos.edit', $catalog));
+            $updateResponse->assertSessionHasErrors(['template']);
+        }
     }
 
     public function test_admin_catalog_form_contact_email_has_email_type(): void

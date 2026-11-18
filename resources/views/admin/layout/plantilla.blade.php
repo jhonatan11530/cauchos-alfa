@@ -84,6 +84,18 @@
                                 <p>Pedidos</p>
                             </a>
                         </li>
+                        <li class="nav-item {{ request()->routeIs('dispatch.*') ? 'active' : '' }}">
+                            <a href="{{ route('dispatch.index') }}">
+                                <i class="fas fa-truck-loading"></i>
+                                <p>Despachos</p>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ request()->routeIs('cartera.*') ? 'active' : '' }}">
+                            <a href="{{ route('cartera.index') }}">
+                                <i class="fas fa-hand-holding-usd"></i>
+                                <p>Cartera y Cobros</p>
+                            </a>
+                        </li>
                         <li class="nav-section">
                             <h4 class="text-section">Opciones</h4>
                         </li>

@@ -1,8 +1,27 @@
 @extends('admin.layout.plantilla')
 @section('banner')
-    <div class="d-flex justify-content-between align-items-center w-100">
+    @php
+        $phoneClean = $order->client?->phone ? preg_replace('/[^0-9]/', '', $order->client->phone) : null;
+        if ($phoneClean && !str_starts_with($phoneClean, '57') && strlen($phoneClean) == 10) {
+            $phoneClean = '57' . $phoneClean;
+        }
+        $whatsappMsg = 'Hola ' . ($order->client?->name ?? 'Cliente') . ', le escribimos de Cauchos Alfa respecto a su pedido ' . $order->code . '. Estado actual: ' . ($order->status?->name ?? 'En proceso') . '.';
+    @endphp
+    <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
         <div><h2 class="text-white pb-2 fw-bold">Pedido {{ $order->code }}</h2><h5 class="text-white op-7 mb-2">Detalle y trazabilidad</h5></div>
-        <a href="{{ route('pedidos.pdf', $order) }}" target="_blank" class="btn btn-primary"><i class="fas fa-print"></i> Imprimir</a>
+        <div class="d-flex align-items-center flex-wrap">
+            @if ($phoneClean)
+                <a href="https://wa.me/{{ $phoneClean }}?text={{ urlencode($whatsappMsg) }}" target="_blank" class="btn btn-success mr-2 mb-1">
+                    <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                </a>
+            @endif
+            <a href="{{ route('pedidos.create', ['repeat' => $order->id]) }}" class="btn btn-info mr-2 mb-1">
+                <i class="fas fa-redo-alt mr-1"></i> Repetir Pedido
+            </a>
+            <a href="{{ route('pedidos.pdf', $order) }}" target="_blank" class="btn btn-primary mb-1">
+                <i class="fas fa-print mr-1"></i> Imprimir
+            </a>
+        </div>
     </div>
 @endsection
 @section('contenido')

@@ -134,18 +134,25 @@
                                 <td class="py-3 text-center text-nowrap">
                                     @if ($isDispatched)
                                         <button type="button"
-                                                class="btn btn-sm btn-success font-weight-bold"
+                                                class="btn btn-sm btn-success font-weight-bold mr-1"
                                                 data-toggle="modal"
                                                 data-target="#modal-deliver-{{ $order->id }}">
                                             <i class="bi bi-check2-circle mr-1"></i> Registrar Entrega
                                         </button>
                                     @elseif ($isDelivered)
-                                        <span class="text-success small font-weight-bold">
+                                        <span class="text-success small font-weight-bold mr-2">
                                             <i class="bi bi-patch-check-fill"></i> Completado
                                         </span>
                                     @else
-                                        <span class="text-muted small">Pendiente de despacho</span>
+                                        <span class="text-muted small mr-2">Pendiente de despacho</span>
                                     @endif
+
+                                    <form method="POST" action="{{ route('site.seller.orders.repeat', $order) }}" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Cargar productos en el carrito para repetir">
+                                            <i class="bi bi-arrow-repeat mr-1"></i> Repetir
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         @empty

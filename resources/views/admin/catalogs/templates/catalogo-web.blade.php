@@ -20,6 +20,8 @@
 
         /* Utilidades */
         .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
         .text-red { color: #e60012; }
         .text-white { color: #ffffff; }
         .text-grey { color: #888888; }
@@ -85,80 +87,133 @@
 
         /* --- PÁGINAS INTERNAS --- */
         .page {
+            padding: 22px 26px;
+            page-break-before: always;
+        }
+
+        .contact-page {
             padding: 40px 40px;
             page-break-before: always;
         }
 
+        .page-header {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #232327;
+            padding-bottom: 6px;
+        }
+
         .section-title {
-            font-size: 32px;
+            font-size: 20px;
             font-weight: bold;
-            margin: 0 0 5px 0;
+            margin: 0 0 3px 0;
             color: #ffffff;
         }
+
         .section-subtitle {
-            font-size: 14px;
+            font-size: 10px;
             color: #888888;
-            margin-bottom: 30px;
+            margin: 0;
         }
 
-        /* Cards de Producto */
+        .page-badge {
+            display: inline-block;
+            background-color: #1c1c20;
+            border: 1px solid #333338;
+            color: #e60012;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        /* Grilla 3x3 de Productos (9 por página) */
+        .grid-table {
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .grid-row {
+            page-break-inside: avoid;
+        }
+
+        .grid-cell {
+            width: 33.3333%;
+            padding: 4px;
+            vertical-align: top;
+            box-sizing: border-box;
+        }
+
+        .grid-cell-empty {
+            width: 33.3333%;
+            padding: 4px;
+        }
+
+        /* Cards de Producto 3x3 */
         .product-card {
             background-color: #161618;
-            border-radius: 12px;
-            margin-bottom: 25px;
+            border: 1px solid #26262a;
+            border-radius: 10px;
             overflow: hidden;
             width: 100%;
+            height: 268px;
         }
 
-        .product-card td {
-            vertical-align: middle;
-        }
-
-        .product-card-img-td {
-            width: 45%;
-            background-color: #f5f5f5; /* Fondo claro para que la bici destaque */
+        .product-card-img-box {
+            height: 136px;
+            background-color: #f5f5f5;
             text-align: center;
-            padding: 20px;
+            padding: 6px;
         }
 
         .product-img {
-            max-width: 100%;
-            max-height: 200px;
-            object-fit: contain;
+            max-width: 92%;
+            max-height: 120px;
+            display: inline-block;
+            vertical-align: middle;
         }
 
-        .product-card-info-td {
-            width: 55%;
-            padding: 30px;
+        .product-card-body {
+            padding: 8px 10px;
+            text-align: left;
         }
 
         .product-category {
             color: #e60012;
             font-weight: bold;
-            font-size: 10px;
-            letter-spacing: 1px;
+            font-size: 8px;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
+            height: 10px;
+            overflow: hidden;
+            white-space: nowrap;
         }
 
         .product-name {
-            font-size: 26px;
+            font-size: 11px;
             font-weight: bold;
             color: #ffffff;
-            margin: 0 0 10px 0;
+            margin: 0 0 4px 0;
+            line-height: 1.2;
+            height: 27px;
+            overflow: hidden;
+        }
+
+        .product-ref {
+            font-size: 8.5px;
+            font-weight: bold;
+            color: #cccccc;
+            margin-bottom: 4px;
+            height: 11px;
+            overflow: hidden;
         }
 
         .product-desc {
-            font-size: 12px;
+            font-size: 8px;
             color: #aaaaaa;
-            line-height: 1.4;
-            margin-bottom: 25px;
-        }
-
-        .product-price {
-            font-size: 20px;
-            font-weight: bold;
-            color: #ffffff;
+            line-height: 1.25;
+            height: 32px;
+            overflow: hidden;
         }
 
         /* Detalles / Specs */
@@ -202,13 +257,10 @@
         }
 
         .footer-note {
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            right: 0;
+            margin-top: 8px;
             text-align: center;
-            color: #555555;
-            font-size: 10px;
+            color: #666666;
+            font-size: 9px;
         }
     </style>
 </head>
@@ -238,54 +290,92 @@
         </div>
     </div>
 
-    {{-- Productos por Categoría --}}
+    {{-- Páginas de Productos (9 por página en grilla 3x3) --}}
     @php
-        $grouped = isset($productsByCategory) ? $productsByCategory : $catalog->products->groupBy(fn($p) => $p->category?->name ?? 'Varios');
+        if (isset($orderedProducts)) {
+            $items = collect($orderedProducts)->values();
+        } elseif (isset($productsByCategory)) {
+            $items = collect($productsByCategory)->flatten(1)->values();
+        } else {
+            $items = $catalog->orderedProductsForPdf();
+        }
+
+        $pages = $items->chunk(9);
+        $totalProductPages = $pages->count();
     @endphp
 
-    @foreach ($grouped as $categoryName => $products)
-    <div class="page">
-        <h2 class="section-title">{{ mb_strtoupper($categoryName) }}</h2>
+    @foreach ($pages as $pageProducts)
         @php
-            $firstProduct = $products->first();
-            $catDesc = $firstProduct && $firstProduct->category ? $firstProduct->category->description : '';
+            $pageCategories = $pageProducts
+                ->map(fn ($p) => $p->category?->name ?? 'Varios')
+                ->unique()
+                ->values();
         @endphp
-        @if($catDesc)
-            <div class="section-subtitle">{{ $catDesc }}</div>
-        @else
-            <div class="section-subtitle">Modelos exclusivos, una misma obsesión por el detalle.</div>
-        @endif
-
-        @foreach ($products as $product)
-                <table class="product-card">
+        <div class="page">
+            <div class="page-header">
+                <table class="w-100">
                     <tr>
-                        <td class="product-card-img-td">
-                            @if ($product->primaryImageDataUri())
-                                <img src="{{ $product->primaryImageDataUri() }}" alt="{{ $product->name }}" class="product-img">
-                            @else
-                                <span style="color:#aaa;">Sin imagen</span>
-                            @endif
+                        <td class="text-left" style="vertical-align: middle;">
+                            <h2 class="section-title">{{ mb_strtoupper($catalog->name) }}</h2>
+                            <div class="section-subtitle">{{ $pageCategories->implode(' · ') }}</div>
                         </td>
-                        <td class="product-card-info-td">
-                            <div class="product-category">{{ mb_strtoupper($categoryName) }} - REF: {{ $product->reference ?: 'N/A' }}</div>
-                            <h3 class="product-name">{{ $product->name }}</h3>
-                            <div class="product-desc">{{ Str::limit($product->description, 120) }}</div>
-
-                            @if($product->price > 0)
-                                <div class="product-price">${{ number_format($product->price, 0, ',', '.') }}</div>
-                            @endif
+                        <td class="text-right" style="vertical-align: middle; width: 120px;">
+                            <span class="page-badge">PÁGINA {{ $loop->iteration }} / {{ $totalProductPages }}</span>
                         </td>
                     </tr>
                 </table>
-            @endforeach
+            </div>
 
-            <div class="footer-note">Precios sujetos a cambio.</div>
+            <table class="grid-table">
+                @foreach ($pageProducts->chunk(3) as $row)
+                    <tr class="grid-row">
+                        @foreach ($row as $product)
+                            @php
+                                $imageDataUri = $product->primaryImageDataUri();
+                                $categoryName = $product->category?->name ?? 'Varios';
+                            @endphp
+                            <td class="grid-cell">
+                                <div class="product-card">
+                                    <div class="product-card-img-box">
+                                        <table style="width: 100%; height: 124px;">
+                                            <tr>
+                                                <td style="vertical-align: middle; text-align: center;">
+                                                    @if ($imageDataUri)
+                                                        <img src="{{ $imageDataUri }}" alt="{{ $product->name }}" class="product-img">
+                                                    @else
+                                                        <span style="color:#888888; font-size: 9px;">Sin imagen</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="product-card-body">
+                                        <div class="product-category">{{ mb_strtoupper($categoryName) }}</div>
+                                        <h3 class="product-name">{{ $product->name }}</h3>
+                                        <div class="product-ref">REF: {{ $product->reference ?: 'N/A' }}</div>
+                                        <div class="product-desc">{{ Str::limit($product->description, 65) }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                        @endforeach
+
+                        @for ($i = 0; $i < (3 - $row->count()); $i++)
+                            <td class="grid-cell-empty">&nbsp;</td>
+                        @endfor
+                    </tr>
+                @endforeach
+            </table>
+
+            <div class="footer-note">Precios y disponibilidad sujetos a cambio.</div>
         </div>
     @endforeach
 
     {{-- Especificaciones / Contacto --}}
-    <div class="page">
-        <h2 class="section-title">Contactenos.</h2>
+    <div class="contact-page">
+        <h2 class="section-title" style="font-size: 32px; margin-bottom: 5px;">Contáctenos.</h2>
+        @if ($items->isEmpty())
+            <p class="text-grey" style="margin-top: 8px;">Este catálogo no tiene productos registrados actualmente.</p>
+        @endif
 
         <table class="specs-table">
             @if($catalog->contact_email)

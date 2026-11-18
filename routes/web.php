@@ -4,7 +4,11 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DispatchSheetController;
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\ImportController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\ProductController;
@@ -31,6 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/vendedor/pedidos-despachados', [SiteController::class, 'sellerOrders'])->name('site.seller.deliveries');
     Route::match(['post', 'patch'], '/vendedor/pedidos/{pedido}/entregar', [SiteController::class, 'deliverOrder'])->name('site.seller.orders.deliver');
     Route::match(['post', 'patch'], '/vendedor/pedidos/{pedido}/entrega', [SiteController::class, 'deliverOrder'])->name('site.seller.deliver');
+    Route::post('/vendedor/pedidos/{pedido}/repetir', [SiteController::class, 'repeatSellerOrder'])->name('site.seller.orders.repeat');
     Route::get('/vendedor/catalogo/descargar-ultimo', [SiteController::class, 'downloadLatestCatalog'])->name('site.seller.catalog.latest');
 });
 
@@ -83,6 +88,34 @@ Route::middleware('auth')->group(function () {
         Route::match(['put', 'patch'], 'pedidos/{pedido}', [OrderController::class, 'update'])->name('pedidos.update');
         Route::delete('pedidos/{pedido}', [OrderController::class, 'destroy'])->name('pedidos.destroy');
         Route::patch('pedidos/{pedido}/estado', [OrderController::class, 'updateStatus'])->name('pedidos.estado');
+
+        // Importaciones masivas CSV
+        Route::prefix('importar')->name('import.')->group(function () {
+            Route::get('{tipo}/plantilla', [ImportController::class, 'downloadTemplate'])->name('template');
+            Route::post('clientes', [ImportController::class, 'importClients'])->name('clients');
+            Route::post('productos', [ImportController::class, 'importProducts'])->name('products');
+        });
+
+        // Exportaciones CSV
+        Route::prefix('exportar')->name('export.')->group(function () {
+            Route::get('clientes', [ExportController::class, 'exportClients'])->name('clients');
+            Route::get('productos', [ExportController::class, 'exportProducts'])->name('products');
+            Route::get('pedidos', [ExportController::class, 'exportOrders'])->name('orders');
+        });
+
+        // Cartera y Cobranzas
+        Route::prefix('cartera')->name('cartera.')->group(function () {
+            Route::get('/', [CollectionController::class, 'index'])->name('index');
+            Route::post('{pedido}/pago', [CollectionController::class, 'registerPayment'])->name('payment');
+            Route::get('exportar', [CollectionController::class, 'export'])->name('export');
+        });
+
+        // Despachos y Hoja de Ruta
+        Route::prefix('despacho')->name('dispatch.')->group(function () {
+            Route::get('/', [DispatchSheetController::class, 'index'])->name('index');
+            Route::get('imprimir', [DispatchSheetController::class, 'print'])->name('print');
+        });
+
         Route::middleware(EnsureUserIsAdmin::class)->group(function () {
             Route::resource('usuarios', UserController::class)->except('show');
             Route::resource('estados-pedido', OrderStatusController::class)->except('show');

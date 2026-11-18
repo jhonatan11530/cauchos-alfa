@@ -248,7 +248,7 @@ class Tier3_PositiveSubmissionTest extends TestCase
 
         $response = $this->actingAs($this->admin)->post(route('catalogos.store'), [
             'name' => 'Catálogo Especial de Verano',
-            'template' => 'modern',
+            'template' => 'default',
             'company_name' => 'Cauchos Alfa Colombia',
             'contact_email' => 'catalogo@cauchosalfa.com',
             'contact_phone' => '3009998877',
@@ -262,7 +262,7 @@ class Tier3_PositiveSubmissionTest extends TestCase
         $response->assertSessionHas('success');
         $this->assertDatabaseHas('catalogs', [
             'name' => 'Catálogo Especial de Verano',
-            'template' => 'modern',
+            'template' => 'default',
         ]);
         $catalog = Catalog::where('name', 'Catálogo Especial de Verano')->first();
         $this->assertCount(2, $catalog->products);
@@ -278,7 +278,7 @@ class Tier3_PositiveSubmissionTest extends TestCase
 
         $response = $this->actingAs($this->admin)->put(route('catalogos.update', $catalog), [
             'name' => 'Catálogo Base Modificado',
-            'template' => 'classic',
+            'template' => 'catalogo-web',
             'is_active' => '1',
         ]);
 
@@ -287,7 +287,7 @@ class Tier3_PositiveSubmissionTest extends TestCase
         $this->assertDatabaseHas('catalogs', [
             'id' => $catalog->id,
             'name' => 'Catálogo Base Modificado',
-            'template' => 'classic',
+            'template' => 'catalogo-web',
         ]);
     }
 

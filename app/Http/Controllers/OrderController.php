@@ -40,9 +40,27 @@ class OrderController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('admin.orders.form', $this->formData(new Order));
+        $order = new Order;
+        $items = collect();
+
+        if ($request->filled('repeat')) {
+            $sourceOrder = Order::with('items.product')->find($request->input('repeat'));
+            if ($sourceOrder) {
+                $order->client_id = $sourceOrder->client_id;
+                $order->billing_type = $sourceOrder->billing_type;
+                $order->notes = $sourceOrder->notes ? 'Copia de '.$sourceOrder->code.': '.$sourceOrder->notes : 'Copia de '.$sourceOrder->code;
+                $items = $sourceOrder->items->filter(fn ($it) => $it->product && $it->product->is_active);
+            }
+        }
+
+        $formData = $this->formData($order);
+        if ($items->isNotEmpty()) {
+            $formData['items'] = $items;
+        }
+
+        return view('admin.orders.form', $formData);
     }
 
     public function store(Request $request): RedirectResponse

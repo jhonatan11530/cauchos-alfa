@@ -222,4 +222,63 @@ class SellerCatalogDownloadTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('Descargar último catálogo (PDF)');
     }
+
+    public function test_seller_download_falls_back_gracefully_for_legacy_removed_template(): void
+    {
+        $category = $this->createCategory(['name' => 'Repuestos']);
+        $product = $this->createProduct($category, ['name' => 'Producto Legacy Vendedor']);
+
+        $catalog = Catalog::create([
+            'name' => 'Catálogo Legacy',
+            'template' => 'classic',
+            'is_active' => true,
+        ]);
+        $catalog->products()->attach($product->id, ['sort_order' => 1]);
+
+        $response = $this->actingAs($this->seller)
+            ->get(route('site.seller.catalog.latest'));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', $response->headers->get('Content-Type') ?? '');
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+    }
+
+    public function test_seller_download_respects_custom_category_and_product_order(): void
+    {
+        $cat1 = $this->createCategory(['name' => 'CatSellerUno']);
+        $cat2 = $this->createCategory(['name' => 'CatSellerDos']);
+        $p1 = $this->createProduct($cat1, ['name' => 'SELLER_P1']);
+        $p2 = $this->createProduct($cat2, ['name' => 'SELLER_P2']);
+
+        $catalog = Catalog::create([
+            'name' => 'Catálogo Vendedor Ordenado',
+            'template' => 'catalogo-web',
+            'category_order' => [(string) $cat2->id, (string) $cat1->id],
+            'is_active' => true,
+        ]);
+        $catalog->products()->sync([
+            $p2->id => ['sort_order' => 1],
+            $p1->id => ['sort_order' => 2],
+        ]);
+
+        $response = $this->actingAs($this->seller)
+            ->get(route('site.seller.catalog.latest'));
+
+        $response->assertOk();
+        $pdfBytes = $response->getContent();
+        $this->assertStringStartsWith('%PDF-', $pdfBytes);
+
+        // Extract uncompressed streams from Helvetica PDF to confirm SELLER_P2 precedes SELLER_P1
+        preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdfBytes, $matches);
+        $allText = '';
+        foreach ($matches[1] as $raw) {
+            $dec = @gzuncompress($raw);
+            $allText .= ($dec !== false ? $dec : $raw);
+        }
+        $posP2 = strpos($allText, 'SELLER_P2');
+        $posP1 = strpos($allText, 'SELLER_P1');
+        $this->assertNotFalse($posP2);
+        $this->assertNotFalse($posP1);
+        $this->assertLessThan($posP1, $posP2);
+    }
 }

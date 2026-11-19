@@ -350,7 +350,7 @@
 
         $pages = collect();
         foreach ($categoriesGrouped as $categoryName => $catProducts) {
-            $catChunks = collect($catProducts)->chunk(6);
+            $catChunks = collect($catProducts)->chunk(9);
             $totalCatPages = $catChunks->count();
             foreach ($catChunks as $chunkIdx => $chunkProducts) {
                 $pages->push([

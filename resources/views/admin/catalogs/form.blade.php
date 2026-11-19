@@ -42,8 +42,8 @@
                 <div class="form-group col-md-12">
                     <label>Plantilla de Diseño (PDF)</label>
                     <select name="template" class="form-control">
-                        <option value="default" {{ $selectedTemplate === 'default' ? 'selected' : '' }}>Clásico Alfa (Fondo Azul Flotante)</option>
-                        <option value="catalogo-web" {{ $selectedTemplate === 'catalogo-web' ? 'selected' : '' }}>Catálogo Web (Estilo Roja Bicis)</option>
+                        <option value="default" {{ $selectedTemplate === 'default' ? 'selected' : '' }}>Diseño Clásico Alfa (fondo blanco)</option>
+                        <option value="catalogo-web" {{ $selectedTemplate === 'catalogo-web' ? 'selected' : '' }}>Diseño Catálogo Web (fondo negro)</option>
                     </select>
                 </div>
             </div>

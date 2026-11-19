@@ -328,20 +328,23 @@ class Tier2_BoundaryValidationTest extends TestCase
 
     public function test_order_status_name_boundary_length_255_accepted(): void
     {
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
         $name = str_repeat('E', 255);
-        $response = $this->actingAs($this->admin)->post(route('estados-pedido.store'), [
+        $response = $this->actingAs($this->admin)->put(route('estados-pedido.update', $status), [
             'name' => $name,
             'color' => '#123456',
             'sort_order' => 10,
         ]);
         $response->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('order_statuses', ['name' => $name]);
+        // Official status name remains locked to the canonical name
+        $this->assertDatabaseHas('order_statuses', ['id' => $status->id, 'name' => 'Pedido en proceso', 'color' => '#123456']);
     }
 
     public function test_order_status_name_boundary_length_256_rejected(): void
     {
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
         $name = str_repeat('E', 256);
-        $response = $this->actingAs($this->admin)->post(route('estados-pedido.store'), [
+        $response = $this->actingAs($this->admin)->put(route('estados-pedido.update', $status), [
             'name' => $name,
             'color' => '#123456',
             'sort_order' => 10,
@@ -351,21 +354,23 @@ class Tier2_BoundaryValidationTest extends TestCase
 
     public function test_order_status_color_boundary_length_20_accepted(): void
     {
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
         $color = str_repeat('F', 20);
-        $response = $this->actingAs($this->admin)->post(route('estados-pedido.store'), [
-            'name' => 'Estado Color Valido',
+        $response = $this->actingAs($this->admin)->put(route('estados-pedido.update', $status), [
+            'name' => $status->name,
             'color' => $color,
             'sort_order' => 11,
         ]);
         $response->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('order_statuses', ['color' => $color]);
+        $this->assertDatabaseHas('order_statuses', ['id' => $status->id, 'color' => $color]);
     }
 
     public function test_order_status_color_boundary_length_21_rejected(): void
     {
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
         $color = str_repeat('F', 21);
-        $response = $this->actingAs($this->admin)->post(route('estados-pedido.store'), [
-            'name' => 'Estado Color Invalido',
+        $response = $this->actingAs($this->admin)->put(route('estados-pedido.update', $status), [
+            'name' => $status->name,
             'color' => $color,
             'sort_order' => 12,
         ]);
@@ -652,8 +657,9 @@ class Tier2_BoundaryValidationTest extends TestCase
 
     public function test_order_status_sort_order_boundary_negative_rejected(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('estados-pedido.store'), [
-            'name' => 'Estado Negativo Test',
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
+        $response = $this->actingAs($this->admin)->put(route('estados-pedido.update', $status), [
+            'name' => $status->name,
             'color' => '#112233',
             'sort_order' => -1,
         ]);
@@ -662,13 +668,14 @@ class Tier2_BoundaryValidationTest extends TestCase
 
     public function test_order_status_sort_order_boundary_zero_accepted(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('estados-pedido.store'), [
-            'name' => 'Estado Cero Test',
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
+        $response = $this->actingAs($this->admin)->put(route('estados-pedido.update', $status), [
+            'name' => $status->name,
             'color' => '#112233',
             'sort_order' => 0,
         ]);
         $response->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('order_statuses', ['name' => 'Estado Cero Test', 'sort_order' => 0]);
+        $this->assertDatabaseHas('order_statuses', ['id' => $status->id, 'sort_order' => 0]);
     }
 
     // Latitude boundaries: [-90.0 .. 90.0]
@@ -1210,8 +1217,9 @@ class Tier2_BoundaryValidationTest extends TestCase
 
     public function test_order_status_name_boundary_duplicate_rejected(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('estados-pedido.store'), [
-            'name' => 'Pedido creado', // Ya existe en setUp
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
+        $response = $this->actingAs($this->admin)->put(route('estados-pedido.update', $status), [
+            'name' => 'Pedido creado', // Ya existe en otro estado oficial
             'color' => '#123456',
             'sort_order' => 99,
         ]);

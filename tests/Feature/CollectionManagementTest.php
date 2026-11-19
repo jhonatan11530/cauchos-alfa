@@ -183,4 +183,80 @@ class CollectionManagementTest extends TestCase
         $this->assertStringContainsString('PED-EXP-CARTERA', $content);
         $this->assertStringContainsString('Cliente Export Cartera', $content);
     }
+
+    public function test_register_payment_blocks_terminal_and_already_collected_orders(): void
+    {
+        $client = Client::create(['name' => 'Cliente Bloqueo Cobro', 'is_active' => true]);
+
+        $blockedSlugs = [
+            OrderStatus::SLUG_RECHAZADO,
+            OrderStatus::SLUG_DEVUELTO,
+            OrderStatus::SLUG_COBRADO,
+        ];
+
+        foreach ($blockedSlugs as $slug) {
+            $status = OrderStatus::where('slug', $slug)->firstOrFail();
+
+            $order = Order::create([
+                'code' => 'PED-CARTERA-BLK-'.strtoupper($slug),
+                'client_id' => $client->id,
+                'created_by' => $this->admin->id,
+                'order_status_id' => $status->id,
+                'billing_type' => 'remision',
+                'payment_term' => 'credito',
+                'payment_due_date' => now()->addDays(5),
+                'paid_at' => null,
+            ]);
+
+            $file = UploadedFile::fake()->create('comprobante.pdf', 100, 'application/pdf');
+
+            $response = $this->actingAs($this->admin)->post(route('cartera.payment', $order), [
+                'payment_date' => now()->toDateString(),
+                'payment_responsible_id' => $this->admin->id,
+                'payment_support' => $file,
+                'observation' => 'Intento de cobro en estado terminal',
+            ]);
+
+            $response->assertSessionHasErrors('order_status_id');
+
+            $order->refresh();
+            $this->assertSame($status->id, $order->order_status_id);
+            $this->assertNull($order->payment_support_path);
+            $this->assertNull($order->paid_at);
+            $this->assertDatabaseMissing('order_status_histories', ['order_id' => $order->id]);
+        }
+
+        $this->assertEmpty(Storage::disk('public')->files('orders/supports'));
+    }
+
+    public function test_register_payment_stores_default_observation_when_empty_string_submitted(): void
+    {
+        $client = Client::create(['name' => 'Cliente Obs Default', 'is_active' => true]);
+
+        $order = Order::create([
+            'code' => 'PED-OBS-DEFAULT',
+            'client_id' => $client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $this->statusCreated->id,
+            'billing_type' => 'remision',
+            'payment_term' => 'credito',
+            'payment_due_date' => now()->addDays(5),
+            'paid_at' => null,
+        ]);
+
+        $response = $this->actingAs($this->admin)->post(route('cartera.payment', $order), [
+            'payment_date' => now()->toDateString(),
+            'payment_responsible_id' => $this->admin->id,
+            'observation' => '',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'new_status_id' => $this->statusCollected->id,
+            'observation' => 'Pago registrado desde el módulo de cartera.',
+        ]);
+    }
 }

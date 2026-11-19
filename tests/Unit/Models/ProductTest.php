@@ -97,7 +97,10 @@ class ProductTest extends TestCase
                 'code' => 'PED-1',
                 'client_id' => $this->createClient()->id,
                 'created_by' => $this->createAdmin()->id,
-                'order_status_id' => OrderStatus::create(['name' => 'Pendiente', 'slug' => 'pendiente', 'sort_order' => 1, 'is_active' => true])->id,
+                'order_status_id' => OrderStatus::firstOrCreate(
+                    ['slug' => OrderStatus::SLUG_CREADO],
+                    ['name' => 'Pedido creado', 'sort_order' => 1, 'is_active' => true]
+                )->id,
             ])->id,
             'quantity' => 2,
         ]));

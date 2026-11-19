@@ -138,7 +138,7 @@
                                                 <td>{{ $order->code }}</td>
                                                 <td>{{ $order->created_at->format('d/m/Y h:i A') }}</td>
                                                 <td>{{ $order->client->name }}</td>
-                                                <td><span class="badge" style="background: {{ $order->status->color }}; color: #fff">{{ $order->status->name }}</span></td>
+                                                <td><span class="badge" style="background: {{ $order->status?->color ?? '#6c757d' }}; color: #fff">{{ $order->status?->name ?? 'Sin estado' }}</span></td>
                                                 <td><a href="{{ route('pedidos.show', $order) }}" class="btn btn-sm btn-primary">Ver</a></td>
                                             </tr>
                                         @empty

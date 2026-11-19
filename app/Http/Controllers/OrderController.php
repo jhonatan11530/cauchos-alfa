@@ -36,7 +36,7 @@ class OrderController extends Controller
 
         return view('admin.orders.index', [
             'orders' => $orders->paginate(10)->withQueryString(),
-            'statuses' => OrderStatus::orderBy('sort_order')->get(),
+            'statuses' => OrderStatus::where('is_active', true)->orderBy('sort_order')->get(),
         ]);
     }
 
@@ -70,7 +70,7 @@ class OrderController extends Controller
         $fromSellerSite = $request->boolean('from_seller_site') || ($user && $user->isSeller());
 
         $order = DB::transaction(function () use ($data, $request) {
-            $status = OrderStatus::where('slug', 'pedido-creado')->first() ?? OrderStatus::orderBy('sort_order')->firstOrFail();
+            $status = OrderStatus::where('slug', OrderStatus::SLUG_CREADO)->first() ?? OrderStatus::orderBy('sort_order')->firstOrFail();
             $order = Order::create([
                 'code' => ! empty($data['code']) ? $data['code'] : $this->generateCode(),
                 'client_id' => $data['client_id'],
@@ -139,18 +139,37 @@ class OrderController extends Controller
 
     public function destroy(Order $pedido): RedirectResponse
     {
-        $cancelled = OrderStatus::where('slug', 'pedido-cancelado')->first();
-        if ($cancelled && $pedido->order_status_id !== $cancelled->id) {
-            $previous = $pedido->order_status_id;
-            $pedido->update(['order_status_id' => $cancelled->id]);
-            $this->recordHistory($pedido, $previous, $cancelled->id, 'Pedido cancelado desde el listado.');
+        $pedido->loadMissing('status');
+
+        $rejected = OrderStatus::where('slug', OrderStatus::SLUG_RECHAZADO)->first();
+
+        if ($pedido->status && (! $rejected || ! $pedido->status->canTransitionTo($rejected))) {
+            return back()->with('error', 'No se puede rechazar un pedido en su estado actual.');
         }
 
-        return back()->with('success', 'Pedido cancelado correctamente.');
+        if (! $rejected) {
+            return back()->with('error', 'No se encontró el estado oficial Pedido rechazado.');
+        }
+
+        DB::transaction(function () use ($pedido, $rejected): void {
+            $previous = $pedido->order_status_id;
+            $reason = trim((string) ($pedido->rejection_reason ?? ''));
+
+            $pedido->update([
+                'order_status_id' => $rejected->id,
+                'rejection_reason' => $reason !== '' ? $reason : 'Pedido rechazado desde el listado.',
+            ]);
+
+            $this->recordHistory($pedido, $previous, $rejected->id, 'Pedido rechazado desde el listado.');
+        });
+
+        return back()->with('success', 'Pedido rechazado correctamente.');
     }
 
     public function updateStatus(Request $request, Order $pedido): RedirectResponse
     {
+        $pedido->loadMissing('status');
+
         // Enforce authorization for sellers
         if ($request->user() && $request->user()->isSeller()) {
             if ((int) $pedido->created_by !== (int) $request->user()->id) {
@@ -158,7 +177,7 @@ class OrderController extends Controller
             }
 
             $currentSlug = $pedido->status?->slug;
-            if (! in_array($currentSlug, [OrderStatus::SLUG_DESPACHADO, 'despachado', 'pedido-despachado'])) {
+            if ($currentSlug !== OrderStatus::SLUG_DESPACHADO) {
                 $validator = Validator::make([], []);
                 $validator->errors()->add('order', 'El pedido debe estar en estado despachado para registrar la entrega.');
                 throw new ValidationException($validator);
@@ -169,10 +188,10 @@ class OrderController extends Controller
         $targetStatusId = $request->input('order_status_id');
         if (empty($targetStatusId)) {
             if ($request->hasFile('delivery_photo') || $request->hasFile('photo') || $request->filled('delivery_latitude')) {
-                $entregadoStatus = OrderStatus::whereIn('slug', [OrderStatus::SLUG_ENTREGADO, 'entregado'])->first();
+                $entregadoStatus = OrderStatus::where('slug', OrderStatus::SLUG_ENTREGADO)->first();
                 $targetStatusId = $entregadoStatus?->id ?? $pedido->order_status_id;
             } elseif ($request->hasFile('payment_support') || $request->hasFile('collection_support_file') || $request->filled('payment_responsible_id') || $request->filled('collected_by') || $request->filled('collected_by_id')) {
-                $cobradoStatus = OrderStatus::whereIn('slug', ['pedido-cobrado', 'cobro'])->first();
+                $cobradoStatus = OrderStatus::where('slug', OrderStatus::SLUG_COBRADO)->first();
                 $targetStatusId = $cobradoStatus?->id ?? $pedido->order_status_id;
             } else {
                 $targetStatusId = $pedido->order_status_id;
@@ -183,10 +202,13 @@ class OrderController extends Controller
             ? OrderStatus::find($targetStatusId)
             : OrderStatus::where('slug', $targetStatusId)->first();
 
-        if (! $newStatus) {
+        if (! $newStatus || ! $newStatus->is_active || ! $newStatus->isCritical()) {
             $validator = Validator::make(['order_status_id' => $targetStatusId], [
                 'order_status_id' => ['required', 'exists:order_statuses,id'],
             ]);
+            if ($newStatus && (! $newStatus->is_active || ! $newStatus->isCritical())) {
+                $validator->after(fn ($v) => $v->errors()->add('order_status_id', 'El estado seleccionado no está permitido o no está activo.'));
+            }
             throw new ValidationException($validator);
         }
 
@@ -194,9 +216,16 @@ class OrderController extends Controller
 
         // Sellers are restricted to transition to delivered
         if ($request->user() && $request->user()->isSeller()) {
-            if (! in_array($slug, [OrderStatus::SLUG_ENTREGADO, 'entregado', 'pedido-entregado'])) {
+            if ($slug !== OrderStatus::SLUG_ENTREGADO) {
                 abort(403, 'Los vendedores únicamente pueden registrar la entrega de pedidos despachados.');
             }
+        }
+
+        // Enforce transition matrix
+        if ($pedido->status && ! $pedido->status->canTransitionTo($newStatus, allowSameStatus: ! $pedido->status->isTerminal())) {
+            throw ValidationException::withMessages([
+                'order_status_id' => "No se permite cambiar el pedido desde '{$pedido->status->name}' a '{$newStatus->name}'.",
+            ]);
         }
 
         $previous = $pedido->order_status_id;
@@ -261,7 +290,7 @@ class OrderController extends Controller
         }
 
         // B. Entregado
-        if ($slug === OrderStatus::SLUG_ENTREGADO || $slug === 'entregado') {
+        if ($slug === OrderStatus::SLUG_ENTREGADO) {
             // Delivery photo check
             $deliveryPhoto = $request->file('delivery_photo') ?? $request->file('photo') ?? $request->file('delivery_photo_file');
             if (! $deliveryPhoto) {
@@ -378,8 +407,8 @@ class OrderController extends Controller
             }
         }
 
-        // C. Cobro / Cobrado
-        if (in_array($slug, [OrderStatus::SLUG_COBRADO, OrderStatus::SLUG_COBRO]) || $request->hasFile('payment_support') || $request->hasFile('collection_support_file')) {
+        // C. Cobrado
+        if ($slug === OrderStatus::SLUG_COBRADO || $request->hasFile('payment_support') || $request->hasFile('collection_support_file')) {
             $responsible = $request->input('payment_responsible_id') ?? $request->input('collected_by_id') ?? $request->input('collected_by');
             if (empty($responsible)) {
                 $validator->errors()->add('payment_responsible_id', 'El responsable del cobro es obligatorio.');
@@ -425,13 +454,13 @@ class OrderController extends Controller
             }
         }
 
-        // E. Rechazado / Cancelado
-        if (in_array($slug, [OrderStatus::SLUG_RECHAZADO, OrderStatus::SLUG_CANCELADO])) {
+        // E. Rechazado
+        if ($slug === OrderStatus::SLUG_RECHAZADO) {
             $reason = $request->input('cancellation_reason') ?? $request->input('rejection_reason') ?? $request->input('observation');
             if (empty($reason) || ! is_string($reason) || trim($reason) === '' || strlen(trim($reason)) < 3) {
-                $validator->errors()->add('cancellation_reason', 'La justificación de cancelación es obligatoria.');
-                $validator->errors()->add('rejection_reason', 'La justificación de cancelación es obligatoria.');
-                $validator->errors()->add('observation', 'La justificación de cancelación es obligatoria.');
+                $validator->errors()->add('cancellation_reason', 'La justificación de rechazo es obligatoria.');
+                $validator->errors()->add('rejection_reason', 'La justificación de rechazo es obligatoria.');
+                $validator->errors()->add('observation', 'La justificación de rechazo es obligatoria.');
             } else {
                 $dataToUpdate['rejection_reason'] = trim($reason);
             }
@@ -472,15 +501,19 @@ class OrderController extends Controller
             throw new ValidationException($validator);
         }
 
-        // 4. Persist and record history
-        $pedido->update($dataToUpdate);
-
+        // 4. Persist and record history atomically
         $observation = $request->input('observation')
             ?? $request->input('rejection_reason')
             ?? $request->input('cancellation_reason')
             ?? $request->input('return_reason');
 
-        $this->recordHistory($pedido, $previous, $newStatus->id, $observation);
+        DB::transaction(function () use ($pedido, $dataToUpdate, $previous, $newStatus, $observation): void {
+            $pedido->update($dataToUpdate);
+
+            if ($previous !== $newStatus->id || filled($observation)) {
+                $this->recordHistory($pedido, $previous, $newStatus->id, $observation);
+            }
+        });
 
         return back()->with('success', 'Estado del pedido actualizado.');
     }

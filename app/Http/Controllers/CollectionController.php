@@ -11,8 +11,10 @@ use App\Services\CsvHandlerService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -92,6 +94,15 @@ class CollectionController extends Controller
             'observation' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $pedido->loadMissing('status');
+        $cobradoStatus = OrderStatus::where('slug', OrderStatus::SLUG_COBRADO)->first();
+
+        if ($pedido->status && (! $cobradoStatus || ! $pedido->status->canTransitionTo($cobradoStatus))) {
+            throw ValidationException::withMessages([
+                'order_status_id' => 'No se puede registrar el cobro para un pedido en su estado actual.',
+            ]);
+        }
+
         $dataToUpdate = [
             'paid_at' => Carbon::parse($request->input('payment_date')),
             'payment_responsible_id' => $request->input('payment_responsible_id', auth()->id()),
@@ -105,23 +116,28 @@ class CollectionController extends Controller
         }
 
         $previousStatus = $pedido->order_status_id;
-        $cobradoStatus = OrderStatus::where('slug', 'pedido-cobrado')->first() ?? OrderStatus::where('slug', 'cobro')->first();
         if ($cobradoStatus) {
             $dataToUpdate['order_status_id'] = $cobradoStatus->id;
         }
 
-        $pedido->update($dataToUpdate);
+        $observation = filled($request->input('observation'))
+            ? trim((string) $request->input('observation'))
+            : 'Pago registrado desde el módulo de cartera.';
 
-        if ($cobradoStatus && $previousStatus !== $cobradoStatus->id) {
-            OrderStatusHistory::create([
-                'order_id' => $pedido->id,
-                'previous_status_id' => $previousStatus,
-                'new_status_id' => $cobradoStatus->id,
-                'user_id' => auth()->id(),
-                'observation' => $request->input('observation', 'Pago registrado desde el módulo de cartera.'),
-                'changed_at' => now(),
-            ]);
-        }
+        DB::transaction(function () use ($pedido, $dataToUpdate, $cobradoStatus, $previousStatus, $observation): void {
+            $pedido->update($dataToUpdate);
+
+            if ($cobradoStatus && $previousStatus !== $cobradoStatus->id) {
+                OrderStatusHistory::create([
+                    'order_id' => $pedido->id,
+                    'previous_status_id' => $previousStatus,
+                    'new_status_id' => $cobradoStatus->id,
+                    'user_id' => auth()->id(),
+                    'observation' => $observation,
+                    'changed_at' => now(),
+                ]);
+            }
+        });
 
         return back()->with('success', "Pago del pedido {$pedido->code} registrado correctamente.");
     }

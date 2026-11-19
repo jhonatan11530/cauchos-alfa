@@ -588,6 +588,9 @@ class Tier1_AdminFormsValidationTest extends TestCase
         $response = $this->actingAs($this->admin)->get(route('pedidos.show', $order));
         $response->assertOk();
         $response->assertSee('name="order_status_id"', false);
+        $response->assertDontSee('pedido-en-preparacion', false);
+        $response->assertDontSee('pedido-cancelado', false);
+        $response->assertDontSee("'cobro':", false);
     }
 
     public function test_admin_order_status_dispatch_section_requires_photo_and_payment_term(): void
@@ -836,32 +839,27 @@ class Tier1_AdminFormsValidationTest extends TestCase
     // 10. Admin Order Statuses CRUD Form Tests
     // =========================================================================
 
-    public function test_admin_order_status_crud_create_form_renders_action_and_csrf(): void
+    public function test_admin_order_status_crud_create_redirects_when_locked_to_eight_states(): void
     {
         $response = $this->actingAs($this->admin)->get(route('estados-pedido.create'));
-        $response->assertOk();
-        $response->assertSee('action="'.route('estados-pedido.store').'"', false);
-        $response->assertSee('name="_token"', false);
+        $response->assertRedirect(route('estados-pedido.index'));
+        $response->assertSessionHas('error');
     }
 
     public function test_admin_order_status_crud_edit_form_renders_put_method(): void
     {
-        $status = OrderStatus::create([
-            'name' => 'En Preparación',
-            'slug' => 'en-preparacion',
-            'color' => '#f39c12',
-            'sort_order' => 2,
-            'is_active' => true,
-        ]);
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
         $response = $this->actingAs($this->admin)->get(route('estados-pedido.edit', $status));
         $response->assertOk();
         $response->assertSee('action="'.route('estados-pedido.update', $status).'"', false);
         $response->assertSee('value="PUT"', false);
+        $response->assertSee('name="_token"', false);
     }
 
     public function test_admin_order_status_crud_form_name_is_required(): void
     {
-        $response = $this->actingAs($this->admin)->get(route('estados-pedido.create'));
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
+        $response = $this->actingAs($this->admin)->get(route('estados-pedido.edit', $status));
         $response->assertOk();
         $response->assertSee('name="name"', false);
         $response->assertSee('required', false);
@@ -869,7 +867,8 @@ class Tier1_AdminFormsValidationTest extends TestCase
 
     public function test_admin_order_status_crud_form_color_is_required(): void
     {
-        $response = $this->actingAs($this->admin)->get(route('estados-pedido.create'));
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
+        $response = $this->actingAs($this->admin)->get(route('estados-pedido.edit', $status));
         $response->assertOk();
         $response->assertSee('name="color"', false);
         $response->assertSee('required', false);
@@ -877,20 +876,22 @@ class Tier1_AdminFormsValidationTest extends TestCase
 
     public function test_admin_order_status_crud_form_sort_order_requires_non_negative_integer(): void
     {
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
         $response = $this->actingAs($this->admin)
-            ->from(route('estados-pedido.create'))
-            ->post(route('estados-pedido.store'), [
-                'name' => 'Estado Negativo',
+            ->from(route('estados-pedido.edit', $status))
+            ->put(route('estados-pedido.update', $status), [
+                'name' => $status->name,
                 'color' => '#000000',
                 'sort_order' => -5,
             ]);
-        $response->assertRedirect(route('estados-pedido.create'));
+        $response->assertRedirect(route('estados-pedido.edit', $status));
         $response->assertSessionHasErrors(['sort_order']);
     }
 
     public function test_admin_order_status_crud_spanish_messages_contract(): void
     {
-        $response = $this->actingAs($this->admin)->get(route('estados-pedido.create'));
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
+        $response = $this->actingAs($this->admin)->get(route('estados-pedido.edit', $status));
         $response->assertOk();
         $response->assertSee('id="order-status-crud-form"', false);
         $response->assertSee('Este campo es obligatorio.', false);

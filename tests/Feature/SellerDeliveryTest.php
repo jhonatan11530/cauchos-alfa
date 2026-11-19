@@ -426,4 +426,39 @@ class SellerDeliveryTest extends TestCase
         $this->assertSame($this->despachadoStatus->id, $order->order_status_id);
         $this->assertNull($order->delivery_latitude);
     }
+
+    /**
+     * Test 13: Admin cannot deliver orders in terminal or already-delivered states via seller delivery endpoint.
+     */
+    public function test_admin_cannot_deliver_orders_in_terminal_or_already_delivered_states(): void
+    {
+        $blockedSlugs = [
+            OrderStatus::SLUG_DEVUELTO,
+            OrderStatus::SLUG_RECHAZADO,
+            OrderStatus::SLUG_COBRADO,
+            OrderStatus::SLUG_ENTREGADO,
+        ];
+
+        foreach ($blockedSlugs as $slug) {
+            $status = OrderStatus::where('slug', $slug)->firstOrFail();
+            $order = $this->createOrderFor($this->sellerA, $status);
+            $photo = UploadedFile::fake()->create('entrega_bloqueada.jpg', 200, 'image/jpeg');
+
+            $response = $this->actingAs($this->admin)
+                ->post(route('site.seller.orders.deliver', $order), [
+                    'delivery_photo' => $photo,
+                    'delivery_latitude' => 4.609710,
+                    'delivery_longitude' => -74.081750,
+                ]);
+
+            $response->assertSessionHasErrors('order_status_id');
+
+            $order->refresh();
+            $this->assertSame($status->id, $order->order_status_id);
+            $this->assertNull($order->delivery_photo_path);
+            $this->assertDatabaseMissing('order_status_histories', ['order_id' => $order->id]);
+        }
+
+        $this->assertEmpty(Storage::disk('public')->files('orders/deliveries'));
+    }
 }

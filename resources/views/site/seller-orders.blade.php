@@ -80,8 +80,8 @@
                         @forelse ($orders as $order)
                             @php
                                 $statusSlug = $order->status?->slug;
-                                $isDispatched = in_array($statusSlug, ['pedido-despachado', 'despachado']);
-                                $isDelivered = in_array($statusSlug, ['pedido-entregado', 'entregado']);
+                                $isDispatched = $statusSlug === \App\Models\OrderStatus::SLUG_DESPACHADO;
+                                $isDelivered = $statusSlug === \App\Models\OrderStatus::SLUG_ENTREGADO;
                             @endphp
                             <tr>
                                 <td class="px-3 py-3 font-weight-bold text-nowrap">
@@ -107,7 +107,7 @@
                                         </span>
                                     @else
                                         <span class="badge badge-secondary p-2">
-                                            {{ $order->status->name ?? 'En proceso' }}
+                                            {{ $order->status?->name ?? 'Sin estado' }}
                                         </span>
                                     @endif
                                 </td>
@@ -181,7 +181,7 @@
 @foreach ($orders as $order)
     @php
         $statusSlug = $order->status?->slug;
-        $isDispatched = in_array($statusSlug, ['pedido-despachado', 'despachado']);
+        $isDispatched = $statusSlug === \App\Models\OrderStatus::SLUG_DESPACHADO;
     @endphp
     @if ($isDispatched)
         <div class="modal fade" id="modal-deliver-{{ $order->id }}" tabindex="-1" role="dialog" aria-labelledby="modalLabel-{{ $order->id }}" aria-hidden="true">

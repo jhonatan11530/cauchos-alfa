@@ -5,7 +5,7 @@
         if ($phoneClean && !str_starts_with($phoneClean, '57') && strlen($phoneClean) == 10) {
             $phoneClean = '57' . $phoneClean;
         }
-        $whatsappMsg = 'Hola ' . ($order->client?->name ?? 'Cliente') . ', le escribimos de Cauchos Alfa respecto a su pedido ' . $order->code . '. Estado actual: ' . ($order->status?->name ?? 'En proceso') . '.';
+        $whatsappMsg = 'Hola ' . ($order->client?->name ?? 'Cliente') . ', le escribimos de Cauchos Alfa respecto a su pedido ' . $order->code . '. Estado actual: ' . ($order->status?->name ?? 'Sin estado') . '.';
     @endphp
     <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
         <div><h2 class="text-white pb-2 fw-bold">Pedido {{ $order->code }}</h2><h5 class="text-white op-7 mb-2">Detalle y trazabilidad</h5></div>
@@ -34,7 +34,7 @@
                         <p><strong>Cliente:</strong> {{ $order->client->name }}</p>
                         <p><strong>Fecha de pedido:</strong> {{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y h:i A') }}</p>
                         <p><strong>Facturación:</strong> <span class="badge badge-info">{{ $order->billing_type == 'factura_electronica' ? 'Factura Electrónica' : 'Remisión' }}</span></p>
-                        <p><strong>Estado actual:</strong> <span class="badge" style="background: {{ $order->status->color }}; color: #fff">{{ $order->status->name }}</span></p>
+                        <p><strong>Estado actual:</strong> <span class="badge" style="background: {{ $order->status?->color ?? '#6c757d' }}; color: #fff">{{ $order->status?->name ?? 'Sin estado' }}</span></p>
                         <p><strong>Observaciones:</strong> {{ $order->notes }}</p>
                         <table class="table">
                             <thead><tr><th>Producto</th><th>Código / Ref.</th><th>Cantidad</th></tr></thead>
@@ -183,7 +183,7 @@
 
                                 @if ($order->rejection_reason)
                                     <div class="alert alert-danger p-2 mt-2">
-                                        <strong class="d-block"><i class="fas fa-times-circle mr-1"></i> Pedido Rechazado / Cancelado</strong>
+                                        <strong class="d-block"><i class="fas fa-times-circle mr-1"></i> Pedido Rechazado</strong>
                                         <small class="d-block"><strong>Motivo:</strong> {{ $order->rejection_reason }}</small>
                                     </div>
                                 @endif
@@ -322,7 +322,7 @@
                                 @endif
                             </div>
 
-                            {{-- SECCIÓN CONDICIONAL: COBRO / COBRADO --}}
+                            {{-- SECCIÓN CONDICIONAL: COBRADO --}}
                             <div id="section-cobrado" class="status-section border-top pt-3 mt-2" style="display: none;">
                                 <h5 class="fw-bold text-info mb-2"><i class="fas fa-cash-register mr-1"></i> Registro de Cobro</h5>
                                 
@@ -361,11 +361,11 @@
                                 </div>
                             </div>
 
-                            {{-- SECCIÓN CONDICIONAL: RECHAZADO / CANCELADO --}}
+                            {{-- SECCIÓN CONDICIONAL: RECHAZADO --}}
                             <div id="section-rechazado" class="status-section border-top pt-3 mt-2" style="display: none;">
-                                <h5 class="fw-bold text-danger mb-2"><i class="fas fa-times-circle mr-1"></i> Justificación de Cancelación</h5>
+                                <h5 class="fw-bold text-danger mb-2"><i class="fas fa-times-circle mr-1"></i> Justificación de Rechazo</h5>
                                 <div class="form-group p-0 mb-3">
-                                    <label class="font-weight-bold">Motivo de rechazo / cancelación <span class="text-danger">*</span></label>
+                                    <label class="font-weight-bold">Motivo de rechazo <span class="text-danger">*</span></label>
                                     <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" placeholder="Indique la justificación obligatoria..."></textarea>
                                 </div>
                             </div>
@@ -390,7 +390,7 @@
                 <thead><tr><th>Fecha</th><th>Anterior</th><th>Nuevo</th><th>Usuario</th><th>Observación</th></tr></thead>
                 <tbody>
                     @forelse ($order->histories as $history)
-                        <tr><td>{{ $history->changed_at->format('Y-m-d H:i') }}</td><td>{{ $history->previousStatus->name ?? 'Inicio' }}</td><td>{{ $history->newStatus->name }}</td><td>{{ $history->user->name ?? 'Sistema' }}</td><td>{{ $history->observation }}</td></tr>
+                        <tr><td>{{ $history->changed_at->format('Y-m-d H:i') }}</td><td>{{ $history->previousStatus?->name ?? 'Inicio' }}</td><td>{{ $history->newStatus?->name ?? 'Desconocido' }}</td><td>{{ $history->user?->name ?? 'Sistema' }}</td><td>{{ $history->observation }}</td></tr>
                     @empty
                         <tr><td colspan="5" class="text-center">No hay trazabilidad registrada.</td></tr>
                     @endforelse
@@ -408,10 +408,8 @@ document.addEventListener('DOMContentLoaded', function () {
         'pedido-despachado': document.getElementById('section-despachado'),
         'pedido-entregado': document.getElementById('section-entregado'),
         'pedido-cobrado': document.getElementById('section-cobrado'),
-        'cobro': document.getElementById('section-cobrado'),
         'pedido-devuelto': document.getElementById('section-devuelto'),
-        'pedido-rechazado': document.getElementById('section-rechazado'),
-        'pedido-cancelado': document.getElementById('section-rechazado')
+        'pedido-rechazado': document.getElementById('section-rechazado')
     };
 
     function togglePaymentRadio() {
@@ -715,7 +713,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     required: 'El archivo de justificación de devolución es obligatorio.'
                 },
                 rejection_reason: {
-                    required: 'La justificación de cancelación es obligatoria.',
+                    required: 'La justificación de rechazo es obligatoria.',
                     minlength: 'La justificación debe tener al menos 3 caracteres.'
                 }
             },

@@ -14,6 +14,7 @@ use App\Support\SellerCart;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -186,8 +187,8 @@ class SiteController extends Controller
             return redirect()->route('login');
         }
 
-        $despachadoStatus = OrderStatus::whereIn('slug', [OrderStatus::SLUG_DESPACHADO, 'despachado', 'pedido-despachado'])->first();
-        $entregadoStatus = OrderStatus::whereIn('slug', [OrderStatus::SLUG_ENTREGADO, 'entregado', 'pedido-entregado'])->first();
+        $despachadoStatus = OrderStatus::where('slug', OrderStatus::SLUG_DESPACHADO)->first();
+        $entregadoStatus = OrderStatus::where('slug', OrderStatus::SLUG_ENTREGADO)->first();
 
         $query = Order::query();
 
@@ -244,11 +245,21 @@ class SiteController extends Controller
             }
 
             $currentSlug = $pedido->status?->slug;
-            if (! in_array($currentSlug, [OrderStatus::SLUG_DESPACHADO, 'despachado', 'pedido-despachado'])) {
+            if ($currentSlug !== OrderStatus::SLUG_DESPACHADO) {
                 $validator = Validator::make([], []);
                 $validator->errors()->add('order', 'El pedido no se encuentra en estado despachado para registrar su entrega.');
                 throw new ValidationException($validator);
             }
+        }
+
+        // Resolve delivered status and enforce transition matrix for all users (including admins)
+        $pedido->loadMissing('status');
+        $entregadoStatus = OrderStatus::whereIn('slug', [OrderStatus::SLUG_ENTREGADO, 'entregado'])->firstOrFail();
+
+        if ($pedido->status && ! $pedido->status->canTransitionTo($entregadoStatus)) {
+            throw ValidationException::withMessages([
+                'order_status_id' => 'No se puede marcar como entregado un pedido desde su estado actual.',
+            ]);
         }
 
         $validator = Validator::make([], []);
@@ -329,9 +340,6 @@ class SiteController extends Controller
         // Store photo
         $photoPath = $photo->store('orders/deliveries', 'public');
 
-        // Resolve delivered status
-        $entregadoStatus = OrderStatus::whereIn('slug', [OrderStatus::SLUG_ENTREGADO, 'entregado', 'pedido-entregado'])->firstOrFail();
-
         $previousStatusId = $pedido->order_status_id;
         $pedido->delivery_photo_path = $photoPath;
         $pedido->delivery_latitude = $latitude;
@@ -344,18 +352,20 @@ class SiteController extends Controller
             $pedido->payment_term = $term;
         }
 
-        $pedido->save();
-
         $observation = $request->input('observation') ?? $request->input('notes') ?? 'Entrega registrada por el vendedor con foto y coordenadas GPS.';
 
-        OrderStatusHistory::create([
-            'order_id' => $pedido->id,
-            'previous_status_id' => $previousStatusId,
-            'new_status_id' => $entregadoStatus->id,
-            'user_id' => $user->id,
-            'observation' => $observation,
-            'changed_at' => now(),
-        ]);
+        DB::transaction(function () use ($pedido, $previousStatusId, $entregadoStatus, $user, $observation): void {
+            $pedido->save();
+
+            OrderStatusHistory::create([
+                'order_id' => $pedido->id,
+                'previous_status_id' => $previousStatusId,
+                'new_status_id' => $entregadoStatus->id,
+                'user_id' => $user->id,
+                'observation' => $observation,
+                'changed_at' => now(),
+            ]);
+        });
 
         return redirect()->route('site.seller.orders')
             ->with('success', "Entrega del pedido {$pedido->code} registrada correctamente.");

@@ -58,12 +58,10 @@ class OrderControllerTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->status = OrderStatus::create([
-            'name' => 'Pedido creado',
-            'slug' => 'pedido-creado',
-            'sort_order' => 1,
-            'is_active' => true,
-        ]);
+        $this->status = OrderStatus::firstOrCreate(
+            ['slug' => OrderStatus::SLUG_CREADO],
+            ['name' => 'Pedido creado', 'sort_order' => 1, 'is_active' => true]
+        );
     }
 
     private function validPayload(array $overrides = []): array
@@ -472,5 +470,206 @@ class OrderControllerTest extends TestCase
             ->assertSee('Empaque de Culata')
             ->assertSee('Retén de Cigüeñal')
             ->assertSee('<td>-</td>', false);
+    }
+
+    public function test_destroy_transitions_order_to_pedido_rechazado_and_records_history(): void
+    {
+        $rejectedStatus = OrderStatus::where('slug', OrderStatus::SLUG_RECHAZADO)->firstOrFail();
+
+        $order = Order::create([
+            'code' => 'PED-DEL-REJ-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $this->status->id,
+            'billing_type' => 'remision',
+            'ordered_at' => now()->toDateString(),
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->delete(route('pedidos.destroy', $order));
+
+        $response->assertRedirect()
+            ->assertSessionHas('success');
+
+        $order->refresh();
+        $this->assertSame($rejectedStatus->id, $order->order_status_id);
+        $this->assertSame('Pedido rechazado desde el listado.', $order->rejection_reason);
+
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'previous_status_id' => $this->status->id,
+            'new_status_id' => $rejectedStatus->id,
+            'user_id' => $this->admin->id,
+            'observation' => 'Pedido rechazado desde el listado.',
+        ]);
+    }
+
+    public function test_destroy_blocks_rejecting_an_order_already_in_terminal_state(): void
+    {
+        $collectedStatus = OrderStatus::where('slug', OrderStatus::SLUG_COBRADO)->firstOrFail();
+
+        $order = Order::create([
+            'code' => 'PED-DEL-TERM-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $collectedStatus->id,
+            'billing_type' => 'remision',
+            'ordered_at' => now()->toDateString(),
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->delete(route('pedidos.destroy', $order));
+
+        $response->assertRedirect()
+            ->assertSessionHas('error');
+
+        $order->refresh();
+        $this->assertSame($collectedStatus->id, $order->order_status_id);
+    }
+
+    public function test_destroy_blocks_rejecting_delivered_and_all_terminal_orders(): void
+    {
+        $blockedSlugs = [
+            OrderStatus::SLUG_ENTREGADO,
+            OrderStatus::SLUG_DEVUELTO,
+            OrderStatus::SLUG_RECHAZADO,
+            OrderStatus::SLUG_COBRADO,
+        ];
+
+        foreach ($blockedSlugs as $slug) {
+            $status = OrderStatus::where('slug', $slug)->firstOrFail();
+
+            $order = Order::create([
+                'code' => 'PED-DEL-BLK-'.strtoupper($slug),
+                'client_id' => $this->client->id,
+                'created_by' => $this->admin->id,
+                'order_status_id' => $status->id,
+                'billing_type' => 'remision',
+                'ordered_at' => now()->toDateString(),
+            ]);
+
+            $response = $this->actingAs($this->admin)
+                ->delete(route('pedidos.destroy', $order));
+
+            $response->assertRedirect()
+                ->assertSessionHas('error', 'No se puede rechazar un pedido en su estado actual.');
+
+            $this->assertSame($status->id, $order->fresh()->order_status_id);
+        }
+    }
+
+    public function test_orders_index_hides_rechazar_button_for_delivered_and_terminal_orders(): void
+    {
+        $creado = OrderStatus::where('slug', OrderStatus::SLUG_CREADO)->firstOrFail();
+        $entregado = OrderStatus::where('slug', OrderStatus::SLUG_ENTREGADO)->firstOrFail();
+        $rechazado = OrderStatus::where('slug', OrderStatus::SLUG_RECHAZADO)->firstOrFail();
+
+        $activeOrder = Order::create([
+            'code' => 'PED-IDX-ACT-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $creado->id,
+            'billing_type' => 'remision',
+            'ordered_at' => now()->toDateString(),
+        ]);
+
+        $deliveredOrder = Order::create([
+            'code' => 'PED-IDX-DEL-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $entregado->id,
+            'billing_type' => 'remision',
+            'ordered_at' => now()->toDateString(),
+        ]);
+
+        $rejectedOrder = Order::create([
+            'code' => 'PED-IDX-REJ-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $rechazado->id,
+            'billing_type' => 'remision',
+            'ordered_at' => now()->toDateString(),
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('pedidos.index'));
+
+        $response->assertOk()
+            ->assertSee('action="'.route('pedidos.destroy', $activeOrder).'"', false)
+            ->assertDontSee('action="'.route('pedidos.destroy', $deliveredOrder).'"', false)
+            ->assertDontSee('action="'.route('pedidos.destroy', $rejectedOrder).'"', false);
+
+        $this->assertSame(1, substr_count($response->getContent(), '>Rechazar<'));
+    }
+
+    public function test_same_status_patch_is_blocked_on_terminal_orders(): void
+    {
+        $rechazado = OrderStatus::where('slug', OrderStatus::SLUG_RECHAZADO)->firstOrFail();
+        $cobrado = OrderStatus::where('slug', OrderStatus::SLUG_COBRADO)->firstOrFail();
+        $devuelto = OrderStatus::where('slug', OrderStatus::SLUG_DEVUELTO)->firstOrFail();
+
+        $rejectedOrder = Order::create([
+            'code' => 'PED-SAME-REJ-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $rechazado->id,
+            'billing_type' => 'remision',
+            'ordered_at' => now()->toDateString(),
+            'rejection_reason' => 'Motivo original protegido',
+            'payment_term' => 'contado',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->patch(route('pedidos.estado', $rejectedOrder), [
+                'order_status_id' => $rechazado->id,
+                'rejection_reason' => 'Intento de sobrescritura',
+                'payment_term' => 'credito',
+                'payment_due_date' => now()->addDays(10)->toDateString(),
+            ])
+            ->assertSessionHasErrors('order_status_id');
+
+        $rejectedOrder->refresh();
+        $this->assertSame('Motivo original protegido', $rejectedOrder->rejection_reason);
+        $this->assertSame('contado', $rejectedOrder->payment_term);
+        $this->assertDatabaseCount('order_status_histories', 0);
+
+        $collectedOrder = Order::create([
+            'code' => 'PED-SAME-COB-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $cobrado->id,
+            'billing_type' => 'remision',
+            'ordered_at' => now()->toDateString(),
+            'payment_support_path' => 'orders/payments/original.pdf',
+            'paid_at' => now()->subDay(),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->patch(route('pedidos.estado', $collectedOrder), [
+                'order_status_id' => $cobrado->id,
+                'payment_responsible_id' => $this->admin->id,
+            ])
+            ->assertSessionHasErrors('order_status_id');
+
+        $this->assertSame('orders/payments/original.pdf', $collectedOrder->fresh()->payment_support_path);
+
+        $returnedOrder = Order::create([
+            'code' => 'PED-SAME-DEV-001',
+            'client_id' => $this->client->id,
+            'created_by' => $this->admin->id,
+            'order_status_id' => $devuelto->id,
+            'billing_type' => 'remision',
+            'ordered_at' => now()->toDateString(),
+            'return_justification_path' => 'orders/returns/original.pdf',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->patch(route('pedidos.estado', $returnedOrder), [
+                'order_status_id' => $devuelto->id,
+                'payment_term' => 'contado',
+            ])
+            ->assertSessionHasErrors('order_status_id');
+
+        $this->assertSame('orders/returns/original.pdf', $returnedOrder->fresh()->return_justification_path);
+        $this->assertDatabaseCount('order_status_histories', 0);
     }
 }

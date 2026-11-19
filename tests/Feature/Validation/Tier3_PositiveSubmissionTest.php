@@ -601,33 +601,26 @@ class Tier3_PositiveSubmissionTest extends TestCase
     // 10. Admin Order Statuses CRUD Positive Submissions
     // =========================================================================
 
-    public function test_admin_order_status_crud_store_positive_submission(): void
+    public function test_admin_order_status_crud_store_blocked_at_eight_states(): void
     {
         $response = $this->actingAs($this->admin)->post(route('estados-pedido.store'), [
             'name' => 'Inspección de Calidad',
             'color' => '#17a2b8',
-            'sort_order' => 3,
+            'sort_order' => 9,
             'is_active' => '1',
         ]);
 
         $response->assertRedirect(route('estados-pedido.index'));
-        $response->assertSessionHas('success');
-        $this->assertDatabaseHas('order_statuses', [
+        $response->assertSessionHas('error');
+        $this->assertSame(8, OrderStatus::count());
+        $this->assertDatabaseMissing('order_statuses', [
             'name' => 'Inspección de Calidad',
-            'color' => '#17a2b8',
-            'sort_order' => 3,
         ]);
     }
 
     public function test_admin_order_status_crud_update_positive_submission(): void
     {
-        $status = OrderStatus::create([
-            'name' => 'Estado Temporal',
-            'slug' => 'estado-temporal',
-            'color' => '#6c757d',
-            'sort_order' => 4,
-            'is_active' => true,
-        ]);
+        $status = OrderStatus::where('slug', OrderStatus::SLUG_EN_PROCESO)->firstOrFail();
 
         $response = $this->actingAs($this->admin)->put(route('estados-pedido.update', $status), [
             'name' => 'Estado Definitivo',
@@ -640,8 +633,11 @@ class Tier3_PositiveSubmissionTest extends TestCase
         $response->assertSessionHas('success');
         $this->assertDatabaseHas('order_statuses', [
             'id' => $status->id,
-            'name' => 'Estado Definitivo',
+            'name' => 'Pedido en proceso',
+            'slug' => OrderStatus::SLUG_EN_PROCESO,
             'color' => '#28a745',
+            'sort_order' => 4,
+            'is_active' => true,
         ]);
     }
 

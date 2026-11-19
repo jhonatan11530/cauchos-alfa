@@ -13,7 +13,7 @@
                 <thead><tr><th>Código</th><th>Estado</th><th></th></tr></thead>
                 <tbody>
                     @forelse ($client->orders as $order)
-                        <tr><td>{{ $order->code }}</td><td>{{ $order->status->name }}</td><td><a href="{{ route('pedidos.show', $order) }}" class="btn btn-sm btn-primary">Ver</a></td></tr>
+                        <tr><td>{{ $order->code }}</td><td>{{ $order->status?->name ?? 'Sin estado' }}</td><td><a href="{{ route('pedidos.show', $order) }}" class="btn btn-sm btn-primary">Ver</a></td></tr>
                     @empty
                         <tr><td colspan="3" class="text-center">Este cliente no tiene pedidos.</td></tr>
                     @endforelse

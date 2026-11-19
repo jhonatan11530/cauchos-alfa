@@ -155,19 +155,19 @@
             border-radius: 10px;
             overflow: hidden;
             width: 100%;
-            height: 268px;
+            height: 295px;
         }
 
         .product-card-img-box {
-            height: 136px;
+            height: 165px;
             background-color: #f5f5f5;
             text-align: center;
             padding: 6px;
         }
 
         .product-img {
-            max-width: 92%;
-            max-height: 120px;
+            max-width: 95%;
+            max-height: 150px;
             display: inline-block;
             vertical-align: middle;
         }
@@ -337,7 +337,7 @@
                             <td class="grid-cell">
                                 <div class="product-card">
                                     <div class="product-card-img-box">
-                                        <table style="width: 100%; height: 124px;">
+                                        <table style="width: 100%; height: 153px;">
                                             <tr>
                                                 <td style="vertical-align: middle; text-align: center;">
                                                     @if ($imageDataUri)

@@ -200,7 +200,7 @@
             background-color: #ffffff;
             overflow: hidden;
             text-align: center;
-            height: 214px;
+            height: 266px;
         }
 
         .product-category-badge {
@@ -219,7 +219,7 @@
         }
 
         .product-img-wrapper {
-            height: 106px;
+            height: 158px;
             background-color: #fafafa;
             border-bottom: 1px solid #f0f0f0;
             text-align: center;
@@ -228,15 +228,15 @@
         }
 
         .product-img {
-            max-height: 98px;
-            max-width: 92%;
+            max-height: 150px;
+            max-width: 95%;
             display: inline-block;
             vertical-align: middle;
             margin: 0 auto;
         }
 
         .no-img-placeholder {
-            height: 98px;
+            height: 150px;
             display: table;
             width: 100%;
         }

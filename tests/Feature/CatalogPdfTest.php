@@ -616,6 +616,64 @@ class CatalogPdfTest extends TestCase
         $this->assertSame([$prodB->id, $prodA->id], $orderedIds);
     }
 
+    public function test_both_templates_expand_9_product_cards_and_images_without_page_spillover(): void
+    {
+        $admin = $this->createAdmin();
+        $cat = $this->createCategory(['name' => 'Antivibrantes']);
+
+        // Crear 9 productos con referencias y nombres reales de catálogo
+        $products = [];
+        for ($i = 1; $i <= 9; $i++) {
+            $products[] = $this->createProduct($cat, [
+                'name' => sprintf('ANTIVIBRANTE CILINDRO ALFA PRO %02d', $i),
+                'reference' => sprintf('REF-%04d', 1900 + $i),
+                'image_path' => 'products/8MZlkK8agOblr9wq7CjPtGRotSOp2f2DRqXpGH1E.jpg',
+            ]);
+        }
+
+        // 1. Plantilla Default (Estándar Alfa)
+        $defaultCatalog = Catalog::create([
+            'name' => 'Catálogo de Prueba Estándar',
+            'company_name' => 'Cauchos Alfa',
+            'template' => 'default',
+            'is_active' => true,
+        ]);
+        $sync = [];
+        foreach ($products as $idx => $p) {
+            $sync[$p->id] = ['sort_order' => $idx + 1];
+        }
+        $defaultCatalog->products()->sync($sync);
+
+        $defaultPdfRes = $this->actingAs($admin)->get(route('catalogos.pdf', $defaultCatalog));
+        $defaultPdfRes->assertOk();
+        $defaultPdfBytes = $defaultPdfRes->getContent();
+        $defaultPages = $this->extractPdfPagesText($defaultPdfBytes);
+
+        // Debe caber exactamente en 1 sola página sin desbordar al folio 2
+        $this->assertCount(1, $defaultPages, 'Default template with 9 enlarged cards must fit strictly on 1 page.');
+        preg_match_all('/ANTIVIBRANTE CILINDRO ALFA PRO \d{2}/', $defaultPages[0], $matchesDefault);
+        $this->assertCount(9, array_values(array_unique($matchesDefault[0])));
+
+        // 2. Plantilla Catálogo Web
+        $webCatalog = Catalog::create([
+            'name' => 'Catálogo Web Oscuro',
+            'company_name' => 'Cauchos Alfa',
+            'template' => 'catalogo-web',
+            'is_active' => true,
+        ]);
+        $webCatalog->products()->sync($sync);
+
+        $webPdfRes = $this->actingAs($admin)->get(route('catalogos.pdf', $webCatalog));
+        $webPdfRes->assertOk();
+        $webPdfBytes = $webPdfRes->getContent();
+        $webPages = $this->extractPdfPagesText($webPdfBytes);
+
+        // En catalogo-web: Portada (pág 1) + 9 Productos (pág 2) + Contacto (pág 3) = 3 páginas
+        $this->assertCount(3, $webPages, 'Catalogo-web with 9 enlarged cards must fit on exactly 3 pages (Cover + Products + Contact).');
+        preg_match_all('/ANTIVIBRANTE CILINDRO ALFA PRO \d{2}/', $webPages[1], $matchesWeb);
+        $this->assertCount(9, array_values(array_unique($matchesWeb[0])));
+    }
+
     private function assertOrderedSubstrings(string $haystack, array $orderedNeedles): void
     {
         $lastPos = -1;

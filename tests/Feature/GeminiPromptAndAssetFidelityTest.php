@@ -144,10 +144,15 @@ class GeminiPromptAndAssetFidelityTest extends TestCase
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 5);
         curl_exec($ch);
+        $curlErr = curl_errno($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         $contentLength = curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
         curl_close($ch);
+
+        if ($curlErr !== 0 || $httpCode === 0) {
+            $this->markTestSkipped("Local Apache web server is not running on localhost (cURL error {$curlErr}).");
+        }
 
         $this->assertSame(200, $httpCode, "HTTP HEAD request to {$url} must return HTTP 200 OK. Got: {$httpCode}");
         $this->assertStringStartsWith('image/jpeg', $contentType, "Content-Type must be image/jpeg. Got: {$contentType}");

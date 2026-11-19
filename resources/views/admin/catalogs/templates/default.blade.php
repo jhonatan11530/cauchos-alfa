@@ -170,11 +170,11 @@
             text-transform: uppercase;
         }
 
-        /* Grilla 3x3 de Productos (9 por página) */
+        /* Grilla 2x3 de Productos (6 por página) */
         .grid-table {
             width: 100%;
             table-layout: fixed;
-            margin-bottom: 2px;
+            margin-bottom: 0;
         }
 
         .grid-row {
@@ -182,44 +182,44 @@
         }
 
         .grid-cell {
-            width: 33.3333%;
-            padding: 2.5px 3px;
+            width: 50%;
+            padding: 3px 5px;
             vertical-align: top;
             box-sizing: border-box;
         }
 
         .grid-cell-empty {
-            width: 33.3333%;
-            padding: 2.5px 3px;
+            width: 50%;
+            padding: 3px 5px;
         }
 
         /* Tarjeta de Producto */
         .product-card {
             border: 1px solid #dcdcdc;
-            border-radius: 5px;
+            border-radius: 6px;
             background-color: #ffffff;
             overflow: hidden;
             text-align: center;
-            height: 266px;
+            height: 262px;
         }
 
         .product-category-badge {
             background-color: #141414;
             border-left: 3px solid #e60012;
             color: #ffffff;
-            font-size: 6.5px;
+            font-size: 7.5px;
             font-weight: bold;
             text-transform: uppercase;
-            padding: 2.5px 6px;
+            padding: 2.5px 8px;
             text-align: left;
-            height: 11px;
-            line-height: 11px;
+            height: 12px;
+            line-height: 12px;
             overflow: hidden;
             white-space: nowrap;
         }
 
         .product-img-wrapper {
-            height: 158px;
+            height: 172px;
             background-color: #fafafa;
             border-bottom: 1px solid #f0f0f0;
             text-align: center;
@@ -228,7 +228,7 @@
         }
 
         .product-img {
-            max-height: 150px;
+            max-height: 165px;
             max-width: 95%;
             display: inline-block;
             vertical-align: middle;
@@ -236,7 +236,7 @@
         }
 
         .no-img-placeholder {
-            height: 150px;
+            height: 165px;
             display: table;
             width: 100%;
         }
@@ -244,43 +244,43 @@
         .no-img-text {
             display: table-cell;
             vertical-align: middle;
-            font-size: 8px;
+            font-size: 9px;
             color: #aaaaaa;
             font-weight: bold;
             text-transform: uppercase;
         }
 
         .product-body {
-            padding: 4px 6px;
+            padding: 4px 8px;
             text-align: center;
         }
 
         .product-name {
-            font-size: 8.5px;
+            font-size: 9.5px;
             font-weight: bold;
             color: #111111;
             margin: 0 0 2px 0;
             line-height: 1.15;
             text-transform: uppercase;
-            height: 21px;
+            height: 22px;
             overflow: hidden;
         }
 
         .product-ref {
-            font-size: 7.5px;
+            font-size: 8px;
             font-weight: bold;
             color: #e60012;
             margin-bottom: 2px;
             display: block;
-            height: 11px;
+            height: 12px;
             overflow: hidden;
         }
 
         .product-desc {
-            font-size: 7px;
+            font-size: 7.5px;
             color: #555555;
             line-height: 1.15;
-            height: 31px;
+            height: 20px;
             overflow: hidden;
             margin-top: 1px;
         }
@@ -342,7 +342,7 @@
             $items = $catalog->orderedProductsForPdf();
         }
 
-        $pages = $items->chunk(9);
+        $pages = $items->chunk(6);
         $totalPages = $pages->count();
     @endphp
 
@@ -420,7 +420,7 @@
             </div>
 
             <table class="grid-table">
-                @foreach ($pageProducts->chunk(3) as $row)
+                @foreach ($pageProducts->chunk(2) as $row)
                     <tr class="grid-row">
                         @foreach ($row as $product)
                             @php
@@ -440,7 +440,7 @@
                                                         <img src="{{ $imageDataUri }}" alt="{{ $product->name }}" class="product-img">
                                                     @else
                                                         <div class="no-img-placeholder">
-                                                            <span class="no-img-text">Sin Imagen</span>
+                                                             <span class="no-img-text">Sin Imagen</span>
                                                         </div>
                                                     @endif
                                                 </td>
@@ -468,7 +468,7 @@
                             </td>
                         @endforeach
 
-                        @for ($i = 0; $i < (3 - $row->count()); $i++)
+                        @for ($i = 0; $i < (2 - $row->count()); $i++)
                             <td class="grid-cell-empty">&nbsp;</td>
                         @endfor
                     </tr>

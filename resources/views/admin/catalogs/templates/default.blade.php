@@ -170,11 +170,11 @@
             text-transform: uppercase;
         }
 
-        /* Grilla 2x3 de Productos (6 por página) */
+        /* Grilla 3x3 de Productos (9 por página) */
         .grid-table {
             width: 100%;
             table-layout: fixed;
-            margin-bottom: 0;
+            margin-bottom: 2px;
         }
 
         .grid-row {
@@ -182,44 +182,44 @@
         }
 
         .grid-cell {
-            width: 50%;
-            padding: 3px 5px;
+            width: 33.3333%;
+            padding: 2.5px 3px;
             vertical-align: top;
             box-sizing: border-box;
         }
 
         .grid-cell-empty {
-            width: 50%;
-            padding: 3px 5px;
+            width: 33.3333%;
+            padding: 2.5px 3px;
         }
 
         /* Tarjeta de Producto */
         .product-card {
             border: 1px solid #dcdcdc;
-            border-radius: 6px;
+            border-radius: 5px;
             background-color: #ffffff;
             overflow: hidden;
             text-align: center;
-            height: 262px;
+            height: 266px;
         }
 
         .product-category-badge {
             background-color: #141414;
             border-left: 3px solid #e60012;
             color: #ffffff;
-            font-size: 7.5px;
+            font-size: 6.5px;
             font-weight: bold;
             text-transform: uppercase;
-            padding: 2.5px 8px;
+            padding: 2.5px 6px;
             text-align: left;
-            height: 12px;
-            line-height: 12px;
+            height: 11px;
+            line-height: 11px;
             overflow: hidden;
             white-space: nowrap;
         }
 
         .product-img-wrapper {
-            height: 172px;
+            height: 158px;
             background-color: #fafafa;
             border-bottom: 1px solid #f0f0f0;
             text-align: center;
@@ -228,7 +228,7 @@
         }
 
         .product-img {
-            max-height: 165px;
+            max-height: 150px;
             max-width: 95%;
             display: inline-block;
             vertical-align: middle;
@@ -236,7 +236,7 @@
         }
 
         .no-img-placeholder {
-            height: 165px;
+            height: 150px;
             display: table;
             width: 100%;
         }
@@ -244,43 +244,43 @@
         .no-img-text {
             display: table-cell;
             vertical-align: middle;
-            font-size: 9px;
+            font-size: 8px;
             color: #aaaaaa;
             font-weight: bold;
             text-transform: uppercase;
         }
 
         .product-body {
-            padding: 4px 8px;
+            padding: 4px 6px;
             text-align: center;
         }
 
         .product-name {
-            font-size: 9.5px;
+            font-size: 8.5px;
             font-weight: bold;
             color: #111111;
             margin: 0 0 2px 0;
             line-height: 1.15;
             text-transform: uppercase;
-            height: 22px;
+            height: 21px;
             overflow: hidden;
         }
 
         .product-ref {
-            font-size: 8px;
+            font-size: 7.5px;
             font-weight: bold;
             color: #e60012;
             margin-bottom: 2px;
             display: block;
-            height: 12px;
+            height: 11px;
             overflow: hidden;
         }
 
         .product-desc {
-            font-size: 7.5px;
+            font-size: 7px;
             color: #555555;
             line-height: 1.15;
-            height: 20px;
+            height: 31px;
             overflow: hidden;
             margin-top: 1px;
         }
@@ -441,7 +441,7 @@
             </div>
 
             <table class="grid-table">
-                @foreach ($pageProducts->chunk(2) as $row)
+                @foreach ($pageProducts->chunk(3) as $row)
                     <tr class="grid-row">
                         @foreach ($row as $product)
                             @php
@@ -489,7 +489,7 @@
                             </td>
                         @endforeach
 
-                        @for ($i = 0; $i < (2 - $row->count()); $i++)
+                        @for ($i = 0; $i < (3 - $row->count()); $i++)
                             <td class="grid-cell-empty">&nbsp;</td>
                         @endfor
                     </tr>

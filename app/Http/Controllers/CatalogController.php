@@ -103,7 +103,7 @@ class CatalogController extends Controller
             'orderedProducts' => $orderedProducts,
             'productsByCategory' => $productsByCategory,
         ])->setPaper('A4', 'portrait')
-        ->stream('catalogo-'.$catalogo->id.'.pdf');
+            ->stream('catalogo-'.$catalogo->id.'.pdf');
     }
 
     public function publicPdf(Catalog $catalogo)

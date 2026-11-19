@@ -126,7 +126,7 @@
             border-radius: 4px;
         }
 
-        /* Grilla 2x3 de Productos (6 por página) */
+        /* Grilla 3x3 de Productos (9 por página) */
         .grid-table {
             width: 100%;
             table-layout: fixed;
@@ -137,29 +137,29 @@
         }
 
         .grid-cell {
-            width: 50%;
-            padding: 4px 6px;
+            width: 33.3333%;
+            padding: 4px;
             vertical-align: top;
             box-sizing: border-box;
         }
 
         .grid-cell-empty {
-            width: 50%;
-            padding: 4px 6px;
+            width: 33.3333%;
+            padding: 4px;
         }
 
-        /* Cards de Producto 2x3 */
+        /* Cards de Producto 3x3 */
         .product-card {
             background-color: #161618;
             border: 1px solid #26262a;
             border-radius: 10px;
             overflow: hidden;
             width: 100%;
-            height: 298px;
+            height: 295px;
         }
 
         .product-card-img-box {
-            height: 190px;
+            height: 165px;
             background-color: #f5f5f5;
             text-align: center;
             padding: 6px;
@@ -167,7 +167,7 @@
 
         .product-img {
             max-width: 95%;
-            max-height: 175px;
+            max-height: 150px;
             display: inline-block;
             vertical-align: middle;
         }
@@ -348,7 +348,7 @@
             </div>
 
             <table class="grid-table">
-                @foreach ($pageProducts->chunk(2) as $row)
+                @foreach ($pageProducts->chunk(3) as $row)
                     <tr class="grid-row">
                         @foreach ($row as $product)
                             @php
@@ -358,7 +358,7 @@
                             <td class="grid-cell">
                                 <div class="product-card">
                                     <div class="product-card-img-box">
-                                        <table style="width: 100%; height: 178px;">
+                                        <table style="width: 100%; height: 153px;">
                                             <tr>
                                                 <td style="vertical-align: middle; text-align: center;">
                                                     @if ($imageDataUri)
@@ -380,7 +380,7 @@
                             </td>
                         @endforeach
 
-                        @for ($i = 0; $i < (2 - $row->count()); $i++)
+                        @for ($i = 0; $i < (3 - $row->count()); $i++)
                             <td class="grid-cell-empty">&nbsp;</td>
                         @endfor
                     </tr>

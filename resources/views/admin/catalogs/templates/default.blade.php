@@ -342,11 +342,33 @@
             $items = $catalog->orderedProductsForPdf();
         }
 
-        $pages = $items->chunk(6);
+        if (isset($productsByCategory) && $productsByCategory instanceof \Illuminate\Support\Collection) {
+            $categoriesGrouped = $productsByCategory;
+        } else {
+            $categoriesGrouped = $items->groupBy(fn ($p) => $p->category?->name ?? 'Otros Productos');
+        }
+
+        $pages = collect();
+        foreach ($categoriesGrouped as $categoryName => $catProducts) {
+            $catChunks = collect($catProducts)->chunk(6);
+            $totalCatPages = $catChunks->count();
+            foreach ($catChunks as $chunkIdx => $chunkProducts) {
+                $pages->push([
+                    'categoryName' => $categoryName,
+                    'products' => $chunkProducts,
+                    'categoryPage' => $chunkIdx + 1,
+                    'totalCategoryPages' => $totalCatPages,
+                ]);
+            }
+        }
         $totalPages = $pages->count();
     @endphp
 
-    @forelse ($pages as $pageProducts)
+    @forelse ($pages as $pageData)
+        @php
+            $pageProducts = $pageData['products'];
+            $categoryName = $pageData['categoryName'];
+        @endphp
         <div class="pdf-page @if (!$loop->first) page-break @endif">
             @if ($loop->first)
                 {{-- Cabecera Principal en Página 1 --}}
@@ -409,14 +431,13 @@
                 </div>
             @endif
 
-            @php
-                $pageCategories = $pageProducts
-                    ->map(fn ($p) => $p->category?->name ?? 'Otros Productos')
-                    ->unique()
-                    ->values();
-            @endphp
             <div class="page-categories-bar">
-                <strong>Categorías:</strong> {{ $pageCategories->implode(' · ') }}
+                <strong>Categoría:</strong> {{ $categoryName }}
+                @if ($pageData['totalCategoryPages'] > 1)
+                    <span style="color: #666666; font-size: 7px; float: right;">
+                        Parte {{ $pageData['categoryPage'] }} de {{ $pageData['totalCategoryPages'] }}
+                    </span>
+                @endif
             </div>
 
             <table class="grid-table">

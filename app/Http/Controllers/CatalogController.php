@@ -102,7 +102,7 @@ class CatalogController extends Controller
             'catalog' => $catalogo,
             'orderedProducts' => $orderedProducts,
             'productsByCategory' => $productsByCategory,
-        ]);
+        ])->setPaper('a4', 'portrait');
 
         return $pdf->stream('catalogo-'.$catalogo->id.'.pdf');
     }
@@ -118,6 +118,7 @@ class CatalogController extends Controller
                 'orderedProducts' => $orderedProducts,
                 'productsByCategory' => $productsByCategory,
             ])
+            ->setPaper('a4', 'portrait')
             ->stream('catalogo-'.$catalogo->id.'.pdf');
     }
 

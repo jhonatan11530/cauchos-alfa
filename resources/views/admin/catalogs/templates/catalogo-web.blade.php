@@ -300,16 +300,32 @@
             $items = $catalog->orderedProductsForPdf();
         }
 
-        $pages = $items->chunk(6);
+        if (isset($productsByCategory) && $productsByCategory instanceof \Illuminate\Support\Collection) {
+            $categoriesGrouped = $productsByCategory;
+        } else {
+            $categoriesGrouped = $items->groupBy(fn ($p) => $p->category?->name ?? 'Varios');
+        }
+
+        $pages = collect();
+        foreach ($categoriesGrouped as $catName => $catProducts) {
+            $catChunks = collect($catProducts)->chunk(6);
+            $totalCatPages = $catChunks->count();
+            foreach ($catChunks as $chunkIdx => $chunkProducts) {
+                $pages->push([
+                    'categoryName' => $catName,
+                    'products' => $chunkProducts,
+                    'categoryPage' => $chunkIdx + 1,
+                    'totalCategoryPages' => $totalCatPages,
+                ]);
+            }
+        }
         $totalProductPages = $pages->count();
     @endphp
 
-    @foreach ($pages as $pageProducts)
+    @foreach ($pages as $pageData)
         @php
-            $pageCategories = $pageProducts
-                ->map(fn ($p) => $p->category?->name ?? 'Varios')
-                ->unique()
-                ->values();
+            $pageProducts = $pageData['products'];
+            $categoryName = $pageData['categoryName'];
         @endphp
         <div class="page">
             <div class="page-header">
@@ -317,7 +333,12 @@
                     <tr>
                         <td class="text-left" style="vertical-align: middle;">
                             <h2 class="section-title">{{ mb_strtoupper($catalog->name) }}</h2>
-                            <div class="section-subtitle">{{ $pageCategories->implode(' · ') }}</div>
+                            <div class="section-subtitle">
+                                {{ mb_strtoupper($categoryName) }}
+                                @if ($pageData['totalCategoryPages'] > 1)
+                                    &bull; PARTE {{ $pageData['categoryPage'] }} / {{ $pageData['totalCategoryPages'] }}
+                                @endif
+                            </div>
                         </td>
                         <td class="text-right" style="vertical-align: middle; width: 120px;">
                             <span class="page-badge">PÁGINA {{ $loop->iteration }} / {{ $totalProductPages }}</span>

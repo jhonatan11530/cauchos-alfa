@@ -396,7 +396,7 @@ class SiteController extends Controller
             'catalog' => $catalog,
             'orderedProducts' => $orderedProducts,
             'productsByCategory' => $productsByCategory,
-        ]);
+        ])->setPaper('a4', 'portrait');
 
         return $pdf->download('catalogo-'.$catalog->id.'.pdf');
     }

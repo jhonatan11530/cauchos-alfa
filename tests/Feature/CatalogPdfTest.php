@@ -209,16 +209,13 @@ class CatalogPdfTest extends TestCase
     public function test_r2_both_templates_paginate_to_exactly_6_products_per_full_page(): void
     {
         $admin = $this->createAdmin();
-        $catA = $this->createCategory(['name' => 'CatAlpha']);
-        $catB = $this->createCategory(['name' => 'CatBeta']);
-        $catC = $this->createCategory(['name' => 'CatGamma']);
-        $categories = [$catA, $catB, $catC];
+        $cat = $this->createCategory(['name' => 'CatPaginacion']);
 
         foreach (['default', 'catalogo-web'] as $template) {
-            foreach ([7, 12, 13] as $totalProducts) {
+            foreach ([6, 12, 13] as $totalProducts) {
                 $products = collect();
                 for ($i = 1; $i <= $totalProducts; $i++) {
-                    $products->push($this->createProduct($categories[($i - 1) % 3], [
+                    $products->push($this->createProduct($cat, [
                         'name' => sprintf('PAG_%s_%02d_P%02d', strtoupper(substr($template, 0, 3)), $totalProducts, $i),
                         'reference' => sprintf('REF-%02d-%02d', $totalProducts, $i),
                     ]));
@@ -346,10 +343,12 @@ class CatalogPdfTest extends TestCase
         $this->assertLessThan(strpos($showHtml, 'PROD_B_UNO'), strpos($showHtml, 'PROD_B_DOS'));
         $this->assertLessThan(strpos($showHtml, 'PROD_A_DOS'), strpos($showHtml, 'PROD_B_UNO'));
 
-        // Verify default PDF stream preserves exact order
+        // Verify default PDF stream preserves exact order across pages
         $defaultPdfBytes = $this->actingAs($admin)->get(route('catalogos.pdf', $catalog))->getContent();
-        $defaultPageText = $this->extractPdfPagesText($defaultPdfBytes)[0];
-        $this->assertOrderedSubstrings($defaultPageText, ['PROD_B_DOS', 'PROD_B_UNO', 'PROD_A_DOS', 'PROD_A_UNO']);
+        $defaultPages = $this->extractPdfPagesText($defaultPdfBytes);
+        $this->assertCount(2, $defaultPages, 'Expected 2 pages in default: 1 page for CatB and 1 page for CatA.');
+        $defaultFullText = implode("\n", $defaultPages);
+        $this->assertOrderedSubstrings($defaultFullText, ['PROD_B_DOS', 'PROD_B_UNO', 'PROD_A_DOS', 'PROD_A_UNO']);
 
         // Update order to [A, B] and [A1, A2, B1, B2] with template 'catalogo-web'
         $updateRes = $this->actingAs($admin)->put(route('catalogos.update', $catalog), [
@@ -368,11 +367,12 @@ class CatalogPdfTest extends TestCase
             $catalog->orderedProductsForPdf()->pluck('id')->all()
         );
 
-        // Verify catalogo-web PDF stream preserves exact updated order (Page index 1 = first product page after cover)
+        // Verify catalogo-web PDF stream preserves exact updated order (Cover + CatA + CatB + Contact = 4 pages)
         $webPdfBytes = $this->actingAs($admin)->get(route('catalogos.pdf', $catalog))->getContent();
         $webPages = $this->extractPdfPagesText($webPdfBytes);
-        $this->assertCount(3, $webPages);
-        $this->assertOrderedSubstrings($webPages[1], ['PROD_A_UNO', 'PROD_A_DOS', 'PROD_B_UNO', 'PROD_B_DOS']);
+        $this->assertCount(4, $webPages, 'Expected 4 pages in catalogo-web: Portada + CatA + CatB + Contacto.');
+        $webProductText = implode("\n", array_slice($webPages, 1, 2));
+        $this->assertOrderedSubstrings($webProductText, ['PROD_A_UNO', 'PROD_A_DOS', 'PROD_B_UNO', 'PROD_B_DOS']);
     }
 
     public function test_r3_uncategorized_products_and_interleaved_submission_respect_category_order(): void
@@ -408,8 +408,10 @@ class CatalogPdfTest extends TestCase
         );
 
         $pdfBytes = $this->actingAs($admin)->get(route('catalogos.public-pdf', $catalog))->getContent();
-        $pageText = $this->extractPdfPagesText($pdfBytes)[0];
-        $this->assertOrderedSubstrings($pageText, ['PROD_SIN_CAT', 'PROD_CAT_2', 'PROD_CAT_1']);
+        $allPages = $this->extractPdfPagesText($pdfBytes);
+        $this->assertCount(2, $allPages, 'Expected 2 pages: 1 page for Uncategorized and 1 page for CatConNombre.');
+        $fullPageText = implode("\n", $allPages);
+        $this->assertOrderedSubstrings($fullPageText, ['PROD_SIN_CAT', 'PROD_CAT_2', 'PROD_CAT_1']);
     }
 
     public function test_r3_edit_validation_failure_with_zero_products_keeps_all_checkboxes_unchecked_and_preserves_category_order(): void
@@ -471,11 +473,11 @@ class CatalogPdfTest extends TestCase
     public function test_r2_default_template_n6_stress_with_long_header_categories_and_notes_fits_on_one_page(): void
     {
         $admin = $this->createAdmin();
+        $cat = $this->createCategory([
+            'name' => 'CATEGORIA_LARGA_REPUESTOS_INDUSTRIALES_CAUCHOS',
+        ]);
         $products = [];
         for ($i = 1; $i <= 6; $i++) {
-            $cat = $this->createCategory([
-                'name' => "CATEGORIA_LARGA_NUMERO_{$i}_REPUESTOS_INDUSTRIALES_CAUCHOS",
-            ]);
             $products[] = $this->createProduct($cat, [
                 'name' => sprintf('STRESS_N6_P%02d_%s', $i, str_repeat('PRODUCTO_LARGO_', 3)),
                 'reference' => sprintf('STR-N6-%02d', $i),
@@ -672,6 +674,61 @@ class CatalogPdfTest extends TestCase
         $this->assertCount(3, $webPages, 'Catalogo-web with 6 enlarged cards must fit on exactly 3 pages (Cover + Products + Contact).');
         preg_match_all('/ANTIVIBRANTE CILINDRO ALFA PRO \d{2}/', $webPages[1], $matchesWeb);
         $this->assertCount(6, array_values(array_unique($matchesWeb[0])));
+    }
+
+    public function test_categories_never_mix_on_same_page_and_start_on_fresh_page(): void
+    {
+        $admin = $this->createAdmin();
+        $catAntivibrantes = $this->createCategory(['name' => 'Antivibrante Cilindro']);
+        $catAdicionales = $this->createCategory(['name' => 'Adicionales']);
+
+        // Crear 5 productos en Antivibrante Cilindro (no llena los 6 de la página)
+        $sync = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $p = $this->createProduct($catAntivibrantes, [
+                'name' => "ANTIVIBRANTE_PROD_{$i}",
+                'reference' => "REF-ANTI-{$i}",
+            ]);
+            $sync[$p->id] = ['sort_order' => $i];
+        }
+
+        // Crear 3 productos en Adicionales
+        for ($j = 1; $j <= 3; $j++) {
+            $p = $this->createProduct($catAdicionales, [
+                'name' => "ADICIONAL_PROD_{$j}",
+                'reference' => "REF-ADIC-{$j}",
+            ]);
+            $sync[$p->id] = ['sort_order' => 5 + $j];
+        }
+
+        $catalog = Catalog::create([
+            'name' => 'Catálogo Categorías Separadas',
+            'company_name' => 'Cauchos Alfa',
+            'template' => 'default',
+            'is_active' => true,
+        ]);
+        $catalog->products()->sync($sync);
+
+        $response = $this->actingAs($admin)->get(route('catalogos.pdf', $catalog));
+        $response->assertOk();
+
+        $pdfPages = $this->extractPdfPagesText($response->getContent());
+        // Debe tener exactamente 2 páginas: Página 1 con los 5 antivibrantes, Página 2 con los 3 adicionales
+        $this->assertCount(2, $pdfPages, 'Expected exactly 2 pages: 1 for Antivibrante and 1 for Adicionales.');
+
+        // Página 1 solo debe tener productos de Antivibrantes, NINGUNO de Adicionales
+        for ($i = 1; $i <= 5; $i++) {
+            $this->assertStringContainsString("ANTIVIBRANTE_PROD_{$i}", $pdfPages[0]);
+        }
+        $this->assertStringNotContainsString('ADICIONAL_PROD_1', $pdfPages[0], 'Product from Adicionales must NOT leak onto Antivibrantes page.');
+        $this->assertStringContainsString('CATEGORÍA: Antivibrante Cilindro', $pdfPages[0]);
+
+        // Página 2 solo debe tener productos de Adicionales, NINGUNO de Antivibrantes
+        for ($j = 1; $j <= 3; $j++) {
+            $this->assertStringContainsString("ADICIONAL_PROD_{$j}", $pdfPages[1]);
+        }
+        $this->assertStringNotContainsString('ANTIVIBRANTE_PROD_5', $pdfPages[1], 'Product from Antivibrantes must NOT leak onto Adicionales page.');
+        $this->assertStringContainsString('CATEGORÍA: Adicionales', $pdfPages[1]);
     }
 
     private function assertOrderedSubstrings(string $haystack, array $orderedNeedles): void

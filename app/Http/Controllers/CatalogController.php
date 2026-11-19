@@ -98,13 +98,12 @@ class CatalogController extends Controller
         $orderedProducts = $catalogo->orderedProductsForPdf();
         $productsByCategory = $catalogo->groupedOrderedProductsForPdf();
 
-        $pdf = app('dompdf.wrapper')->loadView($catalogo->resolveTemplateView(), [
+        return app('dompdf.wrapper')->loadView($catalogo->resolveTemplateView(), [
             'catalog' => $catalogo,
             'orderedProducts' => $orderedProducts,
             'productsByCategory' => $productsByCategory,
-        ])->setPaper('a4', 'portrait');
-
-        return $pdf->stream('catalogo-'.$catalogo->id.'.pdf');
+        ])->setPaper('A4', 'portrait')
+        ->stream('catalogo-'.$catalogo->id.'.pdf');
     }
 
     public function publicPdf(Catalog $catalogo)
@@ -118,7 +117,7 @@ class CatalogController extends Controller
                 'orderedProducts' => $orderedProducts,
                 'productsByCategory' => $productsByCategory,
             ])
-            ->setPaper('a4', 'portrait')
+            ->setPaper('A4', 'portrait')
             ->stream('catalogo-'.$catalogo->id.'.pdf');
     }
 

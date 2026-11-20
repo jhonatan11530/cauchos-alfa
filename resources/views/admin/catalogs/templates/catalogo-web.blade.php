@@ -126,7 +126,7 @@
             border-radius: 4px;
         }
 
-        /* Grilla 3x3 de Productos (9 por página) */
+        /* Grilla 2x4 de Productos (8 por página, diseño horizontal) */
         .grid-table {
             width: 100%;
             table-layout: fixed;
@@ -137,44 +137,56 @@
         }
 
         .grid-cell {
-            width: 33.3333%;
+            width: 50%;
             padding: 4px;
             vertical-align: top;
             box-sizing: border-box;
         }
 
         .grid-cell-empty {
-            width: 33.3333%;
+            width: 50%;
             padding: 4px;
         }
 
-        /* Cards de Producto 3x3 */
+        /* Cards de Producto Horizontal */
         .product-card {
             background-color: #161618;
             border: 1px solid #26262a;
-            border-radius: 10px;
+            border-radius: 8px;
             overflow: hidden;
             width: 100%;
-            height: 295px;
+            height: 228px;
+        }
+
+        .product-card-table {
+            width: 100%;
+            height: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
         }
 
         .product-card-img-box {
-            height: 165px;
+            width: 44%;
+            height: 228px;
             background-color: #f5f5f5;
             text-align: center;
+            vertical-align: middle;
             padding: 6px;
         }
 
         .product-img {
             max-width: 95%;
-            max-height: 150px;
+            max-height: 205px;
             display: inline-block;
             vertical-align: middle;
         }
 
         .product-card-body {
-            padding: 8px 10px;
+            width: 56%;
+            padding: 10px 12px;
             text-align: left;
+            vertical-align: top;
+            background-color: #161618;
         }
 
         .product-category {
@@ -183,8 +195,8 @@
             font-size: 8px;
             letter-spacing: 0.5px;
             text-transform: uppercase;
-            margin-bottom: 4px;
-            height: 10px;
+            margin-bottom: 5px;
+            height: 11px;
             overflow: hidden;
             white-space: nowrap;
         }
@@ -193,9 +205,9 @@
             font-size: 11px;
             font-weight: bold;
             color: #ffffff;
-            margin: 0 0 4px 0;
-            line-height: 1.2;
-            height: 27px;
+            margin: 0 0 5px 0;
+            line-height: 1.25;
+            height: 38px;
             overflow: hidden;
         }
 
@@ -203,16 +215,16 @@
             font-size: 8.5px;
             font-weight: bold;
             color: #cccccc;
-            margin-bottom: 4px;
-            height: 11px;
+            margin-bottom: 6px;
+            height: 12px;
             overflow: hidden;
         }
 
         .product-desc {
             font-size: 8px;
             color: #aaaaaa;
-            line-height: 1.25;
-            height: 32px;
+            line-height: 1.3;
+            height: 95px;
             overflow: hidden;
         }
 
@@ -308,7 +320,7 @@
 
         $pages = collect();
         foreach ($categoriesGrouped as $catName => $catProducts) {
-            $catChunks = collect($catProducts)->chunk(9);
+            $catChunks = collect($catProducts)->chunk(8);
             $totalCatPages = $catChunks->count();
             foreach ($catChunks as $chunkIdx => $chunkProducts) {
                 $pages->push([
@@ -348,7 +360,7 @@
             </div>
 
             <table class="grid-table">
-                @foreach ($pageProducts->chunk(3) as $row)
+                @foreach ($pageProducts->chunk(2) as $row)
                     <tr class="grid-row">
                         @foreach ($row as $product)
                             @php
@@ -357,30 +369,28 @@
                             @endphp
                             <td class="grid-cell">
                                 <div class="product-card">
-                                    <div class="product-card-img-box">
-                                        <table style="width: 100%; height: 153px;">
-                                            <tr>
-                                                <td style="vertical-align: middle; text-align: center;">
-                                                    @if ($imageDataUri)
-                                                        <img src="{{ $imageDataUri }}" alt="{{ $product->name }}" class="product-img">
-                                                    @else
-                                                        <span style="color:#888888; font-size: 9px;">Sin imagen</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                    <div class="product-card-body">
-                                        <div class="product-category">{{ mb_strtoupper($categoryName) }}</div>
-                                        <h3 class="product-name">{{ $product->name }}</h3>
-                                        <div class="product-ref">REF: {{ $product->reference ?: 'N/A' }}</div>
-                                        <div class="product-desc">{{ Str::limit($product->description, 65) }}</div>
-                                    </div>
+                                    <table class="product-card-table">
+                                        <tr>
+                                            <td class="product-card-img-box">
+                                                @if ($imageDataUri)
+                                                    <img src="{{ $imageDataUri }}" alt="{{ $product->name }}" class="product-img">
+                                                @else
+                                                    <span style="color:#888888; font-size: 9px;">Sin imagen</span>
+                                                @endif
+                                            </td>
+                                            <td class="product-card-body">
+                                                <div class="product-category">{{ mb_strtoupper($categoryName) }}</div>
+                                                <h3 class="product-name">{{ $product->name }}</h3>
+                                                <div class="product-ref">REF: {{ $product->reference ?: 'N/A' }}</div>
+                                                <div class="product-desc">{{ Str::limit($product->description, 120) }}</div>
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </div>
                             </td>
                         @endforeach
 
-                        @for ($i = 0; $i < (3 - $row->count()); $i++)
+                        @for ($i = 0; $i < (2 - $row->count()); $i++)
                             <td class="grid-cell-empty">&nbsp;</td>
                         @endfor
                     </tr>

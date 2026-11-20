@@ -206,13 +206,13 @@ class CatalogPdfTest extends TestCase
         }
     }
 
-    public function test_r2_both_templates_paginate_to_exactly_8_products_per_full_page(): void
+    public function test_r2_both_templates_paginate_to_exactly_6_products_per_full_page(): void
     {
         $admin = $this->createAdmin();
         $cat = $this->createCategory(['name' => 'CatPaginacion']);
 
         foreach (['default', 'catalogo-web'] as $template) {
-            foreach ([8, 16, 17] as $totalProducts) {
+            foreach ([6, 12, 13] as $totalProducts) {
                 $products = collect();
                 for ($i = 1; $i <= $totalProducts; $i++) {
                     $products->push($this->createProduct($cat, [
@@ -242,7 +242,7 @@ class CatalogPdfTest extends TestCase
                     'productsByCategory' => $catalog->groupedOrderedProductsForPdf(),
                 ])->render();
 
-                $expectedProductPages = (int) ceil($totalProducts / 8);
+                $expectedProductPages = (int) ceil($totalProducts / 6);
                 $pageClass = $template === 'default' ? 'pdf-page' : 'page';
                 $dom = new \DOMDocument;
                 @$dom->loadHTML('<?xml encoding="utf-8" ?>'.$html);
@@ -253,8 +253,8 @@ class CatalogPdfTest extends TestCase
                 foreach ($pageNodes as $pageIdx => $node) {
                     $cardNodes = $xpath->query(".//*[contains(concat(' ', normalize-space(@class), ' '), ' product-card ')]", $node);
                     $expectedOnPage = ($pageIdx < $expectedProductPages - 1)
-                        ? 8
-                        : (($totalProducts % 8) === 0 ? 8 : ($totalProducts % 8));
+                        ? 6
+                        : (($totalProducts % 6) === 0 ? 6 : ($totalProducts % 6));
                     $this->assertSame($expectedOnPage, $cardNodes->length, 'HTML card count mismatch on page '.($pageIdx + 1)." for {$template} N={$totalProducts}");
                 }
 
@@ -278,8 +278,8 @@ class CatalogPdfTest extends TestCase
                     preg_match_all($pattern, $streamText, $matches);
                     $uniqueFound = array_values(array_unique($matches[0]));
                     $expectedOnPage = ($pIdx < $expectedProductPages - 1)
-                        ? 8
-                        : (($totalProducts % 8) === 0 ? 8 : ($totalProducts % 8));
+                        ? 6
+                        : (($totalProducts % 6) === 0 ? 6 : ($totalProducts % 6));
                     $this->assertCount($expectedOnPage, $uniqueFound, 'PDF stream product count mismatch on product page '.($pIdx + 1)." for {$template} N={$totalProducts}");
                 }
             }
@@ -470,18 +470,18 @@ class CatalogPdfTest extends TestCase
         $this->assertSame([(string) $catTwo->id, (string) $catOne->id], $renderedCatOrder);
     }
 
-    public function test_r2_default_template_n8_stress_with_long_header_categories_and_notes_fits_on_one_page(): void
+    public function test_r2_default_template_n6_stress_with_long_header_categories_and_notes_fits_on_one_page(): void
     {
         $admin = $this->createAdmin();
         $cat = $this->createCategory([
             'name' => 'CATEGORIA_LARGA_REPUESTOS_INDUSTRIALES_CAUCHOS',
         ]);
         $products = [];
-        for ($i = 1; $i <= 8; $i++) {
+        for ($i = 1; $i <= 6; $i++) {
             $products[] = $this->createProduct($cat, [
-                'name' => sprintf('STRESS_N8_P%02d_%s', $i, str_repeat('PRODUCTO_LARGO_', 3)),
-                'reference' => sprintf('STR-N8-%02d', $i),
-                'description' => 'Descripción comercial extendida para validar que la tarjeta horizontal no desborde la página.',
+                'name' => sprintf('STRESS_N6_P%02d_%s', $i, str_repeat('PRODUCTO_LARGO_', 3)),
+                'reference' => sprintf('STR-N6-%02d', $i),
+                'description' => 'Descripción comercial extendida para validar que la tarjeta vertical no desborde la página.',
                 'image_path' => ($i % 2 === 1) ? 'products/8MZlkK8agOblr9wq7CjPtGRotSOp2f2DRqXpGH1E.jpg' : null,
             ]);
         }
@@ -515,10 +515,10 @@ class CatalogPdfTest extends TestCase
         $this->assertStringStartsWith('%PDF-', $pdfBytes);
 
         $pdfPages = $this->extractPdfPagesText($pdfBytes);
-        $this->assertCount(1, $pdfPages, 'Stress N=8 default catalog spilled onto extra pages.');
+        $this->assertCount(1, $pdfPages, 'Stress N=6 default catalog spilled onto extra pages.');
 
-        preg_match_all('/STRESS_N8_P\d{2}/', $pdfPages[0], $matches);
-        $this->assertCount(8, array_values(array_unique($matches[0])));
+        preg_match_all('/STRESS_N6_P\d{2}/', $pdfPages[0], $matches);
+        $this->assertCount(6, array_values(array_unique($matches[0])));
         $this->assertStringContainsString('Notas / Condiciones Comerciales:', $pdfPages[0]);
     }
 
@@ -618,14 +618,14 @@ class CatalogPdfTest extends TestCase
         $this->assertSame([$prodB->id, $prodA->id], $orderedIds);
     }
 
-    public function test_both_templates_expand_8_product_cards_and_images_without_page_spillover(): void
+    public function test_both_templates_expand_6_product_cards_and_images_without_page_spillover(): void
     {
         $admin = $this->createAdmin();
         $cat = $this->createCategory(['name' => 'Antivibrantes']);
 
-        // Crear 8 productos con referencias y nombres reales de catálogo
+        // Crear 6 productos con referencias y nombres reales de catálogo
         $products = [];
-        for ($i = 1; $i <= 8; $i++) {
+        for ($i = 1; $i <= 6; $i++) {
             $products[] = $this->createProduct($cat, [
                 'name' => sprintf('ANTIVIBRANTE CILINDRO ALFA PRO %02d', $i),
                 'reference' => sprintf('REF-%04d', 1900 + $i),
@@ -652,9 +652,9 @@ class CatalogPdfTest extends TestCase
         $defaultPages = $this->extractPdfPagesText($defaultPdfBytes);
 
         // Debe caber exactamente en 1 sola página sin desbordar al folio 2
-        $this->assertCount(1, $defaultPages, 'Default template with 8 enlarged cards must fit strictly on 1 page.');
+        $this->assertCount(1, $defaultPages, 'Default template with 6 enlarged cards must fit strictly on 1 page.');
         preg_match_all('/ANTIVIBRANTE CILINDRO.*?PRO\s*\d{2}/', $defaultPages[0], $matchesDefault);
-        $this->assertCount(8, array_values(array_unique($matchesDefault[0])));
+        $this->assertCount(6, array_values(array_unique($matchesDefault[0])));
 
         // 2. Plantilla Catálogo Web
         $webCatalog = Catalog::create([
@@ -670,10 +670,10 @@ class CatalogPdfTest extends TestCase
         $webPdfBytes = $webPdfRes->getContent();
         $webPages = $this->extractPdfPagesText($webPdfBytes);
 
-        // En catalogo-web: Portada (pág 1) + 8 Productos (pág 2) + Contacto (pág 3) = 3 páginas
-        $this->assertCount(3, $webPages, 'Catalogo-web with 8 enlarged cards must fit on exactly 3 pages (Cover + Products + Contact).');
+        // En catalogo-web: Portada (pág 1) + 6 Productos (pág 2) + Contacto (pág 3) = 3 páginas
+        $this->assertCount(3, $webPages, 'Catalogo-web with 6 enlarged cards must fit on exactly 3 pages (Cover + Products + Contact).');
         preg_match_all('/ANTIVIBRANTE CILINDRO.*?PRO\s*\d{2}/', $webPages[1], $matchesWeb);
-        $this->assertCount(8, array_values(array_unique($matchesWeb[0])));
+        $this->assertCount(6, array_values(array_unique($matchesWeb[0])));
     }
 
     public function test_categories_never_mix_on_same_page_and_start_on_fresh_page(): void
@@ -682,8 +682,7 @@ class CatalogPdfTest extends TestCase
         $catAntivibrantes = $this->createCategory(['name' => 'Antivibrante Cilindro']);
         $catAdicionales = $this->createCategory(['name' => 'Adicionales']);
 
-        // Crear 5 productos en Antivibrante Cilindro (no llena los 6 de la página)
-        $sync = [];
+        // Crear 5 productos en Antivibrante Cilindro (no llena los 6 de la página)        $sync = [];
         for ($i = 1; $i <= 5; $i++) {
             $p = $this->createProduct($catAntivibrantes, [
                 'name' => "ANTIVIBRANTE_PROD_{$i}",

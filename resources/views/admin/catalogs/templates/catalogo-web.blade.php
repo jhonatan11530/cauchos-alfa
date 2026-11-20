@@ -19,13 +19,33 @@
         }
 
         /* Utilidades */
-        .text-center { text-align: center; }
-        .text-left { text-align: left; }
-        .text-right { text-align: right; }
-        .text-red { color: #e60012; }
-        .text-white { color: #ffffff; }
-        .text-grey { color: #888888; }
-        .w-100 { width: 100%; }
+        .text-center {
+            text-align: center;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-red {
+            color: #e60012;
+        }
+
+        .text-white {
+            color: #ffffff;
+        }
+
+        .text-grey {
+            color: #888888;
+        }
+
+        .w-100 {
+            width: 100%;
+        }
 
         table {
             border-collapse: collapse;
@@ -38,6 +58,7 @@
             padding: 50px 30px 0 30px;
             text-align: center;
         }
+
         .cover-meta {
             color: #e60012;
             font-weight: bold;
@@ -47,26 +68,31 @@
             margin-top: 80px;
             margin-bottom: 10px;
         }
+
         .cover-title {
             font-size: 48px;
             font-weight: bold;
             color: #ffffff;
             margin: 0;
         }
+
         .cover-subtitle {
             font-size: 18px;
             color: #888888;
             margin-top: 10px;
         }
+
         .cover-image-container {
             margin-top: 80px;
             height: 400px;
         }
+
         .cover-image {
             max-width: 100%;
             max-height: 400px;
             object-fit: contain;
         }
+
         .cover-footer {
             position: absolute;
             bottom: 50px;
@@ -74,12 +100,14 @@
             right: 0;
             text-align: center;
         }
+
         .cover-line {
             width: 50px;
             height: 3px;
             background-color: #e60012;
             margin: 0 auto 15px auto;
         }
+
         .cover-contact {
             color: #888888;
             font-size: 12px;
@@ -126,7 +154,7 @@
             border-radius: 4px;
         }
 
-        /* Grilla 2x4 de Productos (8 por página, diseño horizontal) */
+        /* Grilla 2x3 de Productos (6 por página, diseño vertical) */
         .grid-table {
             width: 100%;
             table-layout: fixed;
@@ -148,84 +176,81 @@
             padding: 4px;
         }
 
-        /* Cards de Producto Horizontal */
+        /* Tarjeta de Producto Vertical */
         .product-card {
             background-color: #161618;
             border: 1px solid #26262a;
             border-radius: 8px;
             overflow: hidden;
-            width: 100%;
-            height: 228px;
-        }
-
-        .product-card-table {
-            width: 100%;
-            height: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .product-card-img-box {
-            width: 44%;
-            height: 228px;
-            background-color: #f5f5f5;
             text-align: center;
-            vertical-align: middle;
-            padding: 6px;
+            height: 300px;
         }
 
-        .product-img {
-            max-width: 95%;
-            max-height: 205px;
-            display: inline-block;
-            vertical-align: middle;
-        }
-
-        .product-card-body {
-            width: 56%;
-            padding: 10px 12px;
-            text-align: left;
-            vertical-align: top;
-            background-color: #161618;
-        }
-
-        .product-category {
+        .product-category-badge {
+            background-color: #1c1c20;
+            border-left: 3px solid #e60012;
             color: #e60012;
+            font-size: 7.5px;
             font-weight: bold;
-            font-size: 8px;
-            letter-spacing: 0.5px;
             text-transform: uppercase;
-            margin-bottom: 5px;
-            height: 11px;
+            padding: 2.5px 8px;
+            text-align: left;
+            height: 12px;
+            line-height: 12px;
             overflow: hidden;
             white-space: nowrap;
         }
 
+        .product-img-wrapper {
+            height: 182px;
+            background-color: #ffffff;
+            text-align: center;
+            vertical-align: middle;
+            padding: 3px;
+        }
+
+        .product-img {
+            max-height: 175px;
+            max-width: 95%;
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 auto;
+        }
+
+        .product-body {
+            padding: 5px 8px 4px 8px;
+            text-align: center;
+        }
+
         .product-name {
-            font-size: 11px;
+            font-size: auto;
             font-weight: bold;
             color: #ffffff;
-            margin: 0 0 5px 0;
-            line-height: 1.25;
-            height: 38px;
+            margin: 0 0 3px 0;
+            line-height: 1.2;
+            text-transform: uppercase;
+            height: 100vh;
             overflow: hidden;
         }
 
         .product-ref {
-            font-size: 8.5px;
+            font-size: auto;
             font-weight: bold;
-            color: #cccccc;
-            margin-bottom: 6px;
+            color: #e60012;
+            margin-bottom: 2px;
+            display: block;
             height: 12px;
             overflow: hidden;
         }
 
         .product-desc {
-            font-size: 8px;
+            font-size: 7.5px;
             color: #aaaaaa;
-            line-height: 1.3;
-            height: 95px;
+            line-height: 1.2;
+            height: 16px;
             overflow: hidden;
+            margin-top: 1px;
+            height: auto;
         }
 
         /* Detalles / Specs */
@@ -233,16 +258,19 @@
             width: 100%;
             margin-top: 30px;
         }
+
         .specs-table td {
             padding: 15px 0;
             border-bottom: 1px solid #333333;
             color: #dddddd;
             font-size: 14px;
         }
+
         .specs-table td.spec-label {
             color: #888888;
             width: 30%;
         }
+
         .specs-table td.spec-value {
             font-weight: bold;
             text-align: right;
@@ -258,11 +286,13 @@
             margin-top: 60px;
             color: #ffffff;
         }
+
         .cta-title {
             font-size: 28px;
             font-weight: bold;
             margin: 0 0 10px 0;
         }
+
         .cta-text {
             font-size: 14px;
             margin: 0;
@@ -297,12 +327,13 @@
         <div class="cover-footer">
             <div class="cover-line"></div>
             <div class="cover-contact">
-                {{ $catalog->contact_email ?: 'hola@empresa.com' }} · {{ $catalog->contact_phone ?: '+57 123 456 7890' }}
+                {{ $catalog->contact_email ?: 'hola@empresa.com' }} ·
+                {{ $catalog->contact_phone ?: '+57 123 456 7890' }}
             </div>
         </div>
     </div>
 
-    {{-- Páginas de Productos (9 por página en grilla 3x3) --}}
+    {{-- Páginas de Productos (6 por página en grilla 2x3) --}}
     @php
         if (isset($orderedProducts)) {
             $items = collect($orderedProducts)->values();
@@ -315,12 +346,12 @@
         if (isset($productsByCategory) && $productsByCategory instanceof \Illuminate\Support\Collection) {
             $categoriesGrouped = $productsByCategory;
         } else {
-            $categoriesGrouped = $items->groupBy(fn ($p) => $p->category?->name ?? 'Varios');
+            $categoriesGrouped = $items->groupBy(fn($p) => $p->category?->name ?? 'Varios');
         }
 
         $pages = collect();
         foreach ($categoriesGrouped as $catName => $catProducts) {
-            $catChunks = collect($catProducts)->chunk(8);
+            $catChunks = collect($catProducts)->chunk(6);
             $totalCatPages = $catChunks->count();
             foreach ($catChunks as $chunkIdx => $chunkProducts) {
                 $pages->push([
@@ -369,23 +400,27 @@
                             @endphp
                             <td class="grid-cell">
                                 <div class="product-card">
-                                    <table class="product-card-table">
-                                        <tr>
-                                            <td class="product-card-img-box">
-                                                @if ($imageDataUri)
-                                                    <img src="{{ $imageDataUri }}" alt="{{ $product->name }}" class="product-img">
-                                                @else
-                                                    <span style="color:#888888; font-size: 9px;">Sin imagen</span>
-                                                @endif
-                                            </td>
-                                            <td class="product-card-body">
-                                                <div class="product-category">{{ mb_strtoupper($categoryName) }}</div>
-                                                <h3 class="product-name">{{ $product->name }}</h3>
-                                                <div class="product-ref">REF: {{ $product->reference ?: 'N/A' }}</div>
-                                                <div class="product-desc">{{ Str::limit($product->description, 120) }}</div>
-                                            </td>
-                                        </tr>
-                                    </table>
+                                    <div class="product-category-badge">{{ mb_strtoupper($categoryName) }}</div>
+                                    <div class="product-img-wrapper">
+                                        <table style="width: 100%; height: 100%;">
+                                            <tr>
+                                                <td style="vertical-align: middle; text-align: center;">
+                                                    @if ($imageDataUri)
+                                                        <img src="{{ $imageDataUri }}" alt="{{ $product->name }}" class="product-img">
+                                                    @else
+                                                        <span style="color:#888888; font-size: 9px;">Sin imagen</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="product-body">
+                                        <div class="product-name">{{ $product->name }}</div>
+                                        <div class="product-ref">REF: {{ $product->reference ?: 'N/A' }}</div>
+                                        @if ($product->description)
+                                            <div class="product-desc">{{ Str::limit($product->description, 150) }}</div>
+                                        @endif
+                                    </div>
                                 </div>
                             </td>
                         @endforeach
@@ -410,37 +445,38 @@
 
         <table class="specs-table">
             @if($catalog->contact_email)
-            <tr>
-                <td class="spec-label">Correo de contacto</td>
-                <td class="spec-value">{{ $catalog->contact_email }}</td>
-            </tr>
+                <tr>
+                    <td class="spec-label">Correo de contacto</td>
+                    <td class="spec-value">{{ $catalog->contact_email }}</td>
+                </tr>
             @endif
 
             @if($catalog->contact_phone)
-            <tr>
-                <td class="spec-label">Teléfono</td>
-                <td class="spec-value">{{ $catalog->contact_phone }}</td>
-            </tr>
+                <tr>
+                    <td class="spec-label">Teléfono</td>
+                    <td class="spec-value">{{ $catalog->contact_phone }}</td>
+                </tr>
             @endif
 
             @if($catalog->contact_address)
-            <tr>
-                <td class="spec-label">Dirección</td>
-                <td class="spec-value">{{ $catalog->contact_address }}</td>
-            </tr>
+                <tr>
+                    <td class="spec-label">Dirección</td>
+                    <td class="spec-value">{{ $catalog->contact_address }}</td>
+                </tr>
             @endif
 
             @if($catalog->notes)
-            <tr>
-                <td class="spec-label">Notas Comerciales</td>
-                <td class="spec-value" style="font-weight: normal;">{{ $catalog->notes }}</td>
-            </tr>
+                <tr>
+                    <td class="spec-label">Notas Comerciales</td>
+                    <td class="spec-value" style="font-weight: normal;">{{ $catalog->notes }}</td>
+                </tr>
             @endif
         </table>
 
         <div class="cta-box">
             <h3 class="cta-title">¿Lista para rodar?</h3>
-            <p class="cta-text">Contáctanos en: {{ $catalog->contact_email ?: 'hola@empresa.com' }} · {{ $catalog->contact_phone ?: '+57 123 456 7890' }}</p>
+            <p class="cta-text">Contáctanos en: {{ $catalog->contact_email ?: 'hola@empresa.com' }} ·
+                {{ $catalog->contact_phone ?: '+57 123 456 7890' }}</p>
         </div>
     </div>
 

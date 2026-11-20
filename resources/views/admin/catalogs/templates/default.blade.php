@@ -24,11 +24,25 @@
             border-spacing: 0;
         }
 
-        .w-100 { width: 100%; }
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .text-left { text-align: left; }
-        .uppercase { text-transform: uppercase; }
+        .w-100 {
+            width: 100%;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+        }
 
         .pdf-page {
             width: 100%;
@@ -170,7 +184,7 @@
             text-transform: uppercase;
         }
 
-        /* Grilla 2x4 de Productos (8 por página, diseño horizontal) */
+        /* Grilla 2x3 de Productos (6 por página) */
         .grid-table {
             width: 100%;
             table-layout: fixed;
@@ -183,44 +197,52 @@
 
         .grid-cell {
             width: 50%;
-            padding: 2.5px 3.5px;
+            padding: 3px 5px;
             vertical-align: top;
             box-sizing: border-box;
         }
 
         .grid-cell-empty {
             width: 50%;
-            padding: 2.5px 3.5px;
+            padding: 3px 5px;
         }
 
-        /* Tarjeta de Producto Horizontal */
+        /* Tarjeta de Producto Vertical */
         .product-card {
             border: 1px solid #dcdcdc;
-            border-radius: 5px;
+            border-radius: 6px;
             background-color: #ffffff;
             overflow: hidden;
-            height: 185px;
-            width: 100%;
-        }
-
-        .product-card-table {
-            width: 100%;
-            height: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .product-card-left {
-            width: 44%;
-            vertical-align: middle;
             text-align: center;
-            background-color: #fafafa;
-            border-right: 1px solid #eeeeee;
+            height: 290px;
+        }
+
+        .product-category-badge {
+            background-color: #141414;
+            border-left: 3px solid #e60012;
+            color: #ffffff;
+            font-size: 7.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 2.5px 8px;
+            text-align: left;
+            height: 12px;
+            line-height: 12px;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .product-img-wrapper {
+            height: 182px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #eeeeee;
+            text-align: center;
+            vertical-align: middle;
             padding: 3px;
         }
 
         .product-img {
-            max-height: 172px;
+            max-height: 175px;
             max-width: 95%;
             display: inline-block;
             vertical-align: middle;
@@ -228,7 +250,7 @@
         }
 
         .no-img-placeholder {
-            height: 172px;
+            height: 175px;
             display: table;
             width: 100%;
         }
@@ -236,62 +258,46 @@
         .no-img-text {
             display: table-cell;
             vertical-align: middle;
-            font-size: 8px;
+            font-size: 9px;
             color: #aaaaaa;
             font-weight: bold;
             text-transform: uppercase;
         }
 
-        .product-card-right {
-            width: 56%;
-            vertical-align: top;
-            text-align: left;
-            padding: 5px 7px;
-        }
-
-        .product-category-badge {
-            background-color: #141414;
-            border-left: 3px solid #e60012;
-            color: #ffffff;
-            font-size: 6.5px;
-            font-weight: bold;
-            text-transform: uppercase;
-            padding: 2px 5px;
-            display: inline-block;
-            margin-bottom: 3px;
-            max-width: 90%;
-            overflow: hidden;
-            white-space: nowrap;
+        .product-body {
+            padding: 5px 8px 4px 8px;
+            text-align: center;
         }
 
         .product-name {
-            font-size: 9px;
+            font-size: auto;
             font-weight: bold;
             color: #111111;
-            margin: 0 0 2px 0;
+            margin: 0 0 3px 0;
             line-height: 1.2;
             text-transform: uppercase;
-            height: 30px;
+            height: 100vh;
             overflow: hidden;
         }
 
         .product-ref {
-            font-size: 7.5px;
+            font-size: auto;
             font-weight: bold;
             color: #e60012;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             display: block;
-            height: 11px;
+            height: 13px;
             overflow: hidden;
         }
 
         .product-desc {
-            font-size: 7px;
+            font-size: 7.5px;
             color: #555555;
-            line-height: 1.25;
-            height: 74px;
+            line-height: 1.2;
+            height: 18px;
             overflow: hidden;
             margin-top: 1px;
+            height: auto;
         }
 
         /* Notas del catálogo */
@@ -354,12 +360,12 @@
         if (isset($productsByCategory) && $productsByCategory instanceof \Illuminate\Support\Collection) {
             $categoriesGrouped = $productsByCategory;
         } else {
-            $categoriesGrouped = $items->groupBy(fn ($p) => $p->category?->name ?? 'Otros Productos');
+            $categoriesGrouped = $items->groupBy(fn($p) => $p->category?->name ?? 'Otros Productos');
         }
 
         $pages = collect();
         foreach ($categoriesGrouped as $categoryName => $catProducts) {
-            $catChunks = collect($catProducts)->chunk(8);
+            $catChunks = collect($catProducts)->chunk(6);
             $totalCatPages = $catChunks->count();
             foreach ($catChunks as $chunkIdx => $chunkProducts) {
                 $pages->push([
@@ -421,7 +427,8 @@
                         </span>
                         <span class="contact-item">&bull;</span>
                         <span class="contact-item">
-                            <strong>Dirección:</strong> {{ $catalog->contact_address ?: 'Cra 39 No. 26 A 52 B/ La Independencia - Cali' }}
+                            <strong>Dirección:</strong>
+                            {{ $catalog->contact_address ?: 'Cra 39 No. 26 A 52 B/ La Independencia - Cali' }}
                         </span>
                     </div>
                 </div>
@@ -459,39 +466,31 @@
                             @endphp
                             <td class="grid-cell">
                                 <div class="product-card">
-                                    <table class="product-card-table">
-                                        <tr>
-                                            <td class="product-card-left">
-                                                @if ($imageDataUri)
-                                                    <img src="{{ $imageDataUri }}" alt="{{ $product->name }}" class="product-img">
-                                                @else
-                                                    <div class="no-img-placeholder">
-                                                         <span class="no-img-text">Sin Imagen</span>
-                                                    </div>
-                                                @endif
-                                            </td>
-                                            <td class="product-card-right">
-                                                <div class="product-category-badge">
-                                                    {{ $categoryLabel }}
-                                                </div>
-                                                <div class="product-name" title="{{ $product->name }}">
-                                                    {{ $product->name }}
-                                                </div>
-
-                                                @if ($product->reference)
-                                                    <div class="product-ref">
-                                                        REF: {{ $product->reference }}
-                                                    </div>
-                                                @endif
-
-                                                @if ($product->description)
-                                                    <div class="product-desc">
-                                                        {{ Str::limit($product->description, 110) }}
-                                                    </div>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    </table>
+                                    <div class="product-category-badge">{{ $categoryLabel }}</div>
+                                    <div class="product-img-wrapper">
+                                        <table style="width: 100%; height: 100%;">
+                                            <tr>
+                                                <td style="vertical-align: middle; text-align: center;">
+                                                    @if ($imageDataUri)
+                                                        <img src="{{ $imageDataUri }}" alt="{{ $product->name }}" class="product-img">
+                                                    @else
+                                                        <div class="no-img-placeholder">
+                                                            <span class="no-img-text">Sin Imagen</span>
+                                                        </div>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="product-body">
+                                        <div class="product-name" title="{{ $product->name }}">{{ $product->name }}</div>
+                                        @if ($product->reference)
+                                            <div class="product-ref">REF: {{ $product->reference }}</div>
+                                        @endif
+                                        @if ($product->description)
+                                            <div class="product-desc">{{ Str::limit($product->description, 150) }}</div>
+                                        @endif
+                                    </div>
                                 </div>
                             </td>
                         @endforeach
@@ -509,6 +508,7 @@
                     <div>{{ $catalog->notes }}</div>
                 </div>
             @endif
+            <div class="footer-note" style="margin-top: 2px;text-align: center;color: #666666;font-size: 9px;">Precios y disponibilidad sujetos a cambio.</div>
         </div>
     @empty
         <div class="pdf-page">
@@ -552,7 +552,8 @@
                     </span>
                     <span class="contact-item">&bull;</span>
                     <span class="contact-item">
-                        <strong>Dirección:</strong> {{ $catalog->contact_address ?: 'Cra 39 No. 26 A 52 B/ La Independencia - Cali' }}
+                        <strong>Dirección:</strong>
+                        {{ $catalog->contact_address ?: 'Cra 39 No. 26 A 52 B/ La Independencia - Cali' }}
                     </span>
                 </div>
             </div>

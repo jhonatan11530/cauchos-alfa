@@ -133,11 +133,34 @@
 
                 @if ($product->exists && ($product->images->isNotEmpty() || $product->image_path))
                     <div class="mt-3">
-                        <label class="fw-bold">Imágenes actuales</label>
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                            <label class="fw-bold mb-0">Imágenes actuales</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-xs btn-outline-secondary" id="btnToggleSelectAllImages" onclick="toggleSelectAllImages()">
+                                    <i class="fas fa-check-double mr-1"></i> Seleccionar todas
+                                </button>
+                                <button type="button" class="btn btn-xs btn-primary font-weight-bold" id="btnApplyTemplateSelected" onclick="applyTemplateToSelectedImages()">
+                                    <i class="fas fa-stamp mr-1"></i> Aplicar plantilla a seleccionadas
+                                </button>
+                            </div>
+                        </div>
+                        <div id="templateSelectedStatus" class="mb-2 text-primary small d-none font-weight-bold">
+                            <span class="spinner-border spinner-border-sm mr-1"></span>
+                            <span id="templateSelectedStatusText">Procesando imágenes seleccionadas...</span>
+                        </div>
                         <div class="d-flex flex-wrap gap-2">
                             @if ($product->image_path)
-                                <div class="border rounded p-1 text-center">
-                                    <img src="{{ \App\Models\Product::getStorageUrl($product->image_path) }}"
+                                <div class="border rounded p-1 text-center position-relative" style="min-width: 90px;">
+                                    <div class="position-absolute" style="top: 4px; left: 4px; z-index: 2;">
+                                        <input type="checkbox" class="select-image-checkbox" 
+                                               id="select_img_main" 
+                                               data-type="main" 
+                                               data-id="{{ $product->id }}" 
+                                               data-url="{{ \App\Models\Product::getStorageUrl($product->image_path) }}"
+                                               title="Seleccionar para aplicar plantilla"
+                                               style="cursor: pointer; width: 17px; height: 17px;">
+                                    </div>
+                                    <img src="{{ \App\Models\Product::getStorageUrl($product->flyer_path ?: $product->image_path) }}"
                                         id="existing_main_img"
                                         data-url="{{ \App\Models\Product::getStorageUrl($product->image_path) }}"
                                         style="height:80px;width:80px;object-fit:cover;" alt="Imagen principal">
@@ -146,7 +169,16 @@
                                 </div>
                             @endif
                             @foreach ($product->images as $image)
-                                <div class="border rounded p-1 text-center">
+                                <div class="border rounded p-1 text-center position-relative" style="min-width: 90px;">
+                                    <div class="position-absolute" style="top: 4px; left: 4px; z-index: 2;">
+                                        <input type="checkbox" class="select-image-checkbox" 
+                                               id="select_img_{{ $image->id }}" 
+                                               data-type="gallery" 
+                                               data-id="{{ $image->id }}" 
+                                               data-url="{{ \App\Models\Product::getStorageUrl($image->path) }}"
+                                               title="Seleccionar para aplicar plantilla"
+                                               style="cursor: pointer; width: 17px; height: 17px;">
+                                    </div>
                                     <img src="{{ \App\Models\Product::getStorageUrl($image->path) }}"
                                         class="existing_gallery_img"
                                         data-id="{{ $image->id }}"
@@ -1513,6 +1545,159 @@
             console.error('Error al mejorar imagenes:', error);
             if (window.toastr) toastr.error('Error: ' + error.message);
             statusText.textContent = 'Ocurrió un error.';
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    };
+
+    window.toggleSelectAllImages = function() {
+        const checkboxes = document.querySelectorAll('.select-image-checkbox');
+        const allChecked = Array.from(checkboxes).length > 0 && Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+        const btn = document.getElementById('btnToggleSelectAllImages');
+        if (btn) {
+            btn.innerHTML = !allChecked 
+                ? '<i class="fas fa-times mr-1"></i> Deseleccionar todas' 
+                : '<i class="fas fa-check-double mr-1"></i> Seleccionar todas';
+        }
+    };
+
+    window.applyTemplateToSelectedImages = async function() {
+        const selectedCheckboxes = Array.from(document.querySelectorAll('.select-image-checkbox:checked'));
+        if (selectedCheckboxes.length === 0) {
+            if (window.toastr) {
+                toastr.warning('Por favor selecciona al menos una imagen para aplicar la plantilla.');
+            } else {
+                alert('Por favor selecciona al menos una imagen para aplicar la plantilla.');
+            }
+            return;
+        }
+
+        const btn = document.getElementById('btnApplyTemplateSelected');
+        const statusDiv = document.getElementById('templateSelectedStatus');
+        const statusText = document.getElementById('templateSelectedStatusText');
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Procesando...';
+            btn.disabled = true;
+            statusDiv.classList.remove('d-none', 'text-success', 'text-danger');
+            statusDiv.classList.add('text-primary');
+
+            const productId = "{{ $product->id ?? '' }}";
+            const csrf = document.querySelector('input[name="_token"]').value;
+            const productNameInput = document.querySelector('input[name="name"]');
+            const productName = (productNameInput ? productNameInput.value : '') || 'PRODUCTO';
+
+            let total = selectedCheckboxes.length;
+            let current = 0;
+
+            for (const cb of selectedCheckboxes) {
+                current++;
+                const type = cb.getAttribute('data-type');
+                const id = cb.getAttribute('data-id');
+                const imgEl = type === 'main' 
+                    ? document.getElementById('existing_main_img') 
+                    : document.querySelector(`.existing_gallery_img[data-id="${id}"]`);
+                const statusEl = type === 'main'
+                    ? document.getElementById('status_existing_main')
+                    : document.getElementById('status_existing_gallery_' + id);
+
+                statusText.textContent = `Procesando imagen ${current} de ${total}...`;
+                if (statusEl) {
+                    statusEl.classList.remove('text-success', 'text-danger');
+                    statusEl.classList.add('text-primary');
+                    statusEl.textContent = 'Procesando...';
+                }
+
+                const url = imgEl ? (imgEl.getAttribute('data-url') || imgEl.src) : cb.getAttribute('data-url');
+                const response = await fetch(url);
+                const blob = await response.blob();
+
+                // 1. Si la imagen ya tiene marco de plantilla/flyer previo, recortar el producto limpio
+                const cleanSource = await extractCleanProductIfFlyer(blob);
+                const cleanBlob = (cleanSource === blob) ? blob : await (await fetch(cleanSource)).blob();
+                const file = new File([cleanBlob], `image_${id}.jpg`, { type: cleanBlob.type || 'image/jpeg' });
+
+                // 2. IA de recorte y fondo blanco de estudio
+                if (statusEl) statusEl.textContent = 'Recortando IA...';
+                const result = await processImageToStudioWhite(file, null, 'enhance');
+
+                // 3. Aplicar plantilla institucional
+                if (statusEl) statusEl.textContent = 'Aplicando plantilla...';
+                const flyerFile = await aplicarPlantilla(result.file, productName);
+
+                if (type === 'main') {
+                    // Guardar como flyer oficial del producto manteniendo el image_path intacto
+                    const flyerData = new FormData();
+                    flyerData.append('flyer', flyerFile);
+                    flyerData.append('_token', csrf);
+
+                    const flyerRes = await fetch(`{{ url('/productos') }}/${productId}/upload-flyer`, {
+                        method: 'POST',
+                        body: flyerData,
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const flyerJson = await flyerRes.json();
+                    if (flyerJson.success && flyerJson.path) {
+                        if (imgEl) {
+                            imgEl.src = flyerJson.path + '?t=' + new Date().getTime();
+                        }
+                        if (statusEl) {
+                            statusEl.classList.remove('text-primary');
+                            statusEl.classList.add('text-success');
+                            statusEl.textContent = '¡Plantilla aplicada!';
+                        }
+                    } else {
+                        throw new Error(flyerJson.message || 'Error al guardar el flyer oficial');
+                    }
+                } else {
+                    // Imagen de galería: reemplazar la imagen con la plantilla
+                    const galleryData = new FormData();
+                    galleryData.append('image', flyerFile);
+                    galleryData.append('_token', csrf);
+
+                    const uploadRes = await fetch(`{{ url('/productos/imagenes') }}/${id}/replace`, {
+                        method: 'POST',
+                        body: galleryData,
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const data = await uploadRes.json();
+                    if (data.success && data.path) {
+                        if (imgEl) {
+                            imgEl.src = data.path + '?t=' + new Date().getTime();
+                            imgEl.setAttribute('data-url', data.path);
+                        }
+                        if (statusEl) {
+                            statusEl.classList.remove('text-primary');
+                            statusEl.classList.add('text-success');
+                            statusEl.textContent = '¡Plantilla aplicada!';
+                        }
+                    } else {
+                        throw new Error(data.message || 'Error al actualizar imagen de galería');
+                    }
+                }
+
+                // Desmarcar checkbox una vez procesada con éxito
+                cb.checked = false;
+            }
+
+            statusText.textContent = '¡Plantilla aplicada con éxito a las imágenes seleccionadas!';
+            statusDiv.classList.remove('text-primary');
+            statusDiv.classList.add('text-success');
+            if (window.toastr) toastr.success('¡Plantilla aplicada con éxito a las imágenes seleccionadas!');
+            
+            const btnSelectAll = document.getElementById('btnToggleSelectAllImages');
+            if (btnSelectAll) {
+                btnSelectAll.innerHTML = '<i class="fas fa-check-double mr-1"></i> Seleccionar todas';
+            }
+        } catch (err) {
+            console.error('Error aplicando plantilla a seleccionadas:', err);
+            statusText.textContent = 'Ocurrió un error al procesar alguna de las imágenes: ' + (err.message || '');
+            statusDiv.classList.remove('text-primary');
+            statusDiv.classList.add('text-danger');
+            if (window.toastr) toastr.error('Ocurrió un error: ' + (err.message || ''));
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;

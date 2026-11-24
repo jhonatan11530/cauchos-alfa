@@ -628,6 +628,80 @@
         };
     }
 
+    function checkIsOfficialFlyer(canvas, width, height) {
+        if (!canvas || !width || !height) return false;
+        const ratio = width / height;
+        const isSquare = Math.abs(ratio - 1.0) < 0.06;
+        const isLegacy = ratio > 0.70 && ratio < 0.88;
+        if (!isSquare && !isLegacy) return false;
+        if (height < 700) return false;
+
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        
+        // 1. En un flyer oficial, las esquinas superiores (2%, 2%) y (98%, 2%) son blancas
+        const cornerTL = ctx.getImageData(Math.round(width * 0.02), Math.round(height * 0.02), 1, 1).data;
+        const cornerTR = ctx.getImageData(Math.round(width * 0.98), Math.round(height * 0.02), 1, 1).data;
+        const isTLWhite = cornerTL[0] > 220 && cornerTL[1] > 220 && cornerTL[2] > 220;
+        const isTRWhite = cornerTR[0] > 220 && cornerTR[1] > 220 && cornerTR[2] > 220;
+        if (!isTLWhite || !isTRWhite) return false;
+
+        // 2. Presencia del bloque rojo de marca "ALFA" en zona superior derecha (x: 58%..90%, y: 5%..15%)
+        let redTop = 0;
+        const startYTop = Math.round(height * 0.05);
+        const endYTop = Math.round(height * 0.15);
+        const startXTop = Math.round(width * 0.58);
+        const endXTop = Math.round(width * 0.90);
+        const step = Math.max(2, Math.round(width / 300));
+
+        const topBlock = ctx.getImageData(startXTop, startYTop, endXTop - startXTop, endYTop - startYTop);
+        const tbData = topBlock.data;
+        const tbW = topBlock.width;
+        const tbH = topBlock.height;
+
+        for (let y = 0; y < tbH; y += step) {
+            for (let x = 0; x < tbW; x += step) {
+                const idx = (y * tbW + x) * 4;
+                const r = tbData[idx];
+                const g = tbData[idx + 1];
+                const b = tbData[idx + 2];
+                if (r > 165 && g < 75 && b < 75) {
+                    redTop++;
+                    if (redTop >= 15) break;
+                }
+            }
+            if (redTop >= 15) break;
+        }
+        if (redTop < 15) return false;
+
+        // 3. Presencia de insignias rojas inferiores (x: 15%..85%, y: 74%..86%)
+        let redBadge = 0;
+        const startYBadge = Math.round(height * 0.74);
+        const endYBadge = Math.round(height * 0.86);
+        const startXBadge = Math.round(width * 0.15);
+        const endXBadge = Math.round(width * 0.85);
+
+        const badgeBlock = ctx.getImageData(startXBadge, startYBadge, endXBadge - startXBadge, endYBadge - startYBadge);
+        const bbData = badgeBlock.data;
+        const bbW = badgeBlock.width;
+        const bbH = badgeBlock.height;
+
+        for (let y = 0; y < bbH; y += step) {
+            for (let x = 0; x < bbW; x += step) {
+                const idx = (y * bbW + x) * 4;
+                const r = bbData[idx];
+                const g = bbData[idx + 1];
+                const b = bbData[idx + 2];
+                if (r > 165 && g < 75 && b < 75) {
+                    redBadge++;
+                    if (redBadge >= 10) break;
+                }
+            }
+            if (redBadge >= 10) break;
+        }
+
+        return (redTop >= 15 && redBadge >= 10);
+    }
+
     // Procesar una imagen para aislar objeto y montarlo sobre fondo blanco puro (#ffffff)
     async function processImageToStudioWhite(file, onProgress, mode = 'creation') {
         const isAutoEnabled = autoSwitch ? autoSwitch.checked : true;
@@ -653,58 +727,41 @@
             });
             URL.revokeObjectURL(tempImg.src);
 
-            const ratio = tempImg.width / tempImg.height;
-            const isSquareRatio = Math.abs(ratio - 1.0) < 0.06;
-            const isLegacyRatio = ratio > 0.70 && ratio < 0.88;
+            const flyerCheckCanvas = document.createElement('canvas');
+            flyerCheckCanvas.width = tempImg.width;
+            flyerCheckCanvas.height = tempImg.height;
+            const flyerCheckCtx = flyerCheckCanvas.getContext('2d');
+            flyerCheckCtx.drawImage(tempImg, 0, 0);
 
-            if (isSquareRatio || isLegacyRatio) {
-                const flyerCheckCanvas = document.createElement('canvas');
-                const flyerCheckCtx = flyerCheckCanvas.getContext('2d');
-                flyerCheckCanvas.width = tempImg.width;
-                flyerCheckCanvas.height = tempImg.height;
-                flyerCheckCtx.drawImage(tempImg, 0, 0);
+            const isFlyer = checkIsOfficialFlyer(flyerCheckCanvas, tempImg.width, tempImg.height);
 
-                // Comprobar si la barra superior y elementos inferiores corresponden a un flyer oficial
-                const sampleTopY = isSquareRatio ? Math.round(tempImg.height * 0.09) : Math.round(tempImg.height * 0.087);
-                const sampleBottomY = isSquareRatio ? Math.round(tempImg.height * 0.93) : Math.round(tempImg.height * 0.89);
-                const sampleBadgeY = Math.round(tempImg.height * 0.80);
-                const sampleX = Math.round(tempImg.width / 2);
-
-                const topPixel = flyerCheckCtx.getImageData(sampleX, sampleTopY, 1, 1).data;
-                const bottomPixel = flyerCheckCtx.getImageData(sampleX, sampleBottomY, 1, 1).data;
-                const badgePixel = flyerCheckCtx.getImageData(Math.round(tempImg.width * 0.35), sampleBadgeY, 1, 1).data;
-
-                const isTopBlack = topPixel[0] < 60 && topPixel[1] < 60 && topPixel[2] < 60;
-                const isBottomBlack = bottomPixel[0] < 60 && bottomPixel[1] < 60 && bottomPixel[2] < 60;
-                const hasBadgeGraphic = (badgePixel[0] < 220 || badgePixel[1] < 220 || badgePixel[2] < 220);
-
-                if (isTopBlack && (isBottomBlack || hasBadgeGraphic)) {
-                    if (onProgress) onProgress('Detectado flyer previo. Extrayendo imagen original...');
-                    // Es un flyer. Extraer la parte central blanca libre de insignias ni elementos graficos
-                    let cropX, cropY, cropW, cropH;
-                    if (isSquareRatio) {
-                        cropX = Math.round(tempImg.width * 0.15);
-                        cropY = Math.round(tempImg.height * 0.26);
-                        cropW = Math.round(tempImg.width * 0.70);
-                        cropH = Math.round(tempImg.height * 0.48);
-                    } else {
-                        cropX = Math.round(tempImg.width * 0.14);
-                        cropY = Math.round(tempImg.height * 0.33);
-                        cropW = Math.round(tempImg.width * 0.72);
-                        cropH = Math.round(tempImg.height * 0.47);
-                    }
-
-                    const extractCanvas = document.createElement('canvas');
-                    extractCanvas.width = cropW;
-                    extractCanvas.height = cropH;
-                    const extractCtx = extractCanvas.getContext('2d');
-                    extractCtx.fillStyle = '#ffffff';
-                    extractCtx.fillRect(0, 0, cropW, cropH);
-                    extractCtx.drawImage(tempImg, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-
-                    const extractedBlob = await new Promise(res => extractCanvas.toBlob(res, 'image/jpeg', 1.0));
-                    finalFileToProcess = new File([extractedBlob], file.name, { type: 'image/jpeg' });
+            if (isFlyer) {
+                if (onProgress) onProgress('Detectado flyer previo. Extrayendo imagen original...');
+                const ratio = tempImg.width / tempImg.height;
+                const isSquareRatio = Math.abs(ratio - 1.0) < 0.06;
+                let cropX, cropY, cropW, cropH;
+                if (isSquareRatio) {
+                    cropX = Math.round(tempImg.width * 0.15);
+                    cropY = Math.round(tempImg.height * 0.26);
+                    cropW = Math.round(tempImg.width * 0.70);
+                    cropH = Math.round(tempImg.height * 0.48);
+                } else {
+                    cropX = Math.round(tempImg.width * 0.14);
+                    cropY = Math.round(tempImg.height * 0.33);
+                    cropW = Math.round(tempImg.width * 0.72);
+                    cropH = Math.round(tempImg.height * 0.47);
                 }
+
+                const extractCanvas = document.createElement('canvas');
+                extractCanvas.width = cropW;
+                extractCanvas.height = cropH;
+                const extractCtx = extractCanvas.getContext('2d');
+                extractCtx.fillStyle = '#ffffff';
+                extractCtx.fillRect(0, 0, cropW, cropH);
+                extractCtx.drawImage(tempImg, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+                const extractedBlob = await new Promise(res => extractCanvas.toBlob(res, 'image/jpeg', 1.0));
+                finalFileToProcess = new File([extractedBlob], file.name, { type: 'image/jpeg' });
             }
         } catch (e) {
             console.warn("No se pudo analizar la imagen pre-procesamiento", e);
@@ -1372,18 +1429,22 @@
             const img = new Image();
             img.crossOrigin = 'Anonymous';
             img.onload = () => {
-                const isSquareFlyer = (img.naturalWidth === 2048 && img.naturalHeight === 2048) ||
-                                (Math.abs((img.naturalWidth / img.naturalHeight) - 1.0) < 0.05 && img.naturalHeight >= 800);
-                const isLegacyFlyer = (img.naturalWidth === 928 && img.naturalHeight === 1150) ||
-                                (Math.abs((img.naturalWidth / img.naturalHeight) - (928 / 1150)) < 0.05 && img.naturalHeight >= 800);
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
 
-                if (!isSquareFlyer && !isLegacyFlyer) {
+                const isFlyer = checkIsOfficialFlyer(canvas, img.naturalWidth, img.naturalHeight);
+                if (!isFlyer) {
                     resolve(imgSource);
                     return;
                 }
 
+                const ratio = img.naturalWidth / img.naturalHeight;
+                const isSquareRatio = Math.abs(ratio - 1.0) < 0.06;
                 let cropX, cropY, cropW, cropH;
-                if (isSquareFlyer) {
+                if (isSquareRatio) {
                     cropX = Math.round(img.naturalWidth * 0.15);
                     cropY = Math.round(img.naturalHeight * 0.26);
                     cropW = Math.round(img.naturalWidth * 0.70);
@@ -1395,15 +1456,15 @@
                     cropH = Math.round(img.naturalHeight * 0.47);
                 }
 
-                const canvas = document.createElement('canvas');
-                canvas.width = cropW;
-                canvas.height = cropH;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+                const extractCanvas = document.createElement('canvas');
+                extractCanvas.width = cropW;
+                extractCanvas.height = cropH;
+                const extractCtx = extractCanvas.getContext('2d');
+                extractCtx.fillStyle = '#FFFFFF';
+                extractCtx.fillRect(0, 0, cropW, cropH);
+                extractCtx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
-                canvas.toBlob((blob) => {
+                extractCanvas.toBlob((blob) => {
                     if (blob) {
                         const reader = new FileReader();
                         reader.onload = () => resolve(reader.result);

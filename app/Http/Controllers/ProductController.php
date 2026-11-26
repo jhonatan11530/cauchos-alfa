@@ -77,7 +77,7 @@ class ProductController extends Controller
         $producto->update($data);
         $this->storeImages($request, $producto);
 
-        return redirect()->route('productos.index')->with('success', 'Producto actualizado correctamente.');
+        return redirect()->route('productos.edit', $producto)->with('success', 'Producto actualizado correctamente.');
     }
 
     public function destroy(Product $producto): RedirectResponse

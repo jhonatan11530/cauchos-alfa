@@ -89,23 +89,27 @@ class ProductController extends Controller
 
     public function forceDelete(Product $producto): RedirectResponse
     {
-        if (! empty($producto->category_id)) {
-            return back()->with('error', 'No se puede eliminar porque el producto pertenece a una categoría.');
+        if ($producto->orderItems()->exists()) {
+            return back()->with('error', 'No se puede eliminar este producto porque tiene pedidos registrados. Puedes desactivarlo en su lugar.');
         }
 
-        if ($producto->image_path && Storage::disk('public')->exists($producto->image_path)) {
-            Storage::disk('public')->delete($producto->image_path);
+        $imagePaths = array_filter([
+            $producto->image_path,
+            $producto->flyer_path,
+            ...$producto->images->pluck('path')->all(),
+        ]);
+
+        try {
+            $producto->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', 'No se puede eliminar el producto porque tiene registros asociados.');
         }
-        if ($producto->flyer_path && Storage::disk('public')->exists($producto->flyer_path)) {
-            Storage::disk('public')->delete($producto->flyer_path);
-        }
-        foreach ($producto->images as $imagen) {
-            if (Storage::disk('public')->exists($imagen->path)) {
-                Storage::disk('public')->delete($imagen->path);
+
+        foreach ($imagePaths as $path) {
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
             }
         }
-
-        $producto->delete();
 
         return back()->with('success', 'Producto eliminado definitivamente.');
     }

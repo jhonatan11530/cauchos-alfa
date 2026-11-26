@@ -81,7 +81,7 @@
             @endforeach
         </div>
 
-        <div class="d-flex justify-content-between align-items-end mb-4">
+        <div id="productos-catalogo" class="d-flex justify-content-between align-items-end mb-4">
             <h3 class="font-weight-bold text-white mb-0">
                 @if ($selectedCategory)
                     {{ $selectedCategory->name }}
@@ -229,6 +229,17 @@
 @push('scripts')
 <script>
 $(document).ready(function () {
+    const productosSection = document.getElementById('productos-catalogo');
+    if (productosSection) {
+        const navbar = document.querySelector('nav.navbar, .navbar');
+        const offset = (navbar ? navbar.offsetHeight : 70) + 16;
+        const targetTop = productosSection.getBoundingClientRect().top + window.pageYOffset - offset;
+        window.scrollTo({
+            top: Math.max(0, targetTop),
+            behavior: 'smooth'
+        });
+    }
+
     $('form.form-seller-add-to-cart').each(function () {
         $(this).validate({
             rules: {

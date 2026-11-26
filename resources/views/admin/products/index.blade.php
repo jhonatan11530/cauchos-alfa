@@ -43,17 +43,12 @@
                         <td>{{ $product->availability }}</td>
                         <td>{{ $product->is_active ? 'Activo' : 'Inactivo' }}</td>
                         <td>
-                            @php
-                                $actionParams = [
-                                    'edit' => route('productos.edit', $product),
-                                    'destroy' => route('productos.destroy', $product),
-                                    'active' => $product->is_active
-                                ];
-                                if (empty($product->category_id)) {
-                                    $actionParams['forceDelete'] = route('productos.forceDelete', $product);
-                                }
-                            @endphp
-                            @include('admin.partials.actions', $actionParams)
+                            @include('admin.partials.actions', [
+                                'edit' => route('productos.edit', $product),
+                                'destroy' => route('productos.destroy', $product),
+                                'active' => $product->is_active,
+                                'forceDelete' => route('productos.forceDelete', $product),
+                            ])
                         </td>
                     </tr>
                 @empty

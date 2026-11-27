@@ -66,20 +66,20 @@ class SiteCatalogTest extends TestCase
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
 
-        // La tarjeta "Todos" no debe tener la clase border-danger cuando hay una categoría seleccionada
-        $todosCard = $xpath->query("//h5[normalize-space()='Todos']/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' card ')][1]")->item(0);
-        $this->assertNotNull($todosCard);
-        $this->assertStringNotContainsString('border-danger', $todosCard->getAttribute('class'));
+        // La píldora "Todos" no debe tener la clase border-danger cuando hay una categoría seleccionada
+        $todosPill = $xpath->query("//a[contains(concat(' ', normalize-space(@class), ' '), ' category-pill-all ')]")->item(0);
+        $this->assertNotNull($todosPill);
+        $this->assertStringNotContainsString('border-danger', $todosPill->getAttribute('class'));
 
-        // La tarjeta de la categoría seleccionada sí debe tener border-danger
-        $selectedCard = $xpath->query("//h5[normalize-space()='Llantas de Moto']/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' card ')][1]")->item(0);
-        $this->assertNotNull($selectedCard);
-        $this->assertStringContainsString('border-danger', $selectedCard->getAttribute('class'));
+        // La píldora de la categoría seleccionada sí debe tener border-danger
+        $selectedPill = $xpath->query("//a[contains(concat(' ', normalize-space(@class), ' '), ' category-pill-item ')][@data-category-name='llantas de moto']")->item(0);
+        $this->assertNotNull($selectedPill);
+        $this->assertStringContainsString('border-danger', $selectedPill->getAttribute('class'));
 
         // Otra categoría no seleccionada no debe tener border-danger
-        $otherCard = $xpath->query("//h5[normalize-space()='Aceites']/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' card ')][1]")->item(0);
-        $this->assertNotNull($otherCard);
-        $this->assertStringNotContainsString('border-danger', $otherCard->getAttribute('class'));
+        $otherPill = $xpath->query("//a[contains(concat(' ', normalize-space(@class), ' '), ' category-pill-item ')][@data-category-name='aceites']")->item(0);
+        $this->assertNotNull($otherPill);
+        $this->assertStringNotContainsString('border-danger', $otherPill->getAttribute('class'));
     }
 
     /** Caso positivo: página de inicio con productos destacados */

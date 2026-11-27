@@ -48,38 +48,54 @@
     </section>
 
     <section class="container py-5">
-        <div class="text-center mb-5">
-            <h3 class="font-weight-bold text-white">Categorías</h3>
-            <p class="text-muted-custom">Filtra por el tipo de neumático que necesitas</p>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+            <div class="mb-2 mb-md-0">
+                <h3 class="font-weight-bold text-white mb-1">Categorías</h3>
+                <p class="text-muted-custom small mb-0">Filtra por el tipo de neumático o repuesto que necesitas</p>
+            </div>
+            <div style="min-width: 260px; max-width: 360px; width: 100%;">
+                <div class="input-group input-group-sm">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text border-secondary text-muted-custom" style="background: var(--bike-charcoal);">
+                            <i class="bi bi-search"></i>
+                        </span>
+                    </div>
+                    <input type="text"
+                        id="categorySearchInput"
+                        class="form-control text-white border-secondary"
+                        style="background: var(--bike-charcoal);"
+                        placeholder="Buscar categoría..."
+                        aria-label="Buscar categoría"
+                        autocomplete="off">
+                    <div class="input-group-append d-none" id="clearCategorySearchWrap">
+                        <button type="button" id="clearCategorySearchBtn" class="btn btn-outline-secondary text-white" title="Limpiar búsqueda">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="row mb-5">
-            <div class="col-6 col-md-4 col-lg-3 mb-3">
-                <a href="{{ route('site.catalog') }}" style="text-decoration: none;">
-                    <div class="card h-100 shadow-sm text-center {{ !$selectedCategory ? 'border-danger' : '' }}"
-                        style="background: var(--bike-charcoal); border-width: 2px; transition: 0.3s; border-radius: 20px; color: white;">
-                        <div class="card-body">
-                            <div class="text-red mb-2"><i class="bi bi-grid-3x3-gap-fill display-4"></i></div>
-                            <h5 class="card-title mt-2 mb-0 text-white">Todos</h5>
-                        </div>
-                    </div>
-                </a>
-            </div>
+        <div id="categoryPillsContainer" class="d-flex flex-nowrap flex-md-wrap overflow-auto pb-2 mb-4" style="gap: 8px;">
+            <a href="{{ route('site.catalog') }}"
+                class="btn btn-sm d-inline-flex align-items-center category-pill-all {{ !$selectedCategory ? 'border-danger text-white' : 'text-white-50' }}"
+                style="border-radius: 20px; white-space: nowrap; padding: 6px 14px; transition: 0.2s; {{ !$selectedCategory ? 'background: var(--bike-red); border: 1px solid var(--bike-red); font-weight: 600;' : 'background: var(--bike-charcoal); border: 1px solid rgba(255,255,255,0.15);' }}">
+                <i class="bi bi-grid-3x3-gap-fill mr-1"></i> Todos
+            </a>
             @foreach ($categories as $category)
-                <div class="col-6 col-md-4 col-lg-3 mb-3">
-                    <a href="{{ route('site.catalog.category', ['slug' => \Illuminate\Support\Str::slug($category->name), 'categoriaId' => $category->id]) }}" style="text-decoration: none;">
-                        <div class="card h-100 shadow-sm text-center {{ $selectedCategory && $selectedCategory->id == $category->id ? 'border-danger' : '' }}"
-                            style="background: var(--bike-charcoal); border-width: 2px; transition: 0.3s; border-radius: 20px; color: white;">
-                            <div class="card-body">
-                                <div class="text-red mb-2"><i class="bi bi-tag-fill display-4"></i></div>
-                                <h5 class="card-title mt-2 mb-0 text-white">{{ $category->name }}</h5>
-                                <p class="text-muted-custom small mb-0">{{ $category->products_count }} producto(s)</p>
-                            </div>
-                        </div>
-                    </a>
-                </div>
+                @php
+                    $isActiveCat = $selectedCategory && $selectedCategory->id == $category->id;
+                @endphp
+                <a href="{{ route('site.catalog.category', ['slug' => \Illuminate\Support\Str::slug($category->name), 'categoriaId' => $category->id]) }}"
+                    class="btn btn-sm d-inline-flex align-items-center category-pill-item {{ $isActiveCat ? 'border-danger text-white' : 'text-white-50' }}"
+                    data-category-name="{{ mb_strtolower($category->name) }}"
+                    style="border-radius: 20px; white-space: nowrap; padding: 6px 14px; transition: 0.2s; {{ $isActiveCat ? 'background: var(--bike-red); border: 1px solid var(--bike-red); font-weight: 600;' : 'background: var(--bike-charcoal); border: 1px solid rgba(255,255,255,0.15);' }}">
+                    <span>{{ $category->name }}</span>
+                    <span class="badge ml-2" style="background: rgba(0,0,0,0.28); color: #fff; font-weight: 500;">{{ $category->products_count }}</span>
+                </a>
             @endforeach
         </div>
+        <p id="noCategoriesMatch" class="text-muted-custom small mb-4 d-none">No se encontraron categorías con ese nombre.</p>
 
         <div id="productos-catalogo" class="d-flex justify-content-between align-items-end mb-4">
             <h3 class="font-weight-bold text-white mb-0">
@@ -229,6 +245,40 @@
 @push('scripts')
 <script>
 $(document).ready(function () {
+    const normalizeText = (text) => (text || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+    const $categorySearch = $('#categorySearchInput');
+    const $clearWrap = $('#clearCategorySearchWrap');
+    const $categoryPills = $('.category-pill-item');
+    const $noCategoriesMatch = $('#noCategoriesMatch');
+
+    function filterCategories() {
+        const term = normalizeText($categorySearch.val());
+        $clearWrap.toggleClass('d-none', term.length === 0);
+
+        let visibleCount = 0;
+        $categoryPills.each(function () {
+            const name = normalizeText($(this).attr('data-category-name'));
+            const matches = term === '' || name.includes(term);
+            $(this).toggleClass('d-none', !matches).toggleClass('d-inline-flex', matches);
+            if (matches) {
+                visibleCount++;
+            }
+        });
+
+        $noCategoriesMatch.toggleClass('d-none', visibleCount > 0 || term === '');
+    }
+
+    $categorySearch.on('input', filterCategories);
+    $('#clearCategorySearchBtn').on('click', function () {
+        $categorySearch.val('').trigger('input').focus();
+    });
+
     const productosSection = document.getElementById('productos-catalogo');
     if (productosSection) {
         const navbar = document.querySelector('nav.navbar, .navbar');

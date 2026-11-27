@@ -215,11 +215,11 @@
         <!-- SEO Text Block -->
         <div class="row mt-5 pt-4 border-top">
             <div class="col-12">
-                <h3 class="h5 font-weight-bold text-dark">Llantas, Repuestos y Accesorios para Bicicletas en Colombia</h3>
-                <h3 class="h5 font-weight-bold text-dark">Fabricantes e Importadores de Cauchos para Motos y Bicicletas</h3>
+                <h5>Fabricantes e Importadores de Cauchos para Motocicletas</h5>
                 <p class="text-muted" style="font-size: 0.9rem;">
-                    En Cauchos Alfa nos especializamos en la distribución mayorista y venta al detal de <strong>repuestos para bicicletas en Cali</strong> y envíos a toda Colombia. Contamos con un amplio inventario de <strong>llantas tubeless, neumáticos MTB 29, llantas para ruta y gravel</strong>, así como <strong>repuestos Shimano originales</strong>, cadenas, pastillas de freno y componentes de transmisión. Ya sea que busques mejorar el rendimiento de tus ruedas, hacer conversión a tubeless, o abastecer tu tienda, tenemos la calidad y durabilidad que necesitas.
-                    En <strong>Cauchos Alfa</strong> somos fabricantes directos e importadores especializados en <strong>cauchos y llantas para motos</strong> y <strong>bicicletas</strong> en Cali, Colombia. Nuestro catálogo incluye desde llantas tubeless y neumáticos para bicicletas de ruta y MTB, hasta llantas de alto rendimiento y durabilidad extrema para motocicletas de trabajo y calle. Además, somos distribuidores mayoristas de bicicletas completas y repuestos. Compra con la confianza de fábrica y mejora la adherencia y seguridad de tu vehículo.
+                En <strong>Cauchos Alfa</strong> nos especializamos en la <strong>fabricación de cauchos para motocicletas</strong>, así como en la importación y distribución mayorista y venta al detal de repuestos para motos en Cali, con envíos a toda Colombia. Contamos con un amplio portafolio de productos de caucho compatibles con diferentes marcas y modelos de motocicletas, diseñados para ofrecer resistencia, durabilidad y un óptimo rendimiento.</p>
+                <p class="text-muted">Nuestro catálogo incluye cadenas, pastillas de freno, componentes de transmisión y una amplia variedad de repuestos para motocicletas, ofreciendo soluciones confiables para talleres, distribuidores, almacenes de repuestos y clientes particulares.</p>
+                <p class="text-muted">En <strong>Cauchos Alfa</strong> trabajamos para satisfacer las necesidades del sector motociclista, ofreciendo productos de calidad, precios competitivos y soluciones especializadas que contribuyen al rendimiento, la seguridad y la durabilidad de las motocicletas.
                 </p>
             </div>
         </div>

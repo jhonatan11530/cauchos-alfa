@@ -123,4 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'phone' => env('PHONE_NUMBER', '+573000000000'),
+    'phone_whatsapp' => env('PHONE_NUMBER_WHATSAPP', '+573000000000')
 ];

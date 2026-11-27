@@ -145,7 +145,7 @@
             <div class="row">
                 @if (count($featured) > 0)
                     @foreach ($featured as $product)
-                        <div class="col-lg-4 col-md-2 mb-4">
+                        <div class="col-lg-3 col-md-2 mb-4">
                             <div class="product-card h-100">
                                 <div class="bg-light d-flex align-items-center justify-content-center" style="height: 250px;">
                                     {{-- Galería de producto: carousel si hay varias imágenes, imagen simple si hay una --}}
